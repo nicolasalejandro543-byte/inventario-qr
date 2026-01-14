@@ -1,0 +1,2184 @@
+{% extends "base.html" %}
+
+{% block title %}{{ etapa.nombre }}{% endblock %}
+
+{% block head %}
+<style>
+    .etapa-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    /* Estilos para seleccion multiple */
+    .selection-controls {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: white;
+        padding: 12px 20px;
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-sm);
+        margin-bottom: 16px;
+    }
+
+    .selection-controls label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        font-weight: 500;
+    }
+
+    .selection-controls input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: var(--color-primary);
+    }
+
+    .coche-card {
+        position: relative;
+    }
+
+    .coche-checkbox {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        width: 22px;
+        height: 22px;
+        cursor: pointer;
+        accent-color: var(--color-primary);
+        z-index: 10;
+    }
+
+    .coche-card.selected {
+        border-color: var(--color-primary) !important;
+        background: #f0f7ff !important;
+        box-shadow: 0 0 0 2px rgba(1,115,198,0.2);
+    }
+
+    /* Barra flotante de acciones */
+    .floating-actions {
+        position: fixed;
+        bottom: -100px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(135deg, var(--color-primary), #0284c7);
+        color: white;
+        padding: 16px 28px;
+        border-radius: var(--radius-lg);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        z-index: 1000;
+        transition: bottom 0.3s ease;
+    }
+
+    .floating-actions.visible {
+        bottom: 24px;
+    }
+
+    .floating-actions .selected-count {
+        font-size: 1.1rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .floating-actions .selected-count span {
+        background: rgba(255,255,255,0.2);
+        padding: 4px 12px;
+        border-radius: 20px;
+    }
+
+    .floating-actions .btn {
+        padding: 10px 20px;
+    }
+
+    .floating-actions .btn-mover {
+        background: var(--color-success);
+    }
+
+    .floating-actions .btn-mover:hover {
+        background: #059669;
+    }
+
+    .floating-actions .btn-cancelar {
+        background: rgba(255,255,255,0.2);
+    }
+
+    .floating-actions .btn-cancelar:hover {
+        background: rgba(255,255,255,0.3);
+    }
+
+    .floating-actions .btn-cambiar-camara {
+        background: var(--color-warning);
+    }
+
+    .floating-actions .btn-cambiar-camara:hover {
+        background: #d97706;
+    }
+
+    .floating-actions .btn-crear-lote {
+        background: #6f42c1;
+    }
+
+    .floating-actions .btn-crear-lote:hover {
+        background: #5a32a3;
+    }
+
+    /* Modal de movimiento masivo */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+    }
+
+    .modal-overlay.show {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: var(--radius-lg);
+        width: 90%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    .modal-header {
+        padding: 20px 24px;
+        background: linear-gradient(135deg, var(--color-primary), #0284c7);
+        color: white;
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.25rem;
+    }
+
+    .modal-body {
+        padding: 24px;
+    }
+
+    .modal-footer {
+        padding: 16px 24px;
+        background: var(--color-bg-light);
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    }
+
+    .etapa-option {
+        padding: 16px;
+        border: 2px solid var(--color-gray-light);
+        border-radius: var(--radius-md);
+        margin-bottom: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .etapa-option:hover {
+        border-color: var(--color-primary);
+        background: var(--color-bg-light);
+    }
+
+    .etapa-option.selected {
+        border-color: var(--color-primary);
+        background: #e6f2ff;
+    }
+
+    .etapa-option.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .etapa-option-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 18px;
+    }
+
+    .etapa-option-info {
+        flex: 1;
+    }
+
+    .etapa-option-name {
+        font-weight: 600;
+        margin-bottom: 2px;
+    }
+
+    .etapa-option-desc {
+        font-size: 0.85rem;
+        color: var(--color-text-muted);
+    }
+
+    .camara-select-group {
+        margin-top: 16px;
+        padding: 16px;
+        background: var(--color-bg-light);
+        border-radius: var(--radius-md);
+        display: none;
+    }
+
+    .camara-select-group.show {
+        display: block;
+    }
+
+    .camara-select-group label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .camara-select-group select {
+        width: 100%;
+        padding: 10px 14px;
+        border: 2px solid var(--color-gray-light);
+        border-radius: var(--radius-sm);
+        font-family: inherit;
+        font-size: 1rem;
+    }
+
+    .result-message {
+        padding: 16px;
+        border-radius: var(--radius-md);
+        margin-bottom: 16px;
+        display: none;
+    }
+
+    .result-message.success {
+        background: #d1fae5;
+        color: #065f46;
+        display: block;
+    }
+
+    .result-message.error {
+        background: #fee2e2;
+        color: #991b1b;
+        display: block;
+    }
+
+    .etapa-title {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .etapa-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        color: white;
+        background: linear-gradient(135deg, {{ etapa.color }}, {{ etapa.color }}dd);
+    }
+
+    .etapa-info h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 4px;
+    }
+
+    .etapa-stats {
+        display: flex;
+        gap: 24px;
+        font-size: 0.9rem;
+        color: var(--color-text-muted);
+    }
+
+    .etapa-stats span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .etapa-stats strong {
+        color: var(--color-text);
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .coches-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 16px;
+    }
+
+    .coche-card {
+        background: white;
+        border-radius: var(--radius-md);
+        padding: 20px;
+        box-shadow: var(--shadow-sm);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: 2px solid transparent;
+        text-decoration: none;
+        color: inherit;
+        display: block;
+    }
+
+    .coche-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-md);
+        border-color: {{ etapa.color }};
+    }
+
+    .coche-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+    }
+
+    .coche-codigo {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+        color: var(--color-primary);
+        font-size: 0.95rem;
+    }
+
+    .coche-bft {
+        background: linear-gradient(135deg, var(--color-success), #059669);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .coche-details {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        font-size: 0.85rem;
+    }
+
+    .coche-detail {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .coche-detail-label {
+        color: var(--color-text-muted);
+        font-size: 0.75rem;
+    }
+
+    .coche-detail-value {
+        font-weight: 600;
+    }
+
+    .coche-date {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--color-gray-light);
+        font-size: 0.8rem;
+        color: var(--color-text-muted);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        color: var(--color-gray-light);
+        margin-bottom: 16px;
+    }
+
+    .empty-state h3 {
+        color: var(--color-text-muted);
+        margin-bottom: 8px;
+    }
+
+    .empty-state p {
+        color: var(--color-text-muted);
+        margin-bottom: 20px;
+    }
+
+    /* Estilos para agrupación por cámara */
+    .camara-group {
+        margin-bottom: 20px;
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+    }
+
+    .camara-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        background: linear-gradient(135deg, var(--color-warning), #d97706);
+        color: white;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .camara-header:hover {
+        background: linear-gradient(135deg, #d97706, #b45309);
+    }
+
+    .camara-header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .camara-icon {
+        width: 40px;
+        height: 40px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+    }
+
+    .camara-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+    }
+
+    .camara-stats {
+        display: flex;
+        gap: 20px;
+        font-size: 0.9rem;
+    }
+
+    .camara-stats span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(255,255,255,0.2);
+        padding: 4px 12px;
+        border-radius: 20px;
+    }
+
+    .camara-toggle {
+        font-size: 1.2rem;
+        transition: transform 0.3s;
+    }
+
+    .camara-toggle.collapsed {
+        transform: rotate(-90deg);
+    }
+
+    .camara-body {
+        padding: 20px;
+        display: none;
+    }
+
+    .camara-body.show {
+        display: block;
+    }
+
+    .camara-coches-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 12px;
+    }
+
+    /* Estilos para sección de lotes */
+    .lotes-section {
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 2px solid var(--color-gray-light);
+    }
+
+    .lotes-section-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .lotes-section-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        color: white;
+        background: linear-gradient(135deg, #6f42c1, #5a32a3);
+    }
+
+    .lotes-section-info h3 {
+        font-size: 1.2rem;
+        font-weight: 700;
+        margin-bottom: 2px;
+    }
+
+    .lotes-section-stats {
+        font-size: 0.85rem;
+        color: var(--color-text-muted);
+    }
+
+    .lotes-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 16px;
+    }
+
+    .lote-card {
+        background: white;
+        border-radius: var(--radius-md);
+        padding: 20px;
+        box-shadow: var(--shadow-sm);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: 2px solid transparent;
+        text-decoration: none;
+        color: inherit;
+        display: block;
+    }
+
+    .lote-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-md);
+        border-color: #6f42c1;
+    }
+
+    .lote-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+    }
+
+    .lote-codigo {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+        color: #6f42c1;
+        font-size: 1rem;
+    }
+
+    .lote-bft {
+        background: linear-gradient(135deg, var(--color-success), #059669);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .lote-details {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        font-size: 0.85rem;
+        margin-bottom: 12px;
+    }
+
+    .lote-detail {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .lote-detail-label {
+        color: var(--color-text-muted);
+        font-size: 0.75rem;
+    }
+
+    .lote-detail-value {
+        font-weight: 600;
+    }
+
+    .lote-coches-preview {
+        background: var(--color-bg-light);
+        padding: 8px 12px;
+        border-radius: var(--radius-sm);
+        font-size: 0.8rem;
+        color: var(--color-text-muted);
+    }
+
+    .lote-coches-preview strong {
+        color: #6f42c1;
+    }
+
+    .lote-date {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--color-gray-light);
+        font-size: 0.8rem;
+        color: var(--color-text-muted);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    /* Sección desplegable de coches individuales */
+    .coches-collapsible {
+        margin-top: 24px;
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+    }
+
+    .coches-collapsible-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        background: linear-gradient(135deg, var(--color-primary), #0284c7);
+        color: white;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .coches-collapsible-header:hover {
+        background: linear-gradient(135deg, #005a9e, #0173c6);
+    }
+
+    .coches-collapsible-header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .coches-collapsible-icon {
+        width: 40px;
+        height: 40px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+    }
+
+    .coches-collapsible-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+    }
+
+    .coches-collapsible-stats {
+        display: flex;
+        gap: 16px;
+        font-size: 0.9rem;
+    }
+
+    .coches-collapsible-stats span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(255,255,255,0.2);
+        padding: 4px 12px;
+        border-radius: 20px;
+    }
+
+    .coches-collapsible-toggle {
+        font-size: 1.2rem;
+        transition: transform 0.3s;
+    }
+
+    .coches-collapsible-toggle.collapsed {
+        transform: rotate(-90deg);
+    }
+
+    .coches-collapsible-body {
+        padding: 20px;
+        display: none;
+    }
+
+    .coches-collapsible-body.show {
+        display: block;
+    }
+
+    /* Tabs de turno */
+    .turno-tabs {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 20px;
+        background: var(--color-gray-light);
+        padding: 4px;
+        border-radius: var(--radius-md);
+    }
+
+    .turno-tab {
+        flex: 1;
+        padding: 14px 20px;
+        border: none;
+        background: transparent;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 0.95rem;
+        font-weight: 600;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .turno-tab:hover {
+        background: rgba(255,255,255,0.5);
+    }
+
+    .turno-tab.active {
+        background: white;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .turno-tab.diurno.active {
+        color: #f59e0b;
+    }
+
+    .turno-tab.nocturno.active {
+        color: #3b82f6;
+    }
+
+    .turno-tab-icon {
+        font-size: 1.2rem;
+    }
+
+    .turno-tab-stats {
+        font-size: 0.8rem;
+        opacity: 0.8;
+        font-weight: 500;
+    }
+
+    .turno-content {
+        display: none;
+    }
+
+    .turno-content.active {
+        display: block;
+    }
+
+    .turno-summary {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+    }
+
+    .turno-summary-card {
+        flex: 1;
+        min-width: 120px;
+        padding: 16px;
+        border-radius: var(--radius-md);
+        text-align: center;
+    }
+
+    .turno-summary-card.diurno {
+        background: linear-gradient(135deg, #fef3c7, #fde68a);
+        border: 2px solid #f59e0b;
+    }
+
+    .turno-summary-card.nocturno {
+        background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+        border: 2px solid #3b82f6;
+    }
+
+    .turno-summary-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .turno-summary-card.diurno .turno-summary-value {
+        color: #d97706;
+    }
+
+    .turno-summary-card.nocturno .turno-summary-value {
+        color: #2563eb;
+    }
+
+    .turno-summary-label {
+        font-size: 0.85rem;
+        color: var(--color-text-muted);
+    }
+
+    /* Radio buttons de turno en modal */
+    .turno-selector {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .turno-option {
+        flex: 1;
+        padding: 16px;
+        border: 2px solid var(--color-gray-light);
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: center;
+    }
+
+    .turno-option:hover {
+        border-color: #6f42c1;
+    }
+
+    .turno-option.selected {
+        border-color: #6f42c1;
+        background: #f5f0ff;
+    }
+
+    .turno-option input {
+        display: none;
+    }
+
+    .turno-option-icon {
+        font-size: 2rem;
+        margin-bottom: 8px;
+    }
+
+    .turno-option.diurno .turno-option-icon {
+        color: #f59e0b;
+    }
+
+    .turno-option.nocturno .turno-option-icon {
+        color: #3b82f6;
+    }
+
+    .turno-option-label {
+        font-weight: 600;
+        color: var(--color-text);
+    }
+
+    /* Barra de navegación rápida de etapas */
+    .etapas-nav {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+        padding: 8px;
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        overflow-x: auto;
+    }
+
+    .etapa-nav-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        border-radius: var(--radius-md);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+        white-space: nowrap;
+        color: white;
+        flex: 1;
+        justify-content: center;
+        opacity: 0.4;
+    }
+
+    .etapa-nav-btn:hover {
+        opacity: 0.8;
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .etapa-nav-btn.active {
+        opacity: 1;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        transform: scale(1.02);
+    }
+
+    .etapa-nav-btn.madera-verde { background: linear-gradient(135deg, #28a745, #20c997); }
+    .etapa-nav-btn.secado { background: linear-gradient(135deg, #ffc107, #e6a800); color: #333; }
+    .etapa-nav-btn.stock-secado { background: linear-gradient(135deg, #17a2b8, #138496); }
+    .etapa-nav-btn.ingresa-a-taller { background: linear-gradient(135deg, #6f42c1, #5a32a3); }
+
+    .etapa-nav-btn i {
+        font-size: 1.1rem;
+    }
+
+    @media (max-width: 768px) {
+        .etapas-nav {
+            gap: 6px;
+            padding: 6px;
+        }
+
+        .etapa-nav-btn {
+            padding: 10px 12px;
+            font-size: 0.8rem;
+        }
+
+        .etapa-nav-btn span {
+            display: none;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Barra de navegación rápida a etapas -->
+<div class="etapas-nav">
+    <a href="/etapa/1" class="etapa-nav-btn madera-verde {% if etapa.orden == 1 %}active{% endif %}">
+        <i class="bi bi-tree"></i>
+        <span>Madera Verde</span>
+    </a>
+    <a href="/etapa/2" class="etapa-nav-btn secado {% if etapa.orden == 2 %}active{% endif %}">
+        <i class="bi bi-sun"></i>
+        <span>Secado</span>
+    </a>
+    <a href="/etapa/3" class="etapa-nav-btn stock-secado {% if etapa.orden == 3 %}active{% endif %}">
+        <i class="bi bi-archive"></i>
+        <span>Stock Secado</span>
+    </a>
+    <a href="/etapa/4" class="etapa-nav-btn ingresa-a-taller {% if etapa.orden == 4 %}active{% endif %}">
+        <i class="bi bi-tools"></i>
+        <span>Ingresa a Taller</span>
+    </a>
+</div>
+
+<div class="etapa-header">
+    <div class="etapa-title">
+        <div class="etapa-icon">
+            {% if etapa.orden == 1 %}
+            <i class="bi bi-tree"></i>
+            {% elif etapa.orden == 2 %}
+            <i class="bi bi-sun"></i>
+            {% elif etapa.orden == 3 %}
+            <i class="bi bi-archive"></i>
+            {% else %}
+            <i class="bi bi-tools"></i>
+            {% endif %}
+        </div>
+        <div class="etapa-info">
+            <h2>{{ etapa.nombre }}</h2>
+            <div class="etapa-stats">
+                <span><i class="bi bi-box-seam"></i> <strong>{{ coches|length }}</strong> coches</span>
+                <span><i class="bi bi-rulers"></i> <strong>{{ "%.1f"|format(total_bft) }}</strong> BFT total</span>
+            </div>
+        </div>
+    </div>
+    <div>
+        <a href="/" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+        <a href="/nuevo" class="btn btn-success">
+            <i class="bi bi-plus-circle"></i> Nuevo Coche
+        </a>
+    </div>
+</div>
+
+{% if coches or (etapa.orden == 4 and lotes) %}
+
+    {% if etapa.orden == 4 and lotes %}
+    <!-- INGRESO A TALLER: Primero Lotes, después Coches -->
+
+    <!-- Sección de Lotes (ARRIBA) con Tabs Diurno/Nocturno -->
+    <div class="lotes-section" style="border-top: none; margin-top: 0; padding-top: 0;">
+        <div class="lotes-section-title">
+            <div class="lotes-section-icon">
+                <i class="bi bi-box-seam"></i>
+            </div>
+            <div class="lotes-section-info">
+                <h3>Lotes Creados</h3>
+                <div class="lotes-section-stats">
+                    {{ lotes|length }} lotes - {{ "%.1f"|format(lotes|sum(attribute='total_bft')) }} BFT total
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs de Turno -->
+        {% set lotes_diurno = [] %}
+        {% set lotes_nocturno = [] %}
+        {% for lote in lotes %}
+            {% if lote.turno == 'Nocturno' %}
+                {% set _ = lotes_nocturno.append(lote) %}
+            {% else %}
+                {% set _ = lotes_diurno.append(lote) %}
+            {% endif %}
+        {% endfor %}
+        {% set bft_diurno = lotes_diurno|sum(attribute='total_bft') %}
+        {% set bft_nocturno = lotes_nocturno|sum(attribute='total_bft') %}
+
+        <div class="turno-tabs">
+            <button class="turno-tab diurno active" onclick="switchTurno('diurno')">
+                <i class="bi bi-sun-fill turno-tab-icon"></i>
+                <span>Diurno</span>
+                <span class="turno-tab-stats">({{ lotes_diurno|length }} lotes)</span>
+            </button>
+            <button class="turno-tab nocturno" onclick="switchTurno('nocturno')">
+                <i class="bi bi-moon-fill turno-tab-icon"></i>
+                <span>Nocturno</span>
+                <span class="turno-tab-stats">({{ lotes_nocturno|length }} lotes)</span>
+            </button>
+        </div>
+
+        <!-- Contenido Diurno -->
+        <div class="turno-content active" id="turno-diurno">
+            <div class="turno-summary">
+                <div class="turno-summary-card diurno">
+                    <div class="turno-summary-value">{{ lotes_diurno|length }}</div>
+                    <div class="turno-summary-label">Lotes Diurnos</div>
+                </div>
+                <div class="turno-summary-card diurno">
+                    <div class="turno-summary-value">{{ "%.1f"|format(bft_diurno) }}</div>
+                    <div class="turno-summary-label">BFT Total</div>
+                </div>
+            </div>
+            {% if lotes_diurno %}
+            <div class="lotes-grid">
+                {% for lote in lotes_diurno %}
+                <a href="/lote/{{ lote.id }}" class="lote-card">
+                    <div class="lote-header">
+                        <span class="lote-codigo">{{ lote.codigo_qr }}</span>
+                        <span class="lote-bft">{{ "%.1f"|format(lote.total_bft or 0) }} BFT</span>
+                    </div>
+                    <div class="lote-details">
+                        <div class="lote-detail">
+                            <span class="lote-detail-label">Coches</span>
+                            <span class="lote-detail-value">{{ lote.cantidad_coches }} unidades</span>
+                        </div>
+                        <div class="lote-detail">
+                            <span class="lote-detail-label">Creado por</span>
+                            <span class="lote-detail-value">{{ lote.creado_por or '-' }}</span>
+                        </div>
+                    </div>
+                    {% if lote.coches %}
+                    <div class="lote-coches-preview">
+                        <strong>Coches:</strong>
+                        {% for coche in lote.coches[:3] %}{{ coche.codigo_qr }}{% if not loop.last %}, {% endif %}{% endfor %}{% if lote.coches|length > 3 %}...{% endif %}
+                    </div>
+                    {% endif %}
+                    <div class="lote-date">
+                        <i class="bi bi-calendar3"></i>
+                        {{ lote.created_at.strftime('%d/%m/%Y %H:%M') }}
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state" style="padding: 40px;">
+                <i class="bi bi-sun" style="font-size: 3rem;"></i>
+                <h3>No hay lotes diurnos</h3>
+                <p>Los lotes del turno diurno aparecerán aquí</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Contenido Nocturno -->
+        <div class="turno-content" id="turno-nocturno">
+            <div class="turno-summary">
+                <div class="turno-summary-card nocturno">
+                    <div class="turno-summary-value">{{ lotes_nocturno|length }}</div>
+                    <div class="turno-summary-label">Lotes Nocturnos</div>
+                </div>
+                <div class="turno-summary-card nocturno">
+                    <div class="turno-summary-value">{{ "%.1f"|format(bft_nocturno) }}</div>
+                    <div class="turno-summary-label">BFT Total</div>
+                </div>
+            </div>
+            {% if lotes_nocturno %}
+            <div class="lotes-grid">
+                {% for lote in lotes_nocturno %}
+                <a href="/lote/{{ lote.id }}" class="lote-card">
+                    <div class="lote-header">
+                        <span class="lote-codigo">{{ lote.codigo_qr }}</span>
+                        <span class="lote-bft">{{ "%.1f"|format(lote.total_bft or 0) }} BFT</span>
+                    </div>
+                    <div class="lote-details">
+                        <div class="lote-detail">
+                            <span class="lote-detail-label">Coches</span>
+                            <span class="lote-detail-value">{{ lote.cantidad_coches }} unidades</span>
+                        </div>
+                        <div class="lote-detail">
+                            <span class="lote-detail-label">Creado por</span>
+                            <span class="lote-detail-value">{{ lote.creado_por or '-' }}</span>
+                        </div>
+                    </div>
+                    {% if lote.coches %}
+                    <div class="lote-coches-preview">
+                        <strong>Coches:</strong>
+                        {% for coche in lote.coches[:3] %}{{ coche.codigo_qr }}{% if not loop.last %}, {% endif %}{% endfor %}{% if lote.coches|length > 3 %}...{% endif %}
+                    </div>
+                    {% endif %}
+                    <div class="lote-date">
+                        <i class="bi bi-calendar3"></i>
+                        {{ lote.created_at.strftime('%d/%m/%Y %H:%M') }}
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state" style="padding: 40px;">
+                <i class="bi bi-moon" style="font-size: 3rem;"></i>
+                <h3>No hay lotes nocturnos</h3>
+                <p>Los lotes del turno nocturno aparecerán aquí</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if coches %}
+    <!-- Sección de Coches Individuales (ABAJO - Desplegable) -->
+    <div class="coches-collapsible">
+        <div class="coches-collapsible-header" onclick="toggleCochesIndividuales()">
+            <div class="coches-collapsible-header-left">
+                <div class="coches-collapsible-icon">
+                    <i class="bi bi-grid-3x3"></i>
+                </div>
+                <div>
+                    <div class="coches-collapsible-title">Detalle de Coches</div>
+                </div>
+            </div>
+            <div class="coches-collapsible-stats">
+                <span><i class="bi bi-box-seam"></i> {{ coches|length }} coches</span>
+                <span><i class="bi bi-rulers"></i> {{ "%.1f"|format(total_bft) }} BFT</span>
+            </div>
+            <i class="bi bi-chevron-down coches-collapsible-toggle collapsed" id="toggle-coches-individuales"></i>
+        </div>
+        <div class="coches-collapsible-body" id="coches-individuales-body">
+            <!-- Controles de seleccion -->
+            <div class="selection-controls" style="margin-bottom: 16px;">
+                <label>
+                    <input type="checkbox" id="select-all" onchange="toggleSelectAll()">
+                    Seleccionar todos
+                </label>
+                <span style="color: var(--color-text-muted); font-size: 0.9rem;">
+                    <span id="selection-info">0 seleccionados</span>
+                </span>
+            </div>
+            <div class="coches-grid">
+                {% for coche in coches %}
+                <div class="coche-card" data-coche-id="{{ coche.id }}" data-codigo-qr="{{ coche.codigo_qr }}">
+                    <input type="checkbox" class="coche-checkbox" data-coche-id="{{ coche.id }}" onclick="event.stopPropagation(); toggleCocheSelection({{ coche.id }})">
+                    <div onclick="goToCoche({{ coche.id }})">
+                        <div class="coche-header">
+                            <span class="coche-codigo" style="margin-left: 28px;">{{ coche.codigo_qr }}</span>
+                            <span class="coche-bft">{{ "%.1f"|format(coche.total_bft or 0) }} BFT</span>
+                        </div>
+                        <div class="coche-details">
+                            <div class="coche-detail">
+                                <span class="coche-detail-label">Proveedor</span>
+                                <span class="coche-detail-value">{{ coche.proveedor or '-' }}</span>
+                            </div>
+                            <div class="coche-detail">
+                                <span class="coche-detail-label">Viaje</span>
+                                <span class="coche-detail-value">{{ coche.numero_viaje or '-' }}</span>
+                            </div>
+                            <div class="coche-detail">
+                                <span class="coche-detail-label">Cámara</span>
+                                <span class="coche-detail-value">{{ coche.camara or '-' }}</span>
+                            </div>
+                            <div class="coche-detail">
+                                <span class="coche-detail-label">Lote</span>
+                                <span class="coche-detail-value">{% if coche.lotes %}{{ coche.lotes[0].codigo_qr }}{% else %}-{% endif %}</span>
+                            </div>
+                        </div>
+                        <div class="coche-date">
+                            <i class="bi bi-calendar3"></i>
+                            {{ coche.created_at.strftime('%d/%m/%Y %H:%M') }}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% elif coches %}
+    <!-- Vista normal para otras etapas (no es etapa 4 con lotes) -->
+
+    <!-- Controles de seleccion -->
+    <div class="selection-controls">
+        <label>
+            <input type="checkbox" id="select-all" onchange="toggleSelectAll()">
+            Seleccionar todos
+        </label>
+        <span style="color: var(--color-text-muted); font-size: 0.9rem;">
+            <span id="selection-info">0 seleccionados</span>
+        </span>
+    </div>
+
+    {% if etapa.orden == 2 and coches_por_camara %}
+    <!-- Vista agrupada por cámara para Secado -->
+    {% for camara_num, datos in coches_por_camara.items() %}
+    <div class="camara-group">
+        <div class="camara-header" onclick="toggleCamara({{ camara_num }})">
+            <div class="camara-header-left">
+                <div class="camara-icon">
+                    <i class="bi bi-fire"></i>
+                </div>
+                <div>
+                    <div class="camara-title">
+                        {% if camara_num == 0 %}
+                        Sin Cámara Asignada
+                        {% else %}
+                        Cámara {{ camara_num }}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="camara-stats">
+                <span><i class="bi bi-box-seam"></i> {{ datos.count }} coches</span>
+                <span><i class="bi bi-rulers"></i> {{ "%.1f"|format(datos.total_bft) }} BFT</span>
+            </div>
+            <i class="bi bi-chevron-down camara-toggle" id="toggle-{{ camara_num }}"></i>
+        </div>
+        <div class="camara-body" id="camara-body-{{ camara_num }}">
+            <div class="camara-coches-grid">
+                {% for coche in datos.coches %}
+                <div class="coche-card" data-coche-id="{{ coche.id }}" data-codigo-qr="{{ coche.codigo_qr }}">
+                    <input type="checkbox" class="coche-checkbox" data-coche-id="{{ coche.id }}" onclick="event.stopPropagation(); toggleCocheSelection({{ coche.id }})">
+                    <div onclick="goToCoche({{ coche.id }})">
+                        <div class="coche-header">
+                            <span class="coche-codigo" style="margin-left: 28px;">{{ coche.codigo_qr }}</span>
+                            <span class="coche-bft">{{ "%.1f"|format(coche.total_bft or 0) }} BFT</span>
+                        </div>
+                        <div class="coche-details">
+                            <div class="coche-detail">
+                                <span class="coche-detail-label">Proveedor</span>
+                                <span class="coche-detail-value">{{ coche.proveedor or '-' }}</span>
+                            </div>
+                            <div class="coche-detail">
+                                <span class="coche-detail-label">Viaje</span>
+                                <span class="coche-detail-value">{{ coche.numero_viaje or '-' }}</span>
+                            </div>
+                        </div>
+                        <div class="coche-date">
+                            <i class="bi bi-calendar3"></i>
+                            {{ coche.created_at.strftime('%d/%m/%Y %H:%M') }}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <!-- Vista normal para otras etapas -->
+    <div class="coches-grid">
+        {% for coche in coches %}
+        <div class="coche-card" data-coche-id="{{ coche.id }}" data-codigo-qr="{{ coche.codigo_qr }}">
+            <input type="checkbox" class="coche-checkbox" data-coche-id="{{ coche.id }}" onclick="event.stopPropagation(); toggleCocheSelection({{ coche.id }})">
+            <div onclick="goToCoche({{ coche.id }})">
+                <div class="coche-header">
+                    <span class="coche-codigo" style="margin-left: 28px;">{{ coche.codigo_qr }}</span>
+                    <span class="coche-bft">{{ "%.1f"|format(coche.total_bft or 0) }} BFT</span>
+                </div>
+                <div class="coche-details">
+                    <div class="coche-detail">
+                        <span class="coche-detail-label">Proveedor</span>
+                        <span class="coche-detail-value">{{ coche.proveedor or '-' }}</span>
+                    </div>
+                    <div class="coche-detail">
+                        <span class="coche-detail-label">Viaje</span>
+                        <span class="coche-detail-value">{{ coche.numero_viaje or '-' }}</span>
+                    </div>
+                    <div class="coche-detail">
+                        <span class="coche-detail-label">Cámara</span>
+                        <span class="coche-detail-value">{{ coche.camara or '-' }}</span>
+                    </div>
+                    <div class="coche-detail">
+                        <span class="coche-detail-label">Filas</span>
+                        <span class="coche-detail-value">
+                            {% set filas = 0 %}
+                            {% if coche.plantillas_1 %}{% set filas = filas + 1 %}{% endif %}
+                            {% if coche.plantillas_2 %}{% set filas = filas + 1 %}{% endif %}
+                            {% if coche.plantillas_3 %}{% set filas = filas + 1 %}{% endif %}
+                            {{ filas }} activas
+                        </span>
+                    </div>
+                </div>
+                <div class="coche-date">
+                    <i class="bi bi-calendar3"></i>
+                    {{ coche.created_at.strftime('%d/%m/%Y %H:%M') }}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% endif %}
+
+    <!-- Barra flotante de acciones -->
+    <div class="floating-actions" id="floating-actions">
+        <div class="selected-count">
+            <i class="bi bi-check2-square"></i>
+            <span id="floating-count">0</span> coches seleccionados
+        </div>
+        <button class="btn btn-mover" onclick="openMoverModal()">
+            <i class="bi bi-arrow-right-circle"></i> Mover Etapa
+        </button>
+        {% if etapa.orden == 2 %}
+        <button class="btn btn-cambiar-camara" onclick="openCambiarCamaraModal()">
+            <i class="bi bi-fire"></i> Cambiar Camara
+        </button>
+        {% endif %}
+        {% if etapa.orden == 3 %}
+        <button class="btn btn-crear-lote" onclick="openCrearLoteModal()">
+            <i class="bi bi-box-seam"></i> Crear Lote
+        </button>
+        {% endif %}
+        <button class="btn btn-cancelar" onclick="clearSelection()">
+            <i class="bi bi-x-lg"></i> Cancelar
+        </button>
+    </div>
+
+    <!-- Modal para mover coches -->
+    <div class="modal-overlay" id="mover-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="bi bi-arrow-right-circle"></i> Mover Coches Seleccionados</h3>
+            </div>
+            <div class="modal-body">
+                <div id="result-message" class="result-message"></div>
+
+                <p style="margin-bottom: 16px; color: var(--color-text-muted);">
+                    Selecciona la etapa destino para <strong id="modal-count">0</strong> coches:
+                </p>
+
+                <div id="etapas-opciones">
+                    <!-- Se llena con JavaScript -->
+                </div>
+
+                <div class="camara-select-group" id="camara-select-group">
+                    <label for="camara-select">
+                        <i class="bi bi-fire"></i> Seleccionar Cámara de Secado:
+                    </label>
+                    <select id="camara-select">
+                        {% for i in range(1, 16) %}
+                        <option value="{{ i }}">Cámara {{ i }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeMoverModal()">Cancelar</button>
+                <button class="btn btn-success" id="btn-confirmar-mover" onclick="confirmarMover()">
+                    <i class="bi bi-check-lg"></i> Confirmar Movimiento
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {% if etapa.orden == 2 %}
+    <!-- Modal para cambiar camara -->
+    <div class="modal-overlay" id="cambiar-camara-modal">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, var(--color-warning), #d97706);">
+                <h3><i class="bi bi-fire"></i> Cambiar Camara de Secado</h3>
+            </div>
+            <div class="modal-body">
+                <div id="camara-result-message" class="result-message"></div>
+
+                <p style="margin-bottom: 16px; color: var(--color-text-muted);">
+                    Mover <strong id="camara-modal-count">0</strong> coches a otra camara:
+                </p>
+
+                <div class="camara-select-group show">
+                    <label for="nueva-camara-select">
+                        <i class="bi bi-fire"></i> Seleccionar Nueva Camara:
+                    </label>
+                    <select id="nueva-camara-select">
+                        {% for i in range(1, 16) %}
+                        <option value="{{ i }}">Camara {{ i }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-top: 16px;">
+                    <label for="motivo-cambio">Motivo del cambio (opcional):</label>
+                    <input type="text" id="motivo-cambio" placeholder="Ej: Horno danado, reorganizacion...">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeCambiarCamaraModal()">Cancelar</button>
+                <button class="btn btn-warning" id="btn-confirmar-cambio-camara" onclick="confirmarCambioCamara()">
+                    <i class="bi bi-check-lg"></i> Confirmar Cambio
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if etapa.orden == 3 %}
+    <!-- Modal para crear lote -->
+    <div class="modal-overlay" id="crear-lote-modal">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #6f42c1, #5a32a3);">
+                <h3><i class="bi bi-box-seam"></i> Crear Nuevo Lote</h3>
+            </div>
+            <div class="modal-body">
+                <div id="lote-result-message" class="result-message"></div>
+
+                <div id="lote-form-section">
+                    <p style="margin-bottom: 16px; color: var(--color-text-muted);">
+                        Se creara un lote con <strong id="lote-modal-count">0</strong> coches seleccionados.
+                    </p>
+
+                    <div class="lote-resumen" style="background: var(--color-bg-light); padding: 16px; border-radius: var(--radius-md); margin-bottom: 16px;">
+                        <h4 style="margin-bottom: 12px; font-size: 0.95rem; color: var(--color-text-muted);">Resumen del Lote:</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <div>
+                                <span style="font-size: 0.85rem; color: var(--color-text-muted);">Coches:</span>
+                                <strong id="lote-resumen-coches" style="display: block; font-size: 1.5rem; color: #6f42c1;">0</strong>
+                            </div>
+                            <div>
+                                <span style="font-size: 0.85rem; color: var(--color-text-muted);">Total BFT:</span>
+                                <strong id="lote-resumen-bft" style="display: block; font-size: 1.5rem; color: var(--color-success);">0</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label style="margin-bottom: 12px;">Turno:</label>
+                        <div class="turno-selector">
+                            <div class="turno-option diurno selected" onclick="selectTurnoOption('Diurno')">
+                                <input type="radio" name="turno-lote" value="Diurno" checked>
+                                <div class="turno-option-icon"><i class="bi bi-sun-fill"></i></div>
+                                <div class="turno-option-label">Diurno</div>
+                            </div>
+                            <div class="turno-option nocturno" onclick="selectTurnoOption('Nocturno')">
+                                <input type="radio" name="turno-lote" value="Nocturno">
+                                <div class="turno-option-icon"><i class="bi bi-moon-fill"></i></div>
+                                <div class="turno-option-label">Nocturno</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label for="lote-notas">Notas (opcional):</label>
+                        <input type="text" id="lote-notas" placeholder="Ej: Pedido cliente X, Orden de trabajo #123...">
+                    </div>
+                </div>
+
+                <!-- Seccion de exito con QR -->
+                <div id="lote-success-section" style="display: none; text-align: center;">
+                    <div style="color: var(--color-success); font-size: 3rem; margin-bottom: 16px;">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </div>
+                    <h4 style="margin-bottom: 8px;">Lote Creado Exitosamente</h4>
+                    <p id="lote-codigo-creado" style="font-family: 'JetBrains Mono', monospace; font-size: 1.2rem; color: #6f42c1; margin-bottom: 16px;"></p>
+                    <div style="margin-bottom: 16px;">
+                        <img id="lote-qr-imagen" src="" alt="QR del Lote" style="max-width: 200px; border: 2px solid #6f42c1; border-radius: var(--radius-md);">
+                    </div>
+                    <p style="font-size: 0.9rem; color: var(--color-text-muted);">
+                        Total: <strong id="lote-total-creado">0</strong> coches - <strong id="lote-bft-creado">0</strong> BFT
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btn-cancelar-lote" onclick="closeCrearLoteModal()">Cancelar</button>
+                <button class="btn" style="background: #6f42c1; color: white;" id="btn-confirmar-lote" onclick="confirmarCrearLote()">
+                    <i class="bi bi-check-lg"></i> Crear Lote
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+{% else %}
+    {% if etapa.orden == 4 and lotes %}
+    <!-- Si no hay coches pero si hay lotes en Ingreso a Taller -->
+    <div class="empty-state" style="margin-bottom: 24px;">
+        <i class="bi bi-inbox"></i>
+        <h3>No hay coches individuales en {{ etapa.nombre }}</h3>
+        <p>Los coches en esta etapa están agrupados en lotes</p>
+    </div>
+
+    <!-- Sección de Lotes con Tabs Diurno/Nocturno -->
+    <div class="lotes-section" style="border-top: none; margin-top: 0; padding-top: 0;">
+        <div class="lotes-section-title">
+            <div class="lotes-section-icon">
+                <i class="bi bi-box-seam"></i>
+            </div>
+            <div class="lotes-section-info">
+                <h3>Lotes Creados</h3>
+                <div class="lotes-section-stats">
+                    {{ lotes|length }} lotes - {{ "%.1f"|format(lotes|sum(attribute='total_bft')) }} BFT total
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs de Turno -->
+        {% set lotes_diurno = [] %}
+        {% set lotes_nocturno = [] %}
+        {% for lote in lotes %}
+            {% if lote.turno == 'Nocturno' %}
+                {% set _ = lotes_nocturno.append(lote) %}
+            {% else %}
+                {% set _ = lotes_diurno.append(lote) %}
+            {% endif %}
+        {% endfor %}
+        {% set bft_diurno = lotes_diurno|sum(attribute='total_bft') %}
+        {% set bft_nocturno = lotes_nocturno|sum(attribute='total_bft') %}
+
+        <div class="turno-tabs">
+            <button class="turno-tab diurno active" onclick="switchTurno('diurno')">
+                <i class="bi bi-sun-fill turno-tab-icon"></i>
+                <span>Diurno</span>
+                <span class="turno-tab-stats">({{ lotes_diurno|length }} lotes)</span>
+            </button>
+            <button class="turno-tab nocturno" onclick="switchTurno('nocturno')">
+                <i class="bi bi-moon-fill turno-tab-icon"></i>
+                <span>Nocturno</span>
+                <span class="turno-tab-stats">({{ lotes_nocturno|length }} lotes)</span>
+            </button>
+        </div>
+
+        <!-- Contenido Diurno -->
+        <div class="turno-content active" id="turno-diurno">
+            <div class="turno-summary">
+                <div class="turno-summary-card diurno">
+                    <div class="turno-summary-value">{{ lotes_diurno|length }}</div>
+                    <div class="turno-summary-label">Lotes Diurnos</div>
+                </div>
+                <div class="turno-summary-card diurno">
+                    <div class="turno-summary-value">{{ "%.1f"|format(bft_diurno) }}</div>
+                    <div class="turno-summary-label">BFT Total</div>
+                </div>
+            </div>
+            {% if lotes_diurno %}
+            <div class="lotes-grid">
+                {% for lote in lotes_diurno %}
+                <a href="/lote/{{ lote.id }}" class="lote-card">
+                    <div class="lote-header">
+                        <span class="lote-codigo">{{ lote.codigo_qr }}</span>
+                        <span class="lote-bft">{{ "%.1f"|format(lote.total_bft or 0) }} BFT</span>
+                    </div>
+                    <div class="lote-details">
+                        <div class="lote-detail">
+                            <span class="lote-detail-label">Coches</span>
+                            <span class="lote-detail-value">{{ lote.cantidad_coches }} unidades</span>
+                        </div>
+                        <div class="lote-detail">
+                            <span class="lote-detail-label">Creado por</span>
+                            <span class="lote-detail-value">{{ lote.creado_por or '-' }}</span>
+                        </div>
+                    </div>
+                    {% if lote.coches %}
+                    <div class="lote-coches-preview">
+                        <strong>Coches:</strong>
+                        {% for coche in lote.coches[:3] %}{{ coche.codigo_qr }}{% if not loop.last %}, {% endif %}{% endfor %}{% if lote.coches|length > 3 %}...{% endif %}
+                    </div>
+                    {% endif %}
+                    <div class="lote-date">
+                        <i class="bi bi-calendar3"></i>
+                        {{ lote.created_at.strftime('%d/%m/%Y %H:%M') }}
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state" style="padding: 40px;">
+                <i class="bi bi-sun" style="font-size: 3rem;"></i>
+                <h3>No hay lotes diurnos</h3>
+                <p>Los lotes del turno diurno aparecerán aquí</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Contenido Nocturno -->
+        <div class="turno-content" id="turno-nocturno">
+            <div class="turno-summary">
+                <div class="turno-summary-card nocturno">
+                    <div class="turno-summary-value">{{ lotes_nocturno|length }}</div>
+                    <div class="turno-summary-label">Lotes Nocturnos</div>
+                </div>
+                <div class="turno-summary-card nocturno">
+                    <div class="turno-summary-value">{{ "%.1f"|format(bft_nocturno) }}</div>
+                    <div class="turno-summary-label">BFT Total</div>
+                </div>
+            </div>
+            {% if lotes_nocturno %}
+            <div class="lotes-grid">
+                {% for lote in lotes_nocturno %}
+                <a href="/lote/{{ lote.id }}" class="lote-card">
+                    <div class="lote-header">
+                        <span class="lote-codigo">{{ lote.codigo_qr }}</span>
+                        <span class="lote-bft">{{ "%.1f"|format(lote.total_bft or 0) }} BFT</span>
+                    </div>
+                    <div class="lote-details">
+                        <div class="lote-detail">
+                            <span class="lote-detail-label">Coches</span>
+                            <span class="lote-detail-value">{{ lote.cantidad_coches }} unidades</span>
+                        </div>
+                        <div class="lote-detail">
+                            <span class="lote-detail-label">Creado por</span>
+                            <span class="lote-detail-value">{{ lote.creado_por or '-' }}</span>
+                        </div>
+                    </div>
+                    {% if lote.coches %}
+                    <div class="lote-coches-preview">
+                        <strong>Coches:</strong>
+                        {% for coche in lote.coches[:3] %}{{ coche.codigo_qr }}{% if not loop.last %}, {% endif %}{% endfor %}{% if lote.coches|length > 3 %}...{% endif %}
+                    </div>
+                    {% endif %}
+                    <div class="lote-date">
+                        <i class="bi bi-calendar3"></i>
+                        {{ lote.created_at.strftime('%d/%m/%Y %H:%M') }}
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state" style="padding: 40px;">
+                <i class="bi bi-moon" style="font-size: 3rem;"></i>
+                <h3>No hay lotes nocturnos</h3>
+                <p>Los lotes del turno nocturno aparecerán aquí</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="bi bi-inbox"></i>
+        <h3>No hay coches en {{ etapa.nombre }}</h3>
+        <p>Los coches aparecerán aquí cuando sean movidos a esta etapa</p>
+        <a href="/nuevo" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Crear Nuevo Coche
+        </a>
+    </div>
+    {% endif %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Datos de la etapa actual
+const etapaActual = {
+    id: {{ etapa.id }},
+    orden: {{ etapa.orden }},
+    nombre: '{{ etapa.nombre }}'
+};
+
+// Etapas disponibles
+const etapas = [
+    { id: 1, orden: 1, nombre: 'Madera Verde', color: '#28a745', icono: 'bi-tree' },
+    { id: 2, orden: 2, nombre: 'Secado', color: '#ffc107', icono: 'bi-sun' },
+    { id: 3, orden: 3, nombre: 'Stock Secado', color: '#17a2b8', icono: 'bi-archive' },
+    { id: 4, orden: 4, nombre: 'Ingresa a Taller', color: '#6f42c1', icono: 'bi-tools' }
+];
+
+// Set para almacenar IDs de coches seleccionados
+let selectedCoches = new Set();
+let selectedEtapaId = null;
+
+// Función para cambiar entre tabs de turno
+function switchTurno(turno) {
+    // Actualizar tabs
+    document.querySelectorAll('.turno-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelector(`.turno-tab.${turno}`).classList.add('active');
+
+    // Actualizar contenido
+    document.querySelectorAll('.turno-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    document.getElementById(`turno-${turno}`).classList.add('active');
+}
+
+function toggleCamara(camaraNum) {
+    const body = document.getElementById('camara-body-' + camaraNum);
+    const toggle = document.getElementById('toggle-' + camaraNum);
+
+    if (body.classList.contains('show')) {
+        body.classList.remove('show');
+        toggle.classList.add('collapsed');
+    } else {
+        body.classList.add('show');
+        toggle.classList.remove('collapsed');
+    }
+}
+
+function toggleCochesIndividuales() {
+    const body = document.getElementById('coches-individuales-body');
+    const toggle = document.getElementById('toggle-coches-individuales');
+
+    if (body.classList.contains('show')) {
+        body.classList.remove('show');
+        toggle.classList.add('collapsed');
+    } else {
+        body.classList.add('show');
+        toggle.classList.remove('collapsed');
+    }
+}
+
+function goToCoche(cocheId) {
+    window.location.href = '/coche/' + cocheId;
+}
+
+function toggleCocheSelection(cocheId) {
+    const checkbox = document.querySelector(`.coche-checkbox[data-coche-id="${cocheId}"]`);
+    const card = document.querySelector(`.coche-card[data-coche-id="${cocheId}"]`);
+
+    if (checkbox.checked) {
+        selectedCoches.add(cocheId);
+        card.classList.add('selected');
+    } else {
+        selectedCoches.delete(cocheId);
+        card.classList.remove('selected');
+    }
+
+    updateSelectionUI();
+}
+
+function toggleSelectAll() {
+    const selectAllCheckbox = document.getElementById('select-all');
+    const allCheckboxes = document.querySelectorAll('.coche-checkbox');
+
+    allCheckboxes.forEach(checkbox => {
+        const cocheId = parseInt(checkbox.dataset.cocheId);
+        const card = document.querySelector(`.coche-card[data-coche-id="${cocheId}"]`);
+
+        checkbox.checked = selectAllCheckbox.checked;
+
+        if (selectAllCheckbox.checked) {
+            selectedCoches.add(cocheId);
+            card.classList.add('selected');
+        } else {
+            selectedCoches.delete(cocheId);
+            card.classList.remove('selected');
+        }
+    });
+
+    updateSelectionUI();
+}
+
+function clearSelection() {
+    selectedCoches.clear();
+    document.querySelectorAll('.coche-checkbox').forEach(cb => {
+        cb.checked = false;
+    });
+    document.querySelectorAll('.coche-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    document.getElementById('select-all').checked = false;
+    updateSelectionUI();
+}
+
+function updateSelectionUI() {
+    const count = selectedCoches.size;
+    const floatingActions = document.getElementById('floating-actions');
+    const selectionInfo = document.getElementById('selection-info');
+    const floatingCount = document.getElementById('floating-count');
+
+    selectionInfo.textContent = `${count} seleccionados`;
+    floatingCount.textContent = count;
+
+    if (count > 0) {
+        floatingActions.classList.add('visible');
+    } else {
+        floatingActions.classList.remove('visible');
+    }
+
+    // Actualizar estado del checkbox "seleccionar todos"
+    const allCheckboxes = document.querySelectorAll('.coche-checkbox');
+    const selectAllCheckbox = document.getElementById('select-all');
+    if (allCheckboxes.length > 0) {
+        selectAllCheckbox.checked = selectedCoches.size === allCheckboxes.length;
+    }
+}
+
+function openMoverModal() {
+    const modal = document.getElementById('mover-modal');
+    const modalCount = document.getElementById('modal-count');
+    const etapasContainer = document.getElementById('etapas-opciones');
+    const resultMessage = document.getElementById('result-message');
+
+    modalCount.textContent = selectedCoches.size;
+    resultMessage.className = 'result-message';
+    resultMessage.textContent = '';
+    selectedEtapaId = null;
+
+    // Generar opciones de etapas (todas disponibles excepto la actual)
+    let html = '';
+    etapas.forEach(etapa => {
+        const isDisabled = etapa.id === etapaActual.id;
+        const disabledClass = isDisabled ? 'disabled' : '';
+        let disabledText = '';
+        if (isDisabled) {
+            disabledText = '(Etapa actual)';
+        } else if (etapa.orden === etapaActual.orden + 1) {
+            disabledText = '(Siguiente etapa)';
+        } else if (etapa.orden === etapaActual.orden - 1) {
+            disabledText = '(Etapa anterior)';
+        }
+
+        html += `
+            <div class="etapa-option ${disabledClass}" data-etapa-id="${etapa.id}" data-etapa-orden="${etapa.orden}" onclick="${isDisabled ? '' : 'selectEtapa(' + etapa.id + ')'}">
+                <div class="etapa-option-icon" style="background: ${etapa.color};">
+                    <i class="bi ${etapa.icono}"></i>
+                </div>
+                <div class="etapa-option-info">
+                    <div class="etapa-option-name">${etapa.nombre}</div>
+                    <div class="etapa-option-desc">${disabledText}</div>
+                </div>
+            </div>
+        `;
+    });
+    etapasContainer.innerHTML = html;
+
+    // Ocultar selector de cámara inicialmente
+    document.getElementById('camara-select-group').classList.remove('show');
+
+    modal.classList.add('show');
+}
+
+function closeMoverModal() {
+    document.getElementById('mover-modal').classList.remove('show');
+}
+
+function selectEtapa(etapaId) {
+    selectedEtapaId = etapaId;
+
+    // Actualizar UI de opciones
+    document.querySelectorAll('.etapa-option').forEach(opt => {
+        opt.classList.remove('selected');
+    });
+    document.querySelector(`.etapa-option[data-etapa-id="${etapaId}"]`).classList.add('selected');
+
+    // Mostrar/ocultar selector de cámara
+    const etapa = etapas.find(e => e.id === etapaId);
+    if (etapa && etapa.orden === 2) {
+        document.getElementById('camara-select-group').classList.add('show');
+    } else {
+        document.getElementById('camara-select-group').classList.remove('show');
+    }
+}
+
+async function confirmarMover() {
+    if (!selectedEtapaId) {
+        showResultMessage('Por favor selecciona una etapa destino', 'error');
+        return;
+    }
+
+    const etapa = etapas.find(e => e.id === selectedEtapaId);
+    let camara = null;
+
+    if (etapa && etapa.orden === 2) {
+        camara = document.getElementById('camara-select').value;
+    }
+
+    const btn = document.getElementById('btn-confirmar-mover');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Moviendo...';
+
+    try {
+        const response = await fetch('/api/coches/mover-multiple', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                coche_ids: Array.from(selectedCoches),
+                etapa_id: selectedEtapaId,
+                camara: camara,
+                usuario: 'Usuario Web'
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            let mensaje = `${data.total_movidos} coches movidos exitosamente a ${etapa.nombre}`;
+            if (data.total_errores > 0) {
+                mensaje += `. ${data.total_errores} coches no pudieron moverse.`;
+            }
+            showResultMessage(mensaje, 'success');
+
+            // Recargar la página después de 1.5 segundos
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            showResultMessage(data.error || 'Error al mover los coches', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg"></i> Confirmar Movimiento';
+        }
+    } catch (error) {
+        showResultMessage('Error de conexión: ' + error.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Confirmar Movimiento';
+    }
+}
+
+function showResultMessage(message, type) {
+    const resultMessage = document.getElementById('result-message');
+    resultMessage.textContent = message;
+    resultMessage.className = 'result-message ' + type;
+}
+
+// Cerrar modal al hacer clic fuera
+const moverModal = document.getElementById('mover-modal');
+if (moverModal) {
+    moverModal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeMoverModal();
+        }
+    });
+}
+
+// Funciones para cambiar camara (solo en Secado)
+{% if etapa.orden == 2 %}
+function openCambiarCamaraModal() {
+    const modal = document.getElementById('cambiar-camara-modal');
+    const modalCount = document.getElementById('camara-modal-count');
+    const resultMessage = document.getElementById('camara-result-message');
+
+    modalCount.textContent = selectedCoches.size;
+    resultMessage.className = 'result-message';
+    resultMessage.textContent = '';
+    document.getElementById('motivo-cambio').value = '';
+
+    modal.classList.add('show');
+}
+
+function closeCambiarCamaraModal() {
+    document.getElementById('cambiar-camara-modal').classList.remove('show');
+}
+
+async function confirmarCambioCamara() {
+    const nuevaCamara = document.getElementById('nueva-camara-select').value;
+    const motivo = document.getElementById('motivo-cambio').value || 'Cambio de camara';
+
+    const btn = document.getElementById('btn-confirmar-cambio-camara');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Cambiando...';
+
+    try {
+        const response = await fetch('/api/coches/cambiar-camara-multiple', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                coche_ids: Array.from(selectedCoches),
+                camara: nuevaCamara,
+                usuario: 'Usuario Web',
+                motivo: motivo
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            let mensaje = `${data.total_movidos} coches movidos a Camara ${nuevaCamara}`;
+            if (data.total_errores > 0) {
+                mensaje += `. ${data.total_errores} coches no pudieron moverse.`;
+            }
+            showCamaraResultMessage(mensaje, 'success');
+
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            showCamaraResultMessage(data.error || 'Error al cambiar camara', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg"></i> Confirmar Cambio';
+        }
+    } catch (error) {
+        showCamaraResultMessage('Error de conexion: ' + error.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Confirmar Cambio';
+    }
+}
+
+function showCamaraResultMessage(message, type) {
+    const resultMessage = document.getElementById('camara-result-message');
+    resultMessage.textContent = message;
+    resultMessage.className = 'result-message ' + type;
+}
+
+// Cerrar modal de camara al hacer clic fuera
+const camaraModal = document.getElementById('cambiar-camara-modal');
+if (camaraModal) {
+    camaraModal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeCambiarCamaraModal();
+        }
+    });
+}
+{% endif %}
+
+// Funciones para crear lote (solo en Stock Seco)
+{% if etapa.orden == 3 %}
+// Mapa de BFT por coche para calcular totales
+const cocheBftMap = {
+    {% for coche in coches %}
+    {{ coche.id }}: {{ coche.total_bft or 0 }},
+    {% endfor %}
+};
+
+// Turno seleccionado
+let selectedTurno = 'Diurno';
+
+function selectTurnoOption(turno) {
+    selectedTurno = turno;
+
+    // Actualizar UI
+    document.querySelectorAll('.turno-option').forEach(opt => {
+        opt.classList.remove('selected');
+        opt.querySelector('input').checked = false;
+    });
+
+    const selectedOption = document.querySelector(`.turno-option.${turno.toLowerCase()}`);
+    selectedOption.classList.add('selected');
+    selectedOption.querySelector('input').checked = true;
+}
+
+function calcularTotalBftSeleccionados() {
+    let total = 0;
+    selectedCoches.forEach(cocheId => {
+        total += cocheBftMap[cocheId] || 0;
+    });
+    return total;
+}
+
+function openCrearLoteModal() {
+    const modal = document.getElementById('crear-lote-modal');
+    const modalCount = document.getElementById('lote-modal-count');
+    const resumenCoches = document.getElementById('lote-resumen-coches');
+    const resumenBft = document.getElementById('lote-resumen-bft');
+    const resultMessage = document.getElementById('lote-result-message');
+
+    const totalBft = calcularTotalBftSeleccionados();
+
+    modalCount.textContent = selectedCoches.size;
+    resumenCoches.textContent = selectedCoches.size;
+    resumenBft.textContent = totalBft.toFixed(1);
+
+    resultMessage.className = 'result-message';
+    resultMessage.textContent = '';
+
+    // Resetear modal
+    document.getElementById('lote-form-section').style.display = 'block';
+    document.getElementById('lote-success-section').style.display = 'none';
+    document.getElementById('btn-confirmar-lote').style.display = 'inline-flex';
+    document.getElementById('btn-cancelar-lote').textContent = 'Cancelar';
+    document.getElementById('lote-notas').value = '';
+
+    // Resetear turno a Diurno por defecto
+    selectedTurno = 'Diurno';
+    selectTurnoOption('Diurno');
+
+    modal.classList.add('show');
+}
+
+function closeCrearLoteModal() {
+    document.getElementById('crear-lote-modal').classList.remove('show');
+    // Si el lote fue creado, recargar la pagina
+    if (document.getElementById('lote-success-section').style.display !== 'none') {
+        window.location.reload();
+    }
+}
+
+async function confirmarCrearLote() {
+    const notas = document.getElementById('lote-notas').value || '';
+
+    const btn = document.getElementById('btn-confirmar-lote');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Creando...';
+
+    try {
+        const response = await fetch('/api/lotes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                coche_ids: Array.from(selectedCoches),
+                usuario: 'Usuario Web',
+                turno: selectedTurno,
+                notas: notas
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Mostrar seccion de exito
+            document.getElementById('lote-form-section').style.display = 'none';
+            document.getElementById('lote-success-section').style.display = 'block';
+            document.getElementById('lote-codigo-creado').textContent = data.lote.codigo_qr;
+            document.getElementById('lote-qr-imagen').src = `/api/lotes/${data.lote.id}/qr`;
+            document.getElementById('lote-total-creado').textContent = data.lote.cantidad_coches;
+            document.getElementById('lote-bft-creado').textContent = data.lote.total_bft.toFixed(1);
+
+            // Cambiar botones
+            btn.style.display = 'none';
+            document.getElementById('btn-cancelar-lote').textContent = 'Cerrar';
+        } else {
+            showLoteResultMessage(data.error || 'Error al crear el lote', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg"></i> Crear Lote';
+        }
+    } catch (error) {
+        showLoteResultMessage('Error de conexion: ' + error.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Crear Lote';
+    }
+}
+
+function showLoteResultMessage(message, type) {
+    const resultMessage = document.getElementById('lote-result-message');
+    resultMessage.textContent = message;
+    resultMessage.className = 'result-message ' + type;
+}
+
+// Cerrar modal de lote al hacer clic fuera
+const loteModal = document.getElementById('crear-lote-modal');
+if (loteModal) {
+    loteModal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeCrearLoteModal();
+        }
+    });
+}
+{% endif %}
+
+// Expandir la primera cámara por defecto
+document.addEventListener('DOMContentLoaded', function() {
+    const primeraCamara = document.querySelector('.camara-body');
+    const primerToggle = document.querySelector('.camara-toggle');
+    if (primeraCamara) {
+        primeraCamara.classList.add('show');
+    }
+});
+</script>
+{% endblock %}

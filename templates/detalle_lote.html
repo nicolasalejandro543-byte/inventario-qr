@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+
+{% block title %}Lote {{ lote.codigo_qr }}{% endblock %}
+
+{% block head %}
+<style>
+    .lote-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .lote-info {
+        flex: 1;
+    }
+
+    .lote-codigo {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #6f42c1;
+        margin-bottom: 8px;
+    }
+
+    .lote-meta {
+        display: flex;
+        gap: 24px;
+        color: var(--color-text-muted);
+        font-size: 0.9rem;
+        flex-wrap: wrap;
+    }
+
+    .lote-meta span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .lote-qr-section {
+        background: white;
+        padding: 20px;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        text-align: center;
+    }
+
+    .lote-qr-section img {
+        max-width: 180px;
+        border: 3px solid #6f42c1;
+        border-radius: var(--radius-md);
+    }
+
+    .lote-qr-section .qr-label {
+        margin-top: 12px;
+        font-weight: 600;
+        color: #6f42c1;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: var(--radius-md);
+        padding: 20px;
+        box-shadow: var(--shadow-sm);
+        text-align: center;
+    }
+
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        margin: 0 auto 12px;
+        color: white;
+    }
+
+    .stat-icon.purple { background: linear-gradient(135deg, #6f42c1, #5a32a3); }
+    .stat-icon.green { background: linear-gradient(135deg, var(--color-success), #059669); }
+    .stat-icon.blue { background: linear-gradient(135deg, var(--color-primary), #0284c7); }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--color-text);
+    }
+
+    .stat-label {
+        font-size: 0.85rem;
+        color: var(--color-text-muted);
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--color-text);
+    }
+
+    .section-title i {
+        color: #6f42c1;
+    }
+
+    .coches-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 12px;
+    }
+
+    .coche-card {
+        background: white;
+        border-radius: var(--radius-md);
+        padding: 16px;
+        box-shadow: var(--shadow-sm);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: 2px solid transparent;
+        text-decoration: none;
+        color: inherit;
+        display: block;
+    }
+
+    .coche-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+        border-color: var(--color-primary);
+    }
+
+    .coche-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .coche-codigo {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+        color: var(--color-primary);
+        font-size: 0.9rem;
+    }
+
+    .coche-bft {
+        background: linear-gradient(135deg, var(--color-success), #059669);
+        color: white;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .coche-details {
+        display: flex;
+        gap: 16px;
+        font-size: 0.8rem;
+        color: var(--color-text-muted);
+    }
+
+    .notas-section {
+        background: white;
+        border-radius: var(--radius-md);
+        padding: 20px;
+        box-shadow: var(--shadow-sm);
+        margin-top: 24px;
+    }
+
+    .notas-content {
+        color: var(--color-text);
+        line-height: 1.6;
+    }
+
+    .actions-bar {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .btn-print {
+        background: #6f42c1;
+        color: white;
+    }
+
+    .btn-print:hover {
+        background: #5a32a3;
+    }
+
+    @media print {
+        .app-header, .actions-bar {
+            display: none !important;
+        }
+
+        .lote-qr-section img {
+            max-width: 150px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="lote-header">
+    <div class="lote-info">
+        <div class="lote-codigo">{{ lote.codigo_qr }}</div>
+        <div class="lote-meta">
+            <span><i class="bi bi-calendar3"></i> {{ lote.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+            <span><i class="bi bi-person"></i> {{ lote.creado_por or 'Desconocido' }}</span>
+            <span>
+                {% if lote.turno == 'Nocturno' %}
+                <i class="bi bi-moon-fill" style="color: #3b82f6;"></i> Turno Nocturno
+                {% else %}
+                <i class="bi bi-sun-fill" style="color: #f59e0b;"></i> Turno Diurno
+                {% endif %}
+            </span>
+        </div>
+    </div>
+    <div class="lote-qr-section">
+        <img src="/api/lotes/{{ lote.id }}/qr" alt="QR del Lote">
+        <div class="qr-label">{{ lote.codigo_qr }}</div>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon purple">
+            <i class="bi bi-box-seam"></i>
+        </div>
+        <div class="stat-value">{{ lote.cantidad_coches }}</div>
+        <div class="stat-label">Coches en el Lote</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">
+            <i class="bi bi-rulers"></i>
+        </div>
+        <div class="stat-value">{{ "%.1f"|format(lote.total_bft or 0) }}</div>
+        <div class="stat-label">Total BFT</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon blue">
+            <i class="bi bi-calculator"></i>
+        </div>
+        <div class="stat-value">{{ "%.1f"|format((lote.total_bft or 0) / (lote.cantidad_coches or 1)) }}</div>
+        <div class="stat-label">Promedio BFT/Coche</div>
+    </div>
+</div>
+
+<div class="actions-bar mb-4">
+    <a href="/lotes" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Volver a Lotes
+    </a>
+    <button class="btn btn-print" onclick="window.print()">
+        <i class="bi bi-printer"></i> Imprimir
+    </button>
+</div>
+
+<div class="section-title">
+    <i class="bi bi-boxes"></i> Coches que componen este Lote
+</div>
+
+<div class="coches-grid">
+    {% for coche in lote.coches %}
+    <a href="/coche/{{ coche.id }}" class="coche-card">
+        <div class="coche-header">
+            <span class="coche-codigo">{{ coche.codigo_qr }}</span>
+            <span class="coche-bft">{{ "%.1f"|format(coche.total_bft or 0) }} BFT</span>
+        </div>
+        <div class="coche-details">
+            <span><i class="bi bi-person"></i> {{ coche.proveedor or '-' }}</span>
+            <span><i class="bi bi-truck"></i> {{ coche.numero_viaje or '-' }}</span>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+
+{% if lote.notas %}
+<div class="notas-section">
+    <div class="section-title">
+        <i class="bi bi-sticky"></i> Notas
+    </div>
+    <div class="notas-content">{{ lote.notas }}</div>
+</div>
+{% endif %}
+{% endblock %}

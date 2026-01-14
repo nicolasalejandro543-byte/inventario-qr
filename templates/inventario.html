@@ -1,0 +1,1227 @@
+{% extends "base.html" %}
+
+{% block title %}Inventario{% endblock %}
+
+{% block head %}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+    /* Tabs */
+    .tabs-container {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+
+    .tabs-header {
+        display: flex;
+        background: linear-gradient(135deg, var(--color-primary), var(--color-section));
+        overflow-x: auto;
+    }
+
+    .tab-btn {
+        flex: 1;
+        padding: 16px 20px;
+        border: none;
+        background: transparent;
+        color: rgba(255,255,255,0.7);
+        font-family: inherit;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+
+    .tab-btn:hover {
+        background: rgba(255,255,255,0.1);
+        color: white;
+    }
+
+    .tab-btn.active {
+        background: rgba(255,255,255,0.2);
+        color: white;
+    }
+
+    .tab-content {
+        display: none;
+        padding: 20px;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+
+    .stat-card {
+        background: var(--color-bg-light);
+        border-radius: var(--radius-md);
+        padding: 16px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border-left: 4px solid;
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .stat-card.madera-verde { border-left-color: #28a745; }
+    .stat-card.secado { border-left-color: #ffc107; }
+    .stat-card.stock-secado { border-left-color: #17a2b8; }
+    .stat-card.ingresa-a-taller { border-left-color: #6f42c1; }
+
+    .stat-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .stat-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--color-text-muted);
+    }
+
+    .stat-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        color: white;
+    }
+
+    .stat-icon.madera-verde { background: #28a745; }
+    .stat-icon.secado { background: #ffc107; }
+    .stat-icon.stock-secado { background: #17a2b8; }
+    .stat-icon.ingresa-a-taller { background: #6f42c1; }
+
+    .stat-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+    }
+
+    .stat-value.madera-verde { color: #28a745; }
+    .stat-value.secado { color: #ffc107; }
+    .stat-value.stock-secado { color: #17a2b8; }
+    .stat-value.ingresa-a-taller { color: #6f42c1; }
+
+    .stat-bft {
+        font-size: 0.85rem;
+        color: var(--color-text-muted);
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Coches Grid con seleccion */
+    .coches-section {
+        margin-top: 20px;
+    }
+
+    .coches-section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .coches-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 12px;
+    }
+
+    .coche-card {
+        background: var(--color-bg-light);
+        border: 2px solid transparent;
+        border-radius: var(--radius-md);
+        padding: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .coche-card:hover {
+        border-color: var(--color-primary);
+    }
+
+    .coche-card.selected {
+        border-color: var(--color-success);
+        background: #f0fdf4;
+    }
+
+    .coche-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .coche-codigo {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: var(--color-primary);
+    }
+
+    .coche-bft {
+        background: var(--color-success);
+        color: white;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .coche-info {
+        font-size: 0.8rem;
+        color: var(--color-text-muted);
+    }
+
+    .coche-checkbox {
+        width: 20px;
+        height: 20px;
+        accent-color: var(--color-success);
+    }
+
+    /* Acciones masivas */
+    .bulk-actions {
+        display: none;
+        background: var(--color-primary);
+        color: white;
+        padding: 12px 16px;
+        border-radius: var(--radius-md);
+        margin-bottom: 16px;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .bulk-actions.visible {
+        display: flex;
+    }
+
+    .bulk-actions select {
+        padding: 8px 12px;
+        border-radius: var(--radius-sm);
+        border: none;
+        font-family: inherit;
+    }
+
+    /* Scanner */
+    .scanner-section {
+        max-width: 500px;
+        margin: 0 auto;
+    }
+
+    #qr-reader {
+        width: 100%;
+        border-radius: var(--radius-md);
+        overflow: hidden;
+        margin-bottom: 16px;
+    }
+
+    .manual-input {
+        display: flex;
+        gap: 8px;
+    }
+
+    .manual-input input {
+        flex: 1;
+        padding: 12px;
+        border: 2px solid var(--color-gray-light);
+        border-radius: var(--radius-sm);
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Resultado Scanner */
+    .resultado-card {
+        background: var(--color-bg-light);
+        border-radius: var(--radius-md);
+        padding: 16px;
+        margin-top: 16px;
+    }
+
+    .resultado-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .etapa-badge {
+        padding: 6px 12px;
+        border-radius: 20px;
+        color: white;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    /* Formulario Nuevo Coche */
+    .form-card {
+        background: var(--color-bg-light);
+        border-radius: var(--radius-md);
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .form-card-title {
+        font-weight: 600;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .plantillas-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+    }
+
+    .plantillas-table th {
+        background: var(--color-primary);
+        color: white;
+        padding: 8px;
+        text-align: center;
+    }
+
+    .plantillas-table td {
+        padding: 8px;
+        text-align: center;
+        border: 1px solid var(--color-gray-light);
+    }
+
+    .plantillas-table input,
+    .plantillas-table select {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid var(--color-gray-light);
+        border-radius: var(--radius-sm);
+        text-align: center;
+    }
+
+    .bft-display {
+        background: white;
+        padding: 8px;
+        border-radius: var(--radius-sm);
+        font-weight: 600;
+        color: var(--color-primary);
+    }
+
+    .total-row {
+        background: var(--color-success);
+    }
+
+    .total-row td {
+        color: white;
+        font-weight: 700;
+    }
+
+    /* Lista pendientes */
+    .pendientes-list {
+        margin-top: 16px;
+    }
+
+    .pendiente-item {
+        background: white;
+        border: 1px solid var(--color-gray-light);
+        border-radius: var(--radius-sm);
+        padding: 10px 12px;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.85rem;
+    }
+
+    /* QR Grid */
+    .qr-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 16px;
+    }
+
+    .qr-card {
+        background: white;
+        border: 2px solid var(--color-gray-light);
+        border-radius: var(--radius-md);
+        padding: 12px;
+        text-align: center;
+    }
+
+    .qr-card img {
+        max-width: 120px;
+        margin: 8px auto;
+    }
+
+    .qr-card-codigo {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 700;
+        color: var(--color-primary);
+        margin-bottom: 8px;
+    }
+
+    .qr-card-datos {
+        text-align: left;
+        font-size: 0.8rem;
+        border-top: 1px solid var(--color-gray-light);
+        padding-top: 8px;
+        margin-top: 8px;
+    }
+
+    /* Toast */
+    .toast {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 12px 24px;
+        border-radius: var(--radius-md);
+        color: white;
+        z-index: 1000;
+        display: none;
+    }
+
+    .toast.success { background: var(--color-success); }
+    .toast.error { background: var(--color-danger); }
+    .toast.visible { display: block; }
+
+    /* Movimientos */
+    .movimientos-list {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .movimiento-item {
+        display: flex;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--color-gray-light);
+        font-size: 0.85rem;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .movimiento-time {
+        color: var(--color-text-muted);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.75rem;
+    }
+
+    .movimiento-badge {
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 0.7rem;
+        color: white;
+    }
+
+    /* Mobile */
+    @media (max-width: 768px) {
+        .tabs-header {
+            flex-wrap: nowrap;
+        }
+
+        .tab-btn {
+            padding: 12px 10px;
+            font-size: 0.8rem;
+        }
+
+        .tab-btn span {
+            display: none;
+        }
+
+        .tab-btn i {
+            font-size: 1.2rem;
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .stat-card {
+            padding: 12px;
+        }
+
+        .stat-value {
+            font-size: 1.4rem;
+        }
+
+        .coches-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .tab-content {
+            padding: 12px;
+        }
+
+        .bulk-actions {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .plantillas-table {
+            font-size: 0.75rem;
+        }
+
+        .plantillas-table th,
+        .plantillas-table td {
+            padding: 6px 4px;
+        }
+    }
+
+    @media print {
+        .no-print { display: none !important; }
+        .qr-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .qr-card {
+            break-inside: avoid;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tabs-container">
+    <div class="tabs-header no-print">
+        <button class="tab-btn active" onclick="showTab('resumen')">
+            <i class="bi bi-grid-3x3-gap"></i> <span>Resumen</span>
+        </button>
+        <button class="tab-btn" onclick="showTab('scanner')">
+            <i class="bi bi-qr-code-scan"></i> <span>Scanner</span>
+        </button>
+        <button class="tab-btn" onclick="showTab('nuevo')">
+            <i class="bi bi-plus-circle"></i> <span>Nuevo Coche</span>
+        </button>
+    </div>
+
+    <!-- Tab Resumen -->
+    <div id="tab-resumen" class="tab-content active">
+        <h3 style="margin-bottom: 16px; font-size: 1.1rem;">
+            <i class="bi bi-bar-chart" style="color: var(--color-primary);"></i> Resumen por Etapa
+        </h3>
+
+        <div class="stats-grid">
+            {% for etapa in etapas %}
+            {% set stats = stats_por_etapa[etapa.id] %}
+            {% set class_name = etapa.nombre|lower|replace(' ', '-')|replace('á', 'a')|replace('é', 'e')|replace('í', 'i')|replace('ó', 'o')|replace('ú', 'u') %}
+            <div class="stat-card {{ class_name }}" onclick="mostrarCochesEtapa({{ etapa.id }}, '{{ etapa.nombre }}')">
+                <div class="stat-header">
+                    <span class="stat-title">{{ etapa.nombre }}</span>
+                    <div class="stat-icon {{ class_name }}">
+                        {% if etapa.orden == 1 %}<i class="bi bi-tree"></i>
+                        {% elif etapa.orden == 2 %}<i class="bi bi-sun"></i>
+                        {% elif etapa.orden == 3 %}<i class="bi bi-archive"></i>
+                        {% else %}<i class="bi bi-tools"></i>{% endif %}
+                    </div>
+                </div>
+                <div class="stat-value {{ class_name }}">{{ stats.total_coches }}</div>
+                <div class="stat-bft">{{ "%.1f"|format(stats.total_bft) }} BFT</div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Acciones masivas -->
+        <div id="bulk-actions" class="bulk-actions">
+            <span><strong id="selected-count">0</strong> coches seleccionados</span>
+            <select id="mover-etapa-select">
+                <option value="">Mover a etapa...</option>
+                {% for etapa in etapas %}
+                <option value="{{ etapa.id }}" data-orden="{{ etapa.orden }}">{{ etapa.nombre }}</option>
+                {% endfor %}
+            </select>
+            <button class="btn btn-success" onclick="moverSeleccionados()" style="padding: 8px 16px;">
+                <i class="bi bi-arrow-right"></i> Mover
+            </button>
+            <button class="btn btn-secondary" onclick="deseleccionarTodos()" style="padding: 8px 16px;">
+                Cancelar
+            </button>
+        </div>
+
+        <!-- Coches de etapa seleccionada -->
+        <div id="coches-section" class="coches-section" style="display: none;">
+            <div class="coches-section-header">
+                <h4 id="etapa-titulo"></h4>
+                <div>
+                    <button class="btn btn-outline" onclick="seleccionarTodos()" style="padding: 6px 12px; font-size: 0.85rem;">
+                        <i class="bi bi-check-all"></i> Seleccionar todos
+                    </button>
+                </div>
+            </div>
+            <div id="coches-grid" class="coches-grid"></div>
+        </div>
+
+        <!-- Ultimos movimientos -->
+        <div style="margin-top: 20px;">
+            <h4 style="margin-bottom: 12px;"><i class="bi bi-clock-history"></i> Ultimos Movimientos</h4>
+            <div class="movimientos-list">
+                {% for mov in ultimos_movimientos %}
+                <div class="movimiento-item">
+                    <span class="movimiento-time">{{ mov.timestamp.strftime('%d/%m %H:%M') }}</span>
+                    <a href="/coche/{{ mov.coche_id }}" style="color: var(--color-primary); font-weight: 600;">
+                        {{ mov.coche.codigo_qr }}
+                    </a>
+                    <span class="movimiento-badge" style="background: {{ mov.etapa_origen.color if mov.etapa_origen else '#6c757d' }};">
+                        {{ mov.etapa_origen.nombre if mov.etapa_origen else 'Nuevo' }}
+                    </span>
+                    <i class="bi bi-arrow-right"></i>
+                    <span class="movimiento-badge" style="background: {{ mov.etapa_destino.color }};">
+                        {{ mov.etapa_destino.nombre }}
+                    </span>
+                </div>
+                {% else %}
+                <p style="color: var(--color-text-muted); text-align: center; padding: 20px;">
+                    No hay movimientos registrados
+                </p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Scanner -->
+    <div id="tab-scanner" class="tab-content">
+        <div class="scanner-section">
+            <h3 style="margin-bottom: 16px; text-align: center;">
+                <i class="bi bi-qr-code-scan" style="color: var(--color-primary);"></i> Escanear QR
+            </h3>
+
+            <div id="qr-reader"></div>
+
+            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                <button id="btn-iniciar" class="btn btn-primary" style="flex: 1;">
+                    <i class="bi bi-camera"></i> Iniciar Camara
+                </button>
+                <button id="btn-detener" class="btn btn-secondary" style="flex: 1; display: none;">
+                    <i class="bi bi-stop-circle"></i> Detener
+                </button>
+            </div>
+
+            <div class="manual-input">
+                <input type="text" id="codigo-manual" placeholder="Codigo manual...">
+                <button class="btn btn-primary" onclick="buscarCodigoManual()">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+
+            <!-- Resultado -->
+            <div id="resultado-scanner" class="resultado-card" style="display: none;">
+                <div class="resultado-header">
+                    <span id="scanner-codigo" class="coche-codigo" style="font-size: 1rem;"></span>
+                    <span id="scanner-etapa" class="etapa-badge"></span>
+                </div>
+                <div id="scanner-info" style="font-size: 0.85rem; margin-bottom: 12px;"></div>
+                <div id="scanner-mover" style="margin-top: 12px;"></div>
+                <div style="margin-top: 12px;">
+                    <button class="btn btn-outline" onclick="resetScanner()" style="width: 100%;">
+                        <i class="bi bi-qr-code-scan"></i> Escanear Otro
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Nuevo Coche -->
+    <div id="tab-nuevo" class="tab-content">
+        <h3 style="margin-bottom: 16px;">
+            <i class="bi bi-plus-circle" style="color: var(--color-success);"></i> Crear Nuevo Coche
+        </h3>
+
+        <form id="form-nuevo-coche">
+            <div class="form-card">
+                <div class="form-card-title"><i class="bi bi-person"></i> Datos Generales</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Registrador *</label>
+                        <input type="text" id="registrador" required placeholder="Nombre">
+                    </div>
+                    <div class="form-group">
+                        <label>Proveedor *</label>
+                        <input type="text" id="proveedor" required placeholder="Proveedor">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Numero de Viaje</label>
+                    <input type="text" id="numero_viaje" placeholder="Ej: V-001">
+                </div>
+            </div>
+
+            <div class="form-card">
+                <div class="form-card-title"><i class="bi bi-table"></i> Plantillas</div>
+                <table class="plantillas-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Largo (pies)</th>
+                            <th>Espesor (pulg)</th>
+                            <th>Plantillas</th>
+                            <th>BFT</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for i in range(1, 4) %}
+                        <tr>
+                            <td><strong>{{ i }}</strong></td>
+                            <td>
+                                <select id="largo_{{ i }}" onchange="calcularBFT()">
+                                    <option value="">-</option>
+                                    {% for l in largos %}<option value="{{ l }}">{{ l }}'</option>{% endfor %}
+                                </select>
+                            </td>
+                            <td>
+                                <select id="espesor_{{ i }}" onchange="calcularBFT()">
+                                    <option value="">-</option>
+                                    {% for e in espesores %}<option value="{{ e }}">{{ e }}"</option>{% endfor %}
+                                </select>
+                            </td>
+                            <td>
+                                <input type="number" id="plantillas_{{ i }}" value="0" min="0" oninput="calcularBFT()">
+                            </td>
+                            <td>
+                                <div class="bft-display" id="bft_{{ i }}">0</div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        <tr class="total-row">
+                            <td colspan="4" style="text-align: right;">TOTAL BFT:</td>
+                            <td id="total_bft">0</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="form-card">
+                <div class="form-card-title"><i class="bi bi-chat-text"></i> Notas</div>
+                <textarea id="notas" rows="2" placeholder="Observaciones..." style="width: 100%; padding: 10px; border: 1px solid var(--color-gray-light); border-radius: var(--radius-sm);"></textarea>
+            </div>
+
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button type="button" class="btn btn-primary" onclick="agregarACola()">
+                    <i class="bi bi-plus"></i> Agregar a Lista
+                </button>
+                <button type="button" class="btn btn-success" id="btn-crear-todos" onclick="crearTodosLosCoches()" style="display: none;">
+                    <i class="bi bi-printer"></i> Crear e Imprimir
+                </button>
+            </div>
+        </form>
+
+        <!-- Lista pendientes -->
+        <div id="pendientes-container" class="pendientes-list" style="display: none;">
+            <h4 style="margin-bottom: 10px;">
+                <i class="bi bi-list-check"></i> Pendientes: <span id="pendientes-count">0</span>
+            </h4>
+            <div id="pendientes-list"></div>
+        </div>
+
+        <!-- QRs generados -->
+        <div id="qr-panel" style="display: none;">
+            <h4 style="margin-bottom: 16px;"><i class="bi bi-qr-code"></i> QRs Generados</h4>
+            <div id="qr-grid" class="qr-grid"></div>
+            <div style="margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap;" class="no-print">
+                <button class="btn btn-primary" onclick="imprimirTodos()">
+                    <i class="bi bi-printer"></i> Imprimir
+                </button>
+                <button class="btn btn-success" onclick="resetNuevoCoche()">
+                    <i class="bi bi-plus"></i> Crear Mas
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Variables globales
+let html5QrCode = null;
+let cocheActual = null;
+let cochesPendientes = [];
+let cochesCreados = [];
+let cochesSeleccionados = new Set();
+let etapaActualId = null;
+const cochesData = {{ coches_json|safe }};
+
+// ===== TABS =====
+function showTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + tabId).classList.add('active');
+    event.target.closest('.tab-btn').classList.add('active');
+
+    if (tabId === 'scanner') {
+        // No iniciar automaticamente
+    }
+}
+
+// ===== RESUMEN =====
+function mostrarCochesEtapa(etapaId, etapaNombre) {
+    etapaActualId = etapaId;
+    cochesSeleccionados.clear();
+    actualizarContadorSeleccion();
+
+    const coches = cochesData.filter(c => c.etapa_actual_id === etapaId);
+    const section = document.getElementById('coches-section');
+    const grid = document.getElementById('coches-grid');
+
+    document.getElementById('etapa-titulo').innerHTML = `<i class="bi bi-box-seam"></i> ${etapaNombre} (${coches.length} coches)`;
+
+    if (coches.length === 0) {
+        grid.innerHTML = '<p style="color: var(--color-text-muted); text-align: center; padding: 20px;">No hay coches en esta etapa</p>';
+    } else {
+        grid.innerHTML = coches.map(c => `
+            <div class="coche-card" id="coche-${c.id}" onclick="toggleSeleccion(${c.id})">
+                <div class="coche-card-header">
+                    <input type="checkbox" class="coche-checkbox" ${cochesSeleccionados.has(c.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleSeleccion(${c.id})">
+                    <span class="coche-codigo">${c.codigo_qr}</span>
+                    <span class="coche-bft">${(c.total_bft || 0).toFixed(1)} BFT</span>
+                </div>
+                <div class="coche-info">
+                    <div>Proveedor: ${c.proveedor || '-'}</div>
+                    <div>Viaje: ${c.numero_viaje || '-'}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    section.style.display = 'block';
+    section.scrollIntoView({ behavior: 'smooth' });
+}
+
+function toggleSeleccion(cocheId) {
+    const card = document.getElementById('coche-' + cocheId);
+    const checkbox = card.querySelector('.coche-checkbox');
+
+    if (cochesSeleccionados.has(cocheId)) {
+        cochesSeleccionados.delete(cocheId);
+        card.classList.remove('selected');
+        checkbox.checked = false;
+    } else {
+        cochesSeleccionados.add(cocheId);
+        card.classList.add('selected');
+        checkbox.checked = true;
+    }
+
+    actualizarContadorSeleccion();
+}
+
+function seleccionarTodos() {
+    const coches = cochesData.filter(c => c.etapa_actual_id === etapaActualId);
+    coches.forEach(c => {
+        cochesSeleccionados.add(c.id);
+        const card = document.getElementById('coche-' + c.id);
+        if (card) {
+            card.classList.add('selected');
+            card.querySelector('.coche-checkbox').checked = true;
+        }
+    });
+    actualizarContadorSeleccion();
+}
+
+function deseleccionarTodos() {
+    cochesSeleccionados.forEach(id => {
+        const card = document.getElementById('coche-' + id);
+        if (card) {
+            card.classList.remove('selected');
+            card.querySelector('.coche-checkbox').checked = false;
+        }
+    });
+    cochesSeleccionados.clear();
+    actualizarContadorSeleccion();
+}
+
+function actualizarContadorSeleccion() {
+    const count = cochesSeleccionados.size;
+    document.getElementById('selected-count').textContent = count;
+    document.getElementById('bulk-actions').classList.toggle('visible', count > 0);
+}
+
+async function moverSeleccionados() {
+    const etapaDestino = document.getElementById('mover-etapa-select').value;
+    if (!etapaDestino) {
+        showToast('Selecciona una etapa destino', 'error');
+        return;
+    }
+
+    if (cochesSeleccionados.size === 0) {
+        showToast('No hay coches seleccionados', 'error');
+        return;
+    }
+
+    const ordenDestino = parseInt(document.getElementById('mover-etapa-select').selectedOptions[0].dataset.orden);
+
+    // Si va a Secado, pedir camara
+    let camara = null;
+    if (ordenDestino === 2) {
+        camara = prompt('Ingresa el numero de Camara (1-15):');
+        if (!camara || isNaN(parseInt(camara)) || parseInt(camara) < 1 || parseInt(camara) > 15) {
+            showToast('Camara invalida', 'error');
+            return;
+        }
+    }
+
+    if (!confirm(`Mover ${cochesSeleccionados.size} coches?`)) return;
+
+    let exitos = 0;
+    for (const cocheId of cochesSeleccionados) {
+        try {
+            const body = { etapa_id: parseInt(etapaDestino) };
+            if (camara) body.camara = parseInt(camara);
+
+            const response = await fetch(`/api/coches/${cocheId}/mover`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            if (response.ok) exitos++;
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    showToast(`${exitos} coches movidos`, 'success');
+    setTimeout(() => location.reload(), 1000);
+}
+
+// ===== SCANNER =====
+document.getElementById('btn-iniciar').addEventListener('click', iniciarScanner);
+document.getElementById('btn-detener').addEventListener('click', detenerScanner);
+
+function iniciarScanner() {
+    document.getElementById('btn-iniciar').style.display = 'none';
+    document.getElementById('btn-detener').style.display = 'block';
+
+    html5QrCode = new Html5Qrcode("qr-reader");
+    html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 200, height: 200 } },
+        (decodedText) => {
+            detenerScanner();
+            buscarCoche(decodedText);
+        },
+        () => {}
+    ).catch(err => {
+        showToast('Error camara: ' + err, 'error');
+        document.getElementById('btn-iniciar').style.display = 'block';
+        document.getElementById('btn-detener').style.display = 'none';
+    });
+}
+
+function detenerScanner() {
+    if (html5QrCode) {
+        html5QrCode.stop().then(() => html5QrCode.clear()).catch(() => {});
+    }
+    document.getElementById('btn-iniciar').style.display = 'block';
+    document.getElementById('btn-detener').style.display = 'none';
+}
+
+function buscarCodigoManual() {
+    const codigo = document.getElementById('codigo-manual').value.trim();
+    if (codigo) buscarCoche(codigo);
+}
+
+document.getElementById('codigo-manual').addEventListener('keypress', e => {
+    if (e.key === 'Enter') buscarCodigoManual();
+});
+
+async function buscarCoche(codigo) {
+    try {
+        const response = await fetch('/api/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ codigo_qr: codigo })
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+            mostrarResultadoScanner(result.coche);
+        } else {
+            showToast(result.error || 'No encontrado', 'error');
+        }
+    } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+    }
+}
+
+function mostrarResultadoScanner(coche) {
+    cocheActual = coche;
+    document.getElementById('resultado-scanner').style.display = 'block';
+    document.getElementById('scanner-codigo').textContent = coche.codigo_qr;
+
+    const etapaBadge = document.getElementById('scanner-etapa');
+    etapaBadge.textContent = coche.etapa_actual.nombre;
+    etapaBadge.style.backgroundColor = coche.etapa_actual.color;
+
+    document.getElementById('scanner-info').innerHTML = `
+        <p><strong>Proveedor:</strong> ${coche.proveedor || '-'}</p>
+        <p><strong>BFT:</strong> ${(coche.total_bft || 0).toFixed(1)}</p>
+        <p><strong>Camara:</strong> ${coche.camara || '-'}</p>
+    `;
+
+    // Boton siguiente etapa
+    const orden = coche.etapa_actual.orden;
+    const moverDiv = document.getElementById('scanner-mover');
+
+    if (orden >= 4) {
+        moverDiv.innerHTML = '<p style="color: var(--color-success);">Proceso completado</p>';
+    } else {
+        const siguientes = { 1: {id:2, nombre:'Secado'}, 2: {id:3, nombre:'Stock Secado'}, 3: {id:4, nombre:'Taller'} };
+        const sig = siguientes[orden];
+
+        let html = '';
+        if (orden === 1) {
+            html = `
+                <select id="scanner-camara" style="width: 100%; padding: 10px; margin-bottom: 8px;">
+                    <option value="">Seleccionar Camara...</option>
+                    ${[...Array(15)].map((_, i) => `<option value="${i+1}">Camara ${i+1}</option>`).join('')}
+                </select>
+            `;
+        }
+        html += `<button class="btn btn-success" style="width: 100%;" onclick="moverCocheScanner(${sig.id}, ${orden + 1})">
+            <i class="bi bi-arrow-right"></i> Mover a ${sig.nombre}
+        </button>`;
+        moverDiv.innerHTML = html;
+    }
+}
+
+async function moverCocheScanner(etapaId, ordenDestino) {
+    if (!cocheActual) return;
+
+    let camara = null;
+    if (ordenDestino === 2) {
+        camara = document.getElementById('scanner-camara')?.value;
+        if (!camara) {
+            showToast('Selecciona una camara', 'error');
+            return;
+        }
+    }
+
+    try {
+        const body = { etapa_id: etapaId };
+        if (camara) body.camara = parseInt(camara);
+
+        const response = await fetch(`/api/coches/${cocheActual.id}/mover`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+            showToast('Movido correctamente', 'success');
+            mostrarResultadoScanner(result.coche);
+        } else {
+            showToast(result.error, 'error');
+        }
+    } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+    }
+}
+
+function resetScanner() {
+    document.getElementById('resultado-scanner').style.display = 'none';
+    document.getElementById('codigo-manual').value = '';
+    cocheActual = null;
+}
+
+// ===== NUEVO COCHE =====
+function calcularBFT() {
+    let total = 0;
+    for (let i = 1; i <= 3; i++) {
+        const largo = parseFloat(document.getElementById('largo_' + i).value) || 0;
+        const espesor = parseFloat(document.getElementById('espesor_' + i).value) || 0;
+        const plantillas = parseInt(document.getElementById('plantillas_' + i).value) || 0;
+        const bft = Math.floor((largo * espesor * plantillas * 45) / 12);
+        document.getElementById('bft_' + i).textContent = bft;
+        total += bft;
+    }
+    document.getElementById('total_bft').textContent = total;
+    return total;
+}
+
+function agregarACola() {
+    const registrador = document.getElementById('registrador').value.trim();
+    const proveedor = document.getElementById('proveedor').value.trim();
+
+    if (!registrador || !proveedor) {
+        showToast('Completa Registrador y Proveedor', 'error');
+        return;
+    }
+
+    const datos = {
+        registrador,
+        proveedor,
+        numero_viaje: document.getElementById('numero_viaje').value,
+        espesor_1: document.getElementById('espesor_1').value,
+        largo_1: document.getElementById('largo_1').value,
+        plantillas_1: parseInt(document.getElementById('plantillas_1').value) || 0,
+        espesor_2: document.getElementById('espesor_2').value,
+        largo_2: document.getElementById('largo_2').value,
+        plantillas_2: parseInt(document.getElementById('plantillas_2').value) || 0,
+        espesor_3: document.getElementById('espesor_3').value,
+        largo_3: document.getElementById('largo_3').value,
+        plantillas_3: parseInt(document.getElementById('plantillas_3').value) || 0,
+        notas: document.getElementById('notas').value,
+        total_bft: calcularBFT(),
+        id_temp: Date.now()
+    };
+
+    cochesPendientes.push(datos);
+    actualizarListaPendientes();
+    limpiarPlantillas();
+}
+
+function limpiarPlantillas() {
+    for (let i = 1; i <= 3; i++) {
+        document.getElementById('largo_' + i).value = '';
+        document.getElementById('espesor_' + i).value = '';
+        document.getElementById('plantillas_' + i).value = '0';
+        document.getElementById('bft_' + i).textContent = '0';
+    }
+    document.getElementById('total_bft').textContent = '0';
+    document.getElementById('notas').value = '';
+}
+
+function actualizarListaPendientes() {
+    const container = document.getElementById('pendientes-container');
+    const list = document.getElementById('pendientes-list');
+    const btn = document.getElementById('btn-crear-todos');
+
+    if (cochesPendientes.length === 0) {
+        container.style.display = 'none';
+        btn.style.display = 'none';
+        return;
+    }
+
+    container.style.display = 'block';
+    btn.style.display = 'inline-flex';
+    document.getElementById('pendientes-count').textContent = cochesPendientes.length;
+
+    list.innerHTML = cochesPendientes.map((c, i) => `
+        <div class="pendiente-item">
+            <span>#${i+1} - ${c.proveedor} - ${c.total_bft} BFT</span>
+            <button class="btn btn-secondary" style="padding: 4px 8px;" onclick="quitarPendiente(${c.id_temp})">
+                <i class="bi bi-trash"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
+function quitarPendiente(idTemp) {
+    cochesPendientes = cochesPendientes.filter(c => c.id_temp !== idTemp);
+    actualizarListaPendientes();
+}
+
+async function crearTodosLosCoches() {
+    if (cochesPendientes.length === 0) return;
+
+    const btn = document.getElementById('btn-crear-todos');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass"></i> Creando...';
+
+    cochesCreados = [];
+
+    for (const datos of cochesPendientes) {
+        try {
+            const response = await fetch('/api/coches', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(datos)
+            });
+            const result = await response.json();
+            if (response.ok) {
+                cochesCreados.push({ ...result.coche, registrador: datos.registrador, proveedor: datos.proveedor });
+            }
+        } catch (e) {}
+    }
+
+    if (cochesCreados.length > 0) {
+        mostrarQRsCreados();
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-printer"></i> Crear e Imprimir';
+}
+
+function mostrarQRsCreados() {
+    document.getElementById('form-nuevo-coche').style.display = 'none';
+    document.getElementById('pendientes-container').style.display = 'none';
+
+    document.getElementById('qr-grid').innerHTML = cochesCreados.map(c => `
+        <div class="qr-card">
+            <div class="qr-card-codigo">${c.codigo_qr}</div>
+            <img src="/api/coches/${c.id}/qr" alt="QR">
+            <div class="qr-card-datos">
+                <p><strong>Proveedor:</strong> ${c.proveedor || '-'}</p>
+                <p><strong>Viaje:</strong> ${c.numero_viaje || '-'}</p>
+                <p><strong>BFT:</strong> ${c.total_bft}</p>
+            </div>
+        </div>
+    `).join('');
+
+    document.getElementById('qr-panel').style.display = 'block';
+    cochesPendientes = [];
+}
+
+function imprimirTodos() {
+    const content = document.getElementById('qr-grid').innerHTML;
+    const win = window.open('', '_blank');
+    win.document.write(`
+        <html><head><title>QRs</title>
+        <style>
+            body { font-family: sans-serif; padding: 20px; }
+            .qr-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+            .qr-card { border: 2px solid #333; padding: 10px; text-align: center; page-break-inside: avoid; }
+            .qr-card img { max-width: 100px; }
+            .qr-card-codigo { font-family: monospace; font-weight: bold; }
+            .qr-card-datos { text-align: left; font-size: 11px; border-top: 1px solid #ccc; margin-top: 8px; padding-top: 8px; }
+        </style></head>
+        <body><div class="qr-grid">${content}</div>
+        <script>setTimeout(() => window.print(), 300);<\/script></body></html>
+    `);
+}
+
+function resetNuevoCoche() {
+    document.getElementById('form-nuevo-coche').style.display = 'block';
+    document.getElementById('qr-panel').style.display = 'none';
+    cochesCreados = [];
+}
+
+// ===== UTILS =====
+function showToast(msg, type = 'success') {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.className = 'toast ' + type + ' visible';
+    setTimeout(() => toast.classList.remove('visible'), 3000);
+}
+
+// Prevenir submit con Enter
+document.getElementById('form-nuevo-coche').addEventListener('submit', e => {
+    e.preventDefault();
+    agregarACola();
+});
+</script>
+{% endblock %}

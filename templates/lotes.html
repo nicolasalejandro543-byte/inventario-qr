@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block title %}Lotes{% endblock %}
+
+{% block head %}
+<style>
+    .lotes-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .lotes-title {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .lotes-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        color: white;
+        background: linear-gradient(135deg, #6f42c1, #5a32a3);
+    }
+
+    .lotes-info h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 4px;
+    }
+
+    .lotes-stats {
+        display: flex;
+        gap: 24px;
+        font-size: 0.9rem;
+        color: var(--color-text-muted);
+    }
+
+    .lotes-stats span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .lotes-stats strong {
+        color: var(--color-text);
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .lotes-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 16px;
+    }
+
+    .lote-card {
+        background: white;
+        border-radius: var(--radius-md);
+        padding: 20px;
+        box-shadow: var(--shadow-sm);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: 2px solid transparent;
+        text-decoration: none;
+        color: inherit;
+        display: block;
+    }
+
+    .lote-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-md);
+        border-color: #6f42c1;
+    }
+
+    .lote-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+    }
+
+    .lote-codigo {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+        color: #6f42c1;
+        font-size: 1rem;
+    }
+
+    .lote-bft {
+        background: linear-gradient(135deg, var(--color-success), #059669);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .lote-details {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        font-size: 0.85rem;
+        margin-bottom: 12px;
+    }
+
+    .lote-detail {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .lote-detail-label {
+        color: var(--color-text-muted);
+        font-size: 0.75rem;
+    }
+
+    .lote-detail-value {
+        font-weight: 600;
+    }
+
+    .lote-coches-preview {
+        background: var(--color-bg-light);
+        padding: 8px 12px;
+        border-radius: var(--radius-sm);
+        font-size: 0.8rem;
+        color: var(--color-text-muted);
+    }
+
+    .lote-coches-preview strong {
+        color: #6f42c1;
+    }
+
+    .lote-date {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--color-gray-light);
+        font-size: 0.8rem;
+        color: var(--color-text-muted);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        color: var(--color-gray-light);
+        margin-bottom: 16px;
+    }
+
+    .empty-state h3 {
+        color: var(--color-text-muted);
+        margin-bottom: 8px;
+    }
+
+    .empty-state p {
+        color: var(--color-text-muted);
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="lotes-header">
+    <div class="lotes-title">
+        <div class="lotes-icon">
+            <i class="bi bi-box-seam"></i>
+        </div>
+        <div class="lotes-info">
+            <h2>Lotes</h2>
+            <div class="lotes-stats">
+                <span><i class="bi bi-boxes"></i> <strong>{{ lotes|length }}</strong> lotes</span>
+                <span><i class="bi bi-rulers"></i> <strong>{{ "%.1f"|format(lotes|sum(attribute='total_bft')) }}</strong> BFT total</span>
+            </div>
+        </div>
+    </div>
+    <div>
+        <a href="/" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+</div>
+
+{% if lotes %}
+<div class="lotes-grid">
+    {% for lote in lotes %}
+    <a href="/lote/{{ lote.id }}" class="lote-card">
+        <div class="lote-header">
+            <span class="lote-codigo">{{ lote.codigo_qr }}</span>
+            <span class="lote-bft">{{ "%.1f"|format(lote.total_bft or 0) }} BFT</span>
+        </div>
+        <div class="lote-details">
+            <div class="lote-detail">
+                <span class="lote-detail-label">Coches</span>
+                <span class="lote-detail-value">{{ lote.cantidad_coches }} unidades</span>
+            </div>
+            <div class="lote-detail">
+                <span class="lote-detail-label">Creado por</span>
+                <span class="lote-detail-value">{{ lote.creado_por or '-' }}</span>
+            </div>
+        </div>
+        {% if lote.coches %}
+        <div class="lote-coches-preview">
+            <strong>Coches:</strong>
+            {% for coche in lote.coches[:3] %}{{ coche.codigo_qr }}{% if not loop.last %}, {% endif %}{% endfor %}{% if lote.coches|length > 3 %}...{% endif %}
+        </div>
+        {% endif %}
+        <div class="lote-date">
+            <i class="bi bi-calendar3"></i>
+            {{ lote.created_at.strftime('%d/%m/%Y %H:%M') }}
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <i class="bi bi-box-seam"></i>
+    <h3>No hay lotes creados</h3>
+    <p>Los lotes se crean desde Stock Seco seleccionando coches y haciendo clic en "Crear Lote"</p>
+    <a href="/etapa/3" class="btn btn-primary">
+        <i class="bi bi-archive"></i> Ir a Stock Seco
+    </a>
+</div>
+{% endif %}
+{% endblock %}

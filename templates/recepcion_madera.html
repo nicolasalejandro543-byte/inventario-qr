@@ -1,0 +1,1410 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sky Composite - Recepción de Madera Verde</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root {
+            --color-primary: #0173c6;
+            --color-bg: #e8f1f8;
+            --color-bg-light: #f5f9fc;
+            --color-text: #1a1a2e;
+            --color-text-muted: #64748b;
+            --color-cyan: #33b1d7;
+            --color-section: #2596be;
+            --color-success: #10b981;
+            --color-warning: #f59e0b;
+            --color-danger: #ef4444;
+            --color-gray: #9f9c9b;
+            --color-gray-light: #e5e7eb;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: linear-gradient(135deg, var(--color-bg) 0%, #dce9f0 100%);
+            color: var(--color-text);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        .app-container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+
+        .app-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(135deg, var(--color-primary), var(--color-section));
+            padding: 16px 28px;
+            border-radius: var(--radius-lg);
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .logo-section { display: flex; align-items: center; gap: 16px; }
+
+        .logo-icon {
+            width: 48px; height: 48px;
+            background: white; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px; font-weight: 700; color: var(--color-primary);
+        }
+
+        .app-title { color: white; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.5px; }
+        .app-subtitle { color: rgba(255,255,255,0.85); font-size: 0.9rem; }
+
+        .header-nav { display: flex; gap: 12px; }
+        .header-nav a {
+            color: white; text-decoration: none;
+            padding: 8px 16px; border-radius: var(--radius-sm);
+            font-weight: 500; transition: all 0.2s;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .header-nav a:hover { background: rgba(255,255,255,0.2); }
+        .header-nav a.active { background: rgba(255,255,255,0.25); }
+
+        .header-time { color: white; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; }
+
+        .tabs-container { background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); overflow: hidden; }
+
+        .tabs-nav {
+            display: flex; background: var(--color-bg-light);
+            border-bottom: 2px solid var(--color-gray-light);
+            overflow-x: auto; scrollbar-width: thin;
+        }
+
+        .tab-btn {
+            flex: 1; min-width: 140px; padding: 14px 20px;
+            border: none; background: transparent;
+            font-family: inherit; font-size: 0.85rem; font-weight: 600;
+            color: var(--color-text-muted); cursor: pointer;
+            transition: all 0.2s ease;
+            border-bottom: 3px solid transparent; white-space: nowrap;
+        }
+
+        .tab-btn:hover { background: rgba(1,115,198,0.05); color: var(--color-primary); }
+        .tab-btn.active { background: white; color: var(--color-primary); border-bottom-color: var(--color-primary); }
+
+        .tab-content { display: none; padding: 24px; animation: fadeIn 0.3s ease; }
+        .tab-content.active { display: block; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .section-header {
+            display: flex; align-items: center; gap: 12px;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, var(--color-section), var(--color-cyan));
+            border-radius: var(--radius-md); margin-bottom: 24px;
+            box-shadow: var(--shadow-sm);
+        }
+        .section-header h2 { color: white; font-size: 1.2rem; font-weight: 700; }
+        .section-header.primary { background: linear-gradient(135deg, var(--color-primary), #0284c7); }
+
+        .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        @media (max-width: 900px) { .form-grid { grid-template-columns: 1fr; } }
+
+        .form-card {
+            background: var(--color-bg-light); border-radius: var(--radius-md);
+            padding: 20px; border: 1px solid var(--color-gray-light);
+            display: flex; flex-direction: column;
+        }
+        .form-card h3 {
+            font-size: 1rem; font-weight: 600; color: var(--color-primary);
+            margin-bottom: 16px; padding-bottom: 8px;
+            border-bottom: 2px solid var(--color-gray-light);
+        }
+
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--color-text); margin-bottom: 6px; }
+        .form-group input, .form-group select {
+            width: 100%; padding: 10px 14px;
+            border: 2px solid var(--color-gray-light); border-radius: var(--radius-sm);
+            font-family: inherit; font-size: 0.95rem;
+            transition: all 0.2s ease; background: white;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none; border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(1,115,198,0.1);
+        }
+
+        .form-row { display: flex; gap: 12px; align-items: flex-end; }
+        .form-row .form-group { flex: 1; }
+
+        .table-container { overflow-x: auto; margin: 20px 0; }
+
+        .plantilla-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; table-layout: fixed; }
+        .plantilla-table th {
+            background: var(--color-section); color: white;
+            padding: 12px 8px; text-align: center; font-weight: 600;
+            white-space: nowrap; vertical-align: middle;
+        }
+        .plantilla-table th.corner { background: #97c9e8; color: var(--color-text); width: 180px; }
+        .plantilla-table th.subheader { background: var(--color-gray); font-size: 0.8rem; padding: 6px 8px; }
+        .plantilla-table td { padding: 6px; text-align: center; vertical-align: middle; border: 1px solid var(--color-gray-light); }
+        .plantilla-table td.espesor-label { background: #97c9e8; font-weight: 600; color: var(--color-text); text-align: center; }
+        .plantilla-table input {
+            width: 60px; padding: 8px; text-align: center;
+            border: 2px solid var(--color-gray-light); border-radius: var(--radius-sm);
+            font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;
+        }
+        .plantilla-table input:focus { outline: none; border-color: var(--color-primary); }
+
+        .bft-display {
+            background: var(--color-bg); padding: 8px; border-radius: var(--radius-sm);
+            font-weight: 500; font-family: 'JetBrains Mono', monospace;
+            min-width: 60px; display: inline-block; text-align: center;
+        }
+
+        .subtotal-row td { background: var(--color-primary); color: white; font-weight: 700; padding: 10px 8px; text-align: center; }
+        .subtotal-cell { background: var(--color-cyan) !important; color: white !important; }
+
+        .total-display {
+            display: flex; align-items: center; justify-content: flex-end; gap: 16px;
+            padding: 16px 24px; background: linear-gradient(135deg, var(--color-bg-light), white);
+            border-radius: var(--radius-md); border: 2px solid var(--color-section); margin-top: 20px;
+        }
+        .total-display .label { font-size: 1.1rem; font-weight: 700; color: var(--color-text); }
+        .total-display .value { font-size: 1.4rem; font-weight: 700; color: var(--color-section); font-family: 'JetBrains Mono', monospace; }
+
+        .defects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin: 20px 0; }
+        .defect-checkbox {
+            display: flex; align-items: center; gap: 10px;
+            padding: 12px 16px; background: var(--color-bg-light);
+            border-radius: var(--radius-sm); cursor: pointer;
+            transition: all 0.2s; border: 2px solid transparent;
+        }
+        .defect-checkbox:hover { background: white; border-color: var(--color-primary); }
+        .defect-checkbox input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--color-primary); }
+        .defect-checkbox label { cursor: pointer; font-weight: 500; }
+
+        .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        @media (max-width: 900px) { .summary-grid { grid-template-columns: 1fr; } }
+
+        .summary-card {
+            background: white; border-radius: var(--radius-md); padding: 20px;
+            box-shadow: var(--shadow-sm); border: 1px solid var(--color-gray-light);
+        }
+        .summary-card h3 {
+            font-size: 1rem; font-weight: 700; color: var(--color-primary);
+            margin-bottom: 16px; padding-bottom: 10px;
+            border-bottom: 2px solid var(--color-gray-light);
+        }
+
+        .summary-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 0; border-bottom: 1px solid var(--color-gray-light);
+        }
+        .summary-row:last-child { border-bottom: none; }
+        .summary-row .label { font-weight: 500; color: var(--color-text-muted); flex: 1; }
+        .summary-row .value { font-weight: 600; font-family: 'JetBrains Mono', monospace; text-align: right; min-width: 120px; }
+        .summary-row.highlight {
+            background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+            margin: 8px -12px; padding: 12px; border-radius: var(--radius-sm); border: none;
+        }
+        .summary-row.highlight .value { font-size: 1.2rem; color: var(--color-success); }
+
+        .value-success { color: var(--color-success); }
+        .value-warning { color: var(--color-warning); }
+        .value-danger { color: var(--color-danger); }
+        .value-primary { color: var(--color-primary); }
+
+        .btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 12px 24px; border: none; border-radius: var(--radius-sm);
+            font-family: inherit; font-size: 0.95rem; font-weight: 600;
+            cursor: pointer; transition: all 0.2s ease;
+        }
+        .btn-primary { background: var(--color-primary); color: white; }
+        .btn-primary:hover { background: #005a9e; transform: translateY(-1px); box-shadow: var(--shadow-md); }
+        .btn-success { background: var(--color-success); color: white; }
+        .btn-success:hover { background: #059669; }
+        .btn-warning { background: var(--color-warning); color: white; }
+        .btn-danger { background: var(--color-danger); color: white; }
+        .btn-secondary { background: var(--color-gray-light); color: var(--color-text); }
+        .btn-secondary:hover { background: #d1d5db; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-group { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+
+        .validator-row {
+            display: flex; align-items: center; gap: 12px;
+            padding: 16px; background: var(--color-bg-light);
+            border-radius: var(--radius-md); margin-bottom: 12px; flex-wrap: wrap;
+        }
+        .validator-row label { font-weight: 600; width: 90px; flex-shrink: 0; }
+        .validator-row select {
+            flex: 1; min-width: 200px; padding: 10px 12px;
+            border: 2px solid var(--color-gray-light); border-radius: var(--radius-sm);
+            font-family: inherit; font-size: 0.9rem;
+        }
+        .validator-row input {
+            width: 90px; padding: 10px; text-align: center;
+            font-family: 'JetBrains Mono', monospace; font-size: 1rem;
+            border: 2px solid var(--color-gray-light); border-radius: var(--radius-sm);
+            letter-spacing: 2px; flex-shrink: 0;
+        }
+        .validator-row .btn { flex-shrink: 0; }
+
+        .validation-status {
+            padding: 8px 12px; border-radius: var(--radius-sm);
+            font-weight: 600; min-width: 100px; text-align: center; flex-shrink: 0;
+        }
+        .status-pending { background: var(--color-gray-light); color: var(--color-text-muted); }
+        .status-valid { background: #d1fae5; color: var(--color-success); }
+        .status-invalid { background: #fee2e2; color: var(--color-danger); }
+
+        .validators-table { width: 100%; border-collapse: collapse; margin: 16px 0; table-layout: fixed; }
+        .validators-table th { background: var(--color-primary); color: white; padding: 12px; text-align: left; font-weight: 600; }
+        .validators-table th:first-child { width: 60px; text-align: center; }
+        .validators-table th:last-child { width: 100px; text-align: center; }
+        .validators-table td { padding: 12px; border-bottom: 1px solid var(--color-gray-light); vertical-align: middle; }
+        .validators-table td:first-child { text-align: center; }
+        .validators-table td:last-child { text-align: center; }
+        .validators-table tr:hover { background: var(--color-bg-light); }
+        .validators-table tr.selected { background: #dbeafe; }
+
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+            display: none; align-items: center; justify-content: center;
+            z-index: 1000; padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: white; border-radius: var(--radius-lg);
+            max-width: 900px; width: 100%; max-height: 80vh;
+            overflow: hidden; box-shadow: var(--shadow-lg); animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .modal-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 20px 24px; background: var(--color-primary); color: white;
+        }
+        .modal-header h2 { font-size: 1.2rem; }
+        .modal-close { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; padding: 4px; line-height: 1; }
+        .modal-body { padding: 24px; max-height: 60vh; overflow-y: auto; }
+
+        .qr-container { text-align: center; padding: 20px; }
+        .qr-container canvas { margin: 16px auto; }
+        .secret-display {
+            background: var(--color-bg-light); padding: 16px; border-radius: var(--radius-md);
+            font-family: 'JetBrains Mono', monospace; font-size: 1rem;
+            word-break: break-all; margin: 16px 0;
+        }
+
+        .resumen-largo-table { width: 100%; border-collapse: collapse; margin: 16px 0; table-layout: fixed; }
+        .resumen-largo-table th { background: #3498db; color: white; padding: 10px 8px; text-align: center; font-weight: 600; vertical-align: middle; }
+        .resumen-largo-table th:first-child { width: 100px; }
+        .resumen-largo-table td {
+            padding: 10px 8px; text-align: center; vertical-align: middle;
+            border: 1px solid var(--color-gray-light); background: #f8f9fa;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;
+        }
+        .resumen-largo-table td:first-child { background: #ecf0f1; font-weight: 600; font-family: 'DM Sans', sans-serif; text-align: left; padding-left: 12px; }
+
+        .instructions {
+            background: #fef3c7; border-left: 4px solid var(--color-warning);
+            padding: 16px 20px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; margin: 20px 0;
+        }
+        .instructions h4 { color: #92400e; margin-bottom: 8px; }
+        .instructions ol, .instructions ul { margin-left: 20px; color: #78350f; }
+        .instructions li { margin: 6px 0; }
+
+        .chart-container { padding: 16px; background: var(--color-bg-light); border-radius: var(--radius-md); }
+        .bar-chart { display: flex; flex-direction: column; gap: 12px; }
+        .bar-wrapper { display: flex; align-items: center; gap: 12px; }
+        .bar-label { width: 40px; font-weight: 600; font-size: 0.9rem; color: var(--color-text); text-align: right; flex-shrink: 0; }
+        .bar-track { flex: 1; height: 32px; background: var(--color-gray-light); border-radius: var(--radius-sm); overflow: hidden; position: relative; }
+        .bar-fill {
+            height: 100%; border-radius: var(--radius-sm); transition: width 0.5s ease-out;
+            display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; min-width: 0;
+        }
+        .bar-wrapper[data-largo="1"] .bar-fill { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .bar-wrapper[data-largo="1.5"] .bar-fill { background: linear-gradient(135deg, #f97316, #ea580c); }
+        .bar-wrapper[data-largo="2"] .bar-fill { background: linear-gradient(135deg, #eab308, #ca8a04); }
+        .bar-wrapper[data-largo="2.5"] .bar-fill { background: linear-gradient(135deg, #22c55e, #16a34a); }
+        .bar-wrapper[data-largo="3"] .bar-fill { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+        .bar-wrapper[data-largo="4"] .bar-fill { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+        .bar-value { width: 60px; font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 0.9rem; color: var(--color-text); text-align: right; flex-shrink: 0; }
+
+        .volume-display {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 12px 20px; background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+            border-radius: var(--radius-md); font-family: 'JetBrains Mono', monospace;
+            font-size: 1.2rem; font-weight: 700; color: var(--color-success);
+        }
+
+        .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 2000; }
+        .toast {
+            background: var(--color-text); color: white; padding: 14px 24px;
+            border-radius: var(--radius-md); margin-top: 10px;
+            animation: slideInRight 0.3s ease; box-shadow: var(--shadow-lg);
+        }
+        .toast.success { background: var(--color-success); }
+        .toast.error { background: var(--color-danger); }
+        @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* ========== ESTILOS MOVIL MEJORADOS ========== */
+        @media (max-width: 768px) {
+            html {
+                font-size: 15px;
+            }
+
+            .app-container {
+                padding: 12px;
+                max-width: 100%;
+                overflow-x: hidden;
+            }
+
+            /* Header compacto y elegante */
+            .app-header {
+                flex-direction: column;
+                gap: 14px;
+                text-align: center;
+                padding: 16px;
+                margin-bottom: 16px;
+                border-radius: 12px;
+                background: linear-gradient(145deg, var(--color-primary) 0%, #0284c7 100%);
+            }
+
+            .logo-section {
+                flex-direction: row;
+                gap: 12px;
+                justify-content: center;
+            }
+
+            .logo-icon {
+                width: 42px;
+                height: 42px;
+                font-size: 18px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            }
+
+            .app-title {
+                font-size: 1.15rem;
+                margin-bottom: 2px;
+            }
+
+            .app-subtitle {
+                font-size: 0.8rem;
+                opacity: 0.9;
+            }
+
+            /* Navegacion en grid 2x2 */
+            .header-nav {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+                width: 100%;
+                margin-top: 4px;
+            }
+
+            .header-nav a {
+                padding: 10px 8px;
+                font-size: 0.75rem;
+                justify-content: center;
+                border-radius: 8px;
+                background: rgba(255,255,255,0.15);
+                backdrop-filter: blur(4px);
+                font-weight: 600;
+                letter-spacing: 0.3px;
+            }
+
+            .header-nav a.active {
+                background: rgba(255,255,255,0.3);
+            }
+
+            .header-nav a i {
+                font-size: 1rem;
+            }
+
+            /* Contenedor de tabs */
+            .tabs-container {
+                border-radius: 12px;
+                overflow: hidden;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            }
+
+            .tabs-nav {
+                display: flex;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                gap: 0;
+                padding: 4px;
+                background: #f1f5f9;
+            }
+
+            .tabs-nav::-webkit-scrollbar {
+                display: none;
+            }
+
+            .tab-btn {
+                flex: 0 0 auto;
+                min-width: 85px;
+                padding: 12px 10px;
+                font-size: 0.7rem;
+                white-space: nowrap;
+                border-radius: 8px;
+                margin: 2px;
+                background: transparent;
+                border-bottom: none;
+            }
+
+            .tab-btn.active {
+                background: white;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                color: var(--color-primary);
+            }
+
+            .tab-content {
+                padding: 16px 14px;
+            }
+
+            /* Headers de seccion */
+            .section-header {
+                padding: 12px 16px;
+                margin-bottom: 16px;
+                border-radius: 10px;
+            }
+
+            .section-header h2 {
+                font-size: 0.95rem;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            /* Formularios */
+            .form-grid {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .form-card {
+                padding: 16px;
+                border-radius: 10px;
+                background: white;
+                border: 1px solid #e2e8f0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            }
+
+            .form-card h3 {
+                font-size: 0.9rem;
+                margin-bottom: 14px;
+                padding-bottom: 10px;
+                color: var(--color-primary);
+                border-bottom: 2px solid #e2e8f0;
+            }
+
+            .form-group {
+                margin-bottom: 12px;
+            }
+
+            .form-group label {
+                font-size: 0.8rem;
+                margin-bottom: 6px;
+                color: #475569;
+                font-weight: 600;
+            }
+
+            .form-group input,
+            .form-group select {
+                padding: 12px 14px;
+                font-size: 0.9rem;
+                border-radius: 8px;
+                border: 2px solid #e2e8f0;
+                transition: all 0.2s;
+            }
+
+            .form-group input:focus,
+            .form-group select:focus {
+                border-color: var(--color-primary);
+                box-shadow: 0 0 0 3px rgba(1,115,198,0.1);
+            }
+
+            .form-row {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .form-row .form-group {
+                flex: none;
+                width: 100%;
+            }
+
+            /* Tablas responsive */
+            .table-container {
+                margin: 16px -14px;
+                padding: 0 14px;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .plantilla-table {
+                font-size: 0.75rem;
+                min-width: 520px;
+                border-radius: 8px;
+                overflow: hidden;
+            }
+
+            .plantilla-table th {
+                padding: 10px 6px;
+                font-size: 0.65rem;
+            }
+
+            .plantilla-table th.corner {
+                width: 90px;
+            }
+
+            .plantilla-table td {
+                padding: 6px 4px;
+            }
+
+            .plantilla-table td.espesor-label {
+                font-size: 0.7rem;
+                padding: 8px 4px;
+                font-weight: 700;
+            }
+
+            .plantilla-table input {
+                width: 42px;
+                padding: 8px 4px;
+                font-size: 0.8rem;
+                border-width: 1px;
+                border-radius: 6px;
+            }
+
+            .bft-display {
+                padding: 6px 8px;
+                font-size: 0.75rem;
+                min-width: 50px;
+                border-radius: 6px;
+                background: #f1f5f9;
+            }
+
+            /* Total display */
+            .total-display {
+                flex-direction: column;
+                gap: 8px;
+                padding: 16px;
+                text-align: center;
+                margin-top: 16px;
+                border-radius: 10px;
+                background: linear-gradient(135deg, #f8fafc, white);
+            }
+
+            .total-display .label {
+                font-size: 0.9rem;
+            }
+
+            .total-display .value {
+                font-size: 1.3rem;
+            }
+
+            /* Defectos */
+            .defects-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+                margin: 16px 0;
+            }
+
+            .defect-checkbox {
+                padding: 12px;
+                gap: 10px;
+                border-radius: 8px;
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+            }
+
+            .defect-checkbox input[type="checkbox"] {
+                width: 18px;
+                height: 18px;
+            }
+
+            .defect-checkbox label {
+                font-size: 0.8rem;
+                line-height: 1.3;
+            }
+
+            /* Resumen */
+            .summary-grid {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .summary-card {
+                padding: 16px;
+                border-radius: 10px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            }
+
+            .summary-card h3 {
+                font-size: 0.9rem;
+                margin-bottom: 14px;
+                padding-bottom: 10px;
+            }
+
+            .summary-row {
+                display: flex;
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+                padding: 10px 0;
+                gap: 12px;
+                border-bottom: 1px solid #f1f5f9;
+            }
+
+            .summary-row:last-child {
+                border-bottom: none;
+            }
+
+            .summary-row .label {
+                font-size: 0.8rem;
+                flex: 1;
+                color: #64748b;
+            }
+
+            .summary-row .value {
+                font-size: 0.9rem;
+                text-align: right;
+                min-width: 90px;
+                font-weight: 600;
+            }
+
+            .summary-row.highlight {
+                margin: 10px -12px;
+                padding: 14px 12px;
+                border-radius: 8px;
+                border-bottom: none;
+            }
+
+            .summary-row.highlight .label {
+                color: #065f46;
+                font-weight: 600;
+            }
+
+            .summary-row.highlight .value {
+                font-size: 1.1rem;
+            }
+
+            /* Tabla resumen largo */
+            .resumen-largo-table {
+                font-size: 0.7rem;
+                min-width: 420px;
+                border-radius: 8px;
+                overflow: hidden;
+            }
+
+            .resumen-largo-table th {
+                padding: 10px 6px;
+                font-size: 0.65rem;
+            }
+
+            .resumen-largo-table th:first-child {
+                width: 70px;
+            }
+
+            .resumen-largo-table td {
+                padding: 8px 6px;
+                font-size: 0.7rem;
+            }
+
+            /* Grafico de barras */
+            .chart-container {
+                padding: 14px;
+                border-radius: 8px;
+                background: #f8fafc;
+            }
+
+            .chart-container h4 {
+                font-size: 0.9rem;
+                margin-bottom: 16px;
+            }
+
+            .bar-chart {
+                gap: 10px;
+            }
+
+            .bar-wrapper {
+                flex-direction: row;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .bar-label {
+                width: 35px;
+                font-size: 0.75rem;
+                font-weight: 600;
+            }
+
+            .bar-track {
+                height: 24px;
+                border-radius: 6px;
+            }
+
+            .bar-fill {
+                border-radius: 6px;
+            }
+
+            .bar-value {
+                width: 50px;
+                font-size: 0.75rem;
+            }
+
+            /* Validadores */
+            .validator-row {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+                padding: 14px;
+                background: #f8fafc;
+                border-radius: 10px;
+                margin-bottom: 10px;
+            }
+
+            .validator-row label {
+                width: auto;
+                font-size: 0.85rem;
+                font-weight: 600;
+            }
+
+            .validator-row select {
+                width: 100%;
+                min-width: auto;
+                padding: 12px;
+                font-size: 0.9rem;
+                border-radius: 8px;
+            }
+
+            .validator-row input {
+                width: 100%;
+                padding: 12px;
+                font-size: 1rem;
+                border-radius: 8px;
+                letter-spacing: 3px;
+            }
+
+            .validator-row .btn {
+                width: 100%;
+            }
+
+            .validation-status {
+                width: 100%;
+                padding: 10px;
+                border-radius: 8px;
+                font-size: 0.85rem;
+            }
+
+            .validators-table {
+                font-size: 0.75rem;
+                min-width: 420px;
+            }
+
+            .validators-table th,
+            .validators-table td {
+                padding: 10px 8px;
+            }
+
+            /* Botones */
+            .btn {
+                padding: 14px 18px;
+                font-size: 0.85rem;
+                width: 100%;
+                justify-content: center;
+                border-radius: 10px;
+                font-weight: 600;
+            }
+
+            .btn i {
+                font-size: 1rem;
+            }
+
+            .btn-group {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+                margin-top: 16px;
+            }
+
+            .btn-group .btn:first-child,
+            .btn-group .btn:last-child {
+                grid-column: span 2;
+            }
+
+            /* Instrucciones */
+            .instructions {
+                padding: 14px 16px;
+                margin: 16px 0;
+                border-radius: 10px;
+                background: #fffbeb;
+                border-left: 4px solid var(--color-warning);
+            }
+
+            .instructions h4 {
+                font-size: 0.9rem;
+                margin-bottom: 10px;
+                color: #92400e;
+            }
+
+            .instructions ol,
+            .instructions ul {
+                margin-left: 18px;
+                font-size: 0.8rem;
+                color: #78350f;
+            }
+
+            .instructions li {
+                margin: 6px 0;
+                line-height: 1.4;
+            }
+
+            /* Modales */
+            .modal-overlay {
+                padding: 16px;
+                background: rgba(0,0,0,0.6);
+            }
+
+            .modal {
+                max-width: 100%;
+                max-height: 90vh;
+                margin: 0;
+                border-radius: 16px;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            }
+
+            .modal-header {
+                padding: 16px 18px;
+            }
+
+            .modal-header h2 {
+                font-size: 1rem;
+            }
+
+            .modal-close {
+                font-size: 1.4rem;
+                opacity: 0.8;
+            }
+
+            .modal-body {
+                padding: 18px;
+                max-height: 55vh;
+            }
+
+            /* Volumen display */
+            .volume-display {
+                padding: 12px 16px;
+                font-size: 1rem;
+                border-radius: 10px;
+            }
+
+            /* Toast */
+            .toast-container {
+                bottom: 16px;
+                right: 16px;
+                left: 16px;
+            }
+
+            .toast {
+                padding: 14px 18px;
+                font-size: 0.9rem;
+                border-radius: 10px;
+            }
+
+            /* QR */
+            .qr-container {
+                padding: 16px;
+            }
+
+            .qr-container canvas {
+                max-width: 180px !important;
+                height: auto !important;
+            }
+
+            .secret-display {
+                padding: 14px;
+                font-size: 0.8rem;
+                border-radius: 8px;
+            }
+        }
+
+        /* ========== PANTALLAS MUY PEQUENAS ========== */
+        @media (max-width: 400px) {
+            html {
+                font-size: 14px;
+            }
+
+            .app-container {
+                padding: 8px;
+            }
+
+            .app-header {
+                padding: 14px 12px;
+            }
+
+            .logo-section {
+                gap: 10px;
+            }
+
+            .logo-icon {
+                width: 38px;
+                height: 38px;
+                font-size: 16px;
+            }
+
+            .app-title {
+                font-size: 1.05rem;
+            }
+
+            .header-nav {
+                gap: 6px;
+            }
+
+            .header-nav a {
+                padding: 8px 6px;
+                font-size: 0.7rem;
+            }
+
+            .tab-btn {
+                min-width: 75px;
+                padding: 10px 8px;
+                font-size: 0.65rem;
+            }
+
+            .tab-content {
+                padding: 12px 10px;
+            }
+
+            .form-card {
+                padding: 14px;
+            }
+
+            .plantilla-table input {
+                width: 38px;
+                padding: 6px 3px;
+                font-size: 0.75rem;
+            }
+
+            .defects-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .summary-row .label {
+                font-size: 0.75rem;
+            }
+
+            .summary-row .value {
+                font-size: 0.8rem;
+                min-width: 80px;
+            }
+
+            .btn-group {
+                grid-template-columns: 1fr;
+            }
+
+            .btn-group .btn:first-child,
+            .btn-group .btn:last-child {
+                grid-column: span 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="logo-section">
+                <div class="logo-icon">SC</div>
+                <div>
+                    <h1 class="app-title">Sky Composite</h1>
+                    <p class="app-subtitle">Recepción de Madera Verde</p>
+                </div>
+            </div>
+            <nav class="header-nav">
+                <a href="/recepcion" class="active"><i class="bi bi-truck"></i> Recepcion</a>
+                <a href="/"><i class="bi bi-grid-3x3-gap"></i> Inventario</a>
+                <a href="/scanner"><i class="bi bi-qr-code-scan"></i> Scanner</a>
+                <a href="/nuevo"><i class="bi bi-plus-circle"></i> Nuevo Coche</a>
+            </nav>
+        </header>
+
+        <div class="tabs-container">
+            <nav class="tabs-nav">
+                <button class="tab-btn active" data-tab="datos">1. Datos</button>
+                <button class="tab-btn" data-tab="aceptada">2. Aceptada</button>
+                <button class="tab-btn" data-tab="rebajado-largo">3. Reb. Largo</button>
+                <button class="tab-btn" data-tab="rebajado-espesor">4. Reb. Espesor</button>
+                <button class="tab-btn" data-tab="rechazo">5. Rechazo</button>
+                <button class="tab-btn" data-tab="defectos">6. Defectos</button>
+                <button class="tab-btn" data-tab="resumen">7. Resumen</button>
+                <button class="tab-btn" data-tab="validadores">8. Validadores</button>
+            </nav>
+
+            <!-- 1. Datos Generales -->
+            <div class="tab-content active" id="tab-datos">
+                <div class="section-header primary"><h2>Datos Generales de la Recepción</h2></div>
+                <div class="form-grid">
+                    <div class="form-card">
+                        <h3>Información del Proveedor</h3>
+                        <div class="form-group">
+                            <label>Proveedor</label>
+                            <input type="text" id="proveedor" placeholder="Nombre del proveedor">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Fecha Aserrado</label>
+                                <input type="date" id="fechaAserrado">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Fecha Ingreso</label>
+                                <input type="date" id="fechaIngreso">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-card">
+                        <h3>Información del Transporte</h3>
+                        <div class="form-group">
+                            <label># Viaje Proveedor</label>
+                            <input type="text" id="viajeProveedor">
+                        </div>
+                        <div class="form-group">
+                            <label>Guía Forestal</label>
+                            <input type="text" id="guiaForestal">
+                        </div>
+                        <div class="form-group">
+                            <label># Viaje Cons.</label>
+                            <input type="text" id="viajeCons">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Ticket</label>
+                                <input type="text" id="ticket">
+                            </div>
+                            <div class="form-group">
+                                <label>Placa</label>
+                                <input type="text" id="placa">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha Medición</label>
+                            <input type="date" id="fechaMedicion">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-card" style="margin-top: 20px;">
+                    <h3>Medidas del Camión (metros)</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Largo</label>
+                            <input type="number" id="largoCamion" step="0.01" value="0" oninput="calcularVolumen()">
+                        </div>
+                        <div class="form-group">
+                            <label>Alto</label>
+                            <input type="number" id="altoCamion" step="0.01" value="0" oninput="calcularVolumen()">
+                        </div>
+                        <div class="form-group">
+                            <label>Ancho</label>
+                            <input type="number" id="anchoCamion" step="0.01" value="0" oninput="calcularVolumen()">
+                        </div>
+                        <div class="form-group">
+                            <label>Volumen Estimado (BFT)</label>
+                            <div class="volume-display" id="volumenEstimado">0 BFT</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-card" style="margin-top: 20px;">
+                    <h3>Configuración de Precio</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Precio por BFT ($)</label>
+                            <input type="number" id="precioBft" step="0.01" value="0.49">
+                        </div>
+                    </div>
+                </div>
+                <div class="instructions">
+                    <h4>Instrucciones</h4>
+                    <ol>
+                        <li>Complete los datos del proveedor y transporte</li>
+                        <li>Ingrese las medidas del camión y calcule el volumen</li>
+                        <li>Vaya a cada pestaña (Aceptada, Rebajado Largo, etc.) e ingrese las plantillas</li>
+                        <li>Los BFT se calculan automáticamente</li>
+                        <li>Vea el resumen final en la pestaña "Resumen"</li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- 2. Aceptada -->
+            <div class="tab-content" id="tab-aceptada">
+                <div class="section-header"><h2>Madera Aceptada</h2></div>
+                <div class="table-container" id="tabla-aceptada"></div>
+                <div class="total-display">
+                    <span class="label">TOTAL ACEPTADA:</span>
+                    <span class="value" id="total-aceptada">0 BFT</span>
+                </div>
+            </div>
+
+            <!-- 3. Rebajado Largo -->
+            <div class="tab-content" id="tab-rebajado-largo">
+                <div class="section-header"><h2>Rebajado en Largo</h2></div>
+                <div class="table-container" id="tabla-rebajado-largo"></div>
+                <div class="total-display">
+                    <span class="label">TOTAL REBAJADO LARGO:</span>
+                    <span class="value" id="total-rebajado-largo">0 BFT</span>
+                </div>
+            </div>
+
+            <!-- 4. Rebajado Espesor -->
+            <div class="tab-content" id="tab-rebajado-espesor">
+                <div class="section-header"><h2>Rebajado en Espesor</h2></div>
+                <div class="table-container" id="tabla-rebajado-espesor"></div>
+                <div class="total-display">
+                    <span class="label">TOTAL REBAJADO ESPESOR:</span>
+                    <span class="value" id="total-rebajado-espesor">0 BFT</span>
+                </div>
+            </div>
+
+            <!-- 5. Rechazo -->
+            <div class="tab-content" id="tab-rechazo">
+                <div class="section-header"><h2>Rechazo</h2></div>
+                <div class="table-container" id="tabla-rechazo"></div>
+                <div class="total-display">
+                    <span class="label">TOTAL RECHAZO:</span>
+                    <span class="value" id="total-rechazo">0 BFT</span>
+                </div>
+            </div>
+
+            <!-- 6. Defectos -->
+            <div class="tab-content" id="tab-defectos">
+                <div class="section-header"><h2>Defectos Predominantes</h2></div>
+                <p style="margin-bottom: 20px; color: var(--color-text-muted);">Marque los defectos encontrados en la madera:</p>
+                <div class="defects-grid" id="defectos-grid"></div>
+                <div class="form-card" style="margin-top: 20px;">
+                    <h3>Otros Defectos</h3>
+                    <div class="form-group">
+                        <label>Especificar otros defectos no listados</label>
+                        <input type="text" id="defectosOtros" placeholder="Ingrese otros defectos separados por coma">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 7. Resumen -->
+            <div class="tab-content" id="tab-resumen">
+                <div class="section-header primary"><h2>Resumen de Recepción</h2></div>
+                <div class="summary-grid">
+                    <div class="summary-card">
+                        <h3>Resumen de Volúmenes (BFT)</h3>
+                        <div class="summary-row">
+                            <span class="label">Total Aceptada:</span>
+                            <span class="value value-success" id="res-aceptada">0</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="label">Total Rebajado en Largo:</span>
+                            <span class="value value-warning" id="res-reb-largo">0</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="label">Total Rebajado en Espesor:</span>
+                            <span class="value" style="color: #9b59b6;" id="res-reb-espesor">0</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="label">Total Rechazo:</span>
+                            <span class="value value-danger" id="res-rechazo">0</span>
+                        </div>
+                        <hr style="margin: 16px 0; border: none; border-top: 2px solid var(--color-gray-light);">
+                        <div class="summary-row">
+                            <span class="label" style="font-weight: 700;">TOTAL BFT (Aceptada + Rebajados):</span>
+                            <span class="value value-primary" style="font-size: 1.2rem;" id="res-total-bft">0</span>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <h3>Porcentajes y Rendimiento</h3>
+                        <div class="summary-row">
+                            <span class="label">% Rechazo:</span>
+                            <span class="value" id="res-pct-rechazo">0.00%</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="label">Rendimiento:</span>
+                            <span class="value" id="res-rendimiento">0.00%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="summary-card" style="margin-top: 20px;">
+                    <h3>Resumen por Largo</h3>
+                    <div class="table-container">
+                        <table class="resumen-largo-table">
+                            <thead>
+                                <tr>
+                                    <th>Largo</th>
+                                    <th>1'</th><th>1.5'</th><th>2'</th><th>2.5'</th><th>3'</th><th>4'</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Volumen</td>
+                                    <td id="vol-1">0</td><td id="vol-1.5">0</td><td id="vol-2">0</td>
+                                    <td id="vol-2.5">0</td><td id="vol-3">0</td><td id="vol-4">0</td>
+                                </tr>
+                                <tr>
+                                    <td>Plantillas 4"</td>
+                                    <td id="p4-1">0</td><td id="p4-1.5">0</td><td id="p4-2">0</td>
+                                    <td id="p4-2.5">0</td><td id="p4-3">0</td><td id="p4-4">0</td>
+                                </tr>
+                                <tr>
+                                    <td>Plantillas 3"</td>
+                                    <td id="p3-1">0</td><td id="p3-1.5">0</td><td id="p3-2">0</td>
+                                    <td id="p3-2.5">0</td><td id="p3-3">0</td><td id="p3-4">0</td>
+                                </tr>
+                                <tr>
+                                    <td>Porcentaje</td>
+                                    <td id="pct-1">0%</td><td id="pct-1.5">0%</td><td id="pct-2">0%</td>
+                                    <td id="pct-2.5">0%</td><td id="pct-3">0%</td><td id="pct-4">0%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="chart-container" style="margin-top: 24px;">
+                        <h4 style="margin-bottom: 16px; color: var(--color-primary); font-weight: 600;">Distribución por Largo (%)</h4>
+                        <div class="bar-chart" id="bar-chart">
+                            <div class="bar-wrapper" data-largo="1"><div class="bar-label">1'</div><div class="bar-track"><div class="bar-fill" id="bar-1" style="width: 0%;"></div></div><div class="bar-value" id="bar-val-1">0%</div></div>
+                            <div class="bar-wrapper" data-largo="1.5"><div class="bar-label">1.5'</div><div class="bar-track"><div class="bar-fill" id="bar-1.5" style="width: 0%;"></div></div><div class="bar-value" id="bar-val-1.5">0%</div></div>
+                            <div class="bar-wrapper" data-largo="2"><div class="bar-label">2'</div><div class="bar-track"><div class="bar-fill" id="bar-2" style="width: 0%;"></div></div><div class="bar-value" id="bar-val-2">0%</div></div>
+                            <div class="bar-wrapper" data-largo="2.5"><div class="bar-label">2.5'</div><div class="bar-track"><div class="bar-fill" id="bar-2.5" style="width: 0%;"></div></div><div class="bar-value" id="bar-val-2.5">0%</div></div>
+                            <div class="bar-wrapper" data-largo="3"><div class="bar-label">3'</div><div class="bar-track"><div class="bar-fill" id="bar-3" style="width: 0%;"></div></div><div class="bar-value" id="bar-val-3">0%</div></div>
+                            <div class="bar-wrapper" data-largo="4"><div class="bar-label">4'</div><div class="bar-track"><div class="bar-fill" id="bar-4" style="width: 0%;"></div></div><div class="bar-value" id="bar-val-4">0%</div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="summary-card" style="margin-top: 20px;">
+                    <h3>Facturación</h3>
+                    <div class="summary-row"><span class="label">BFT Total:</span><span class="value" id="fact-bft">0</span></div>
+                    <div class="summary-row"><span class="label">Precio por BFT:</span><span class="value" id="fact-precio">$0.00</span></div>
+                    <div class="summary-row"><span class="label">Subtotal:</span><span class="value" id="fact-subtotal">$0.00</span></div>
+                    <div class="summary-row"><span class="label">IVA (15%):</span><span class="value" id="fact-iva">$0.00</span></div>
+                    <div class="summary-row"><span class="label">Total Factura:</span><span class="value" id="fact-total">$0.00</span></div>
+                    <div class="summary-row"><span class="label">Retención Fuente (1.75%):</span><span class="value value-danger" id="fact-ret-fte">$0.00</span></div>
+                    <div class="summary-row"><span class="label">Retención IVA:</span><span class="value value-danger" id="fact-ret-iva">$0.00</span></div>
+                    <div class="summary-row"><span class="label" style="font-weight: 700;">TOTAL A PAGAR:</span><span class="value value-primary" style="font-size: 1.1rem;" id="fact-total-pagar">$0.00</span></div>
+                    <hr style="margin: 16px 0; border: none; border-top: 2px solid var(--color-gray-light);">
+                    <div class="form-group" style="max-width: 200px;">
+                        <label>Anticipo ($)</label>
+                        <input type="number" id="anticipo" step="0.01" value="0" oninput="actualizarResumen()">
+                    </div>
+                    <div class="summary-row highlight">
+                        <span class="label" style="font-weight: 700; color: #065f46;">TOTAL A RECIBIR:</span>
+                        <span class="value" id="fact-total-recibir">$0.00</span>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="actualizarResumen()">Actualizar Resumen</button>
+                    <button class="btn btn-success" onclick="guardarRecepcion()">Guardar</button>
+                    <button class="btn btn-secondary" onclick="verHistorial()">Ver Historial</button>
+                    <button class="btn btn-warning" onclick="exportarExcel()">Exportar Excel</button>
+                    <button class="btn btn-primary" onclick="exportarPDF()">Exportar PDF</button>
+                    <button class="btn btn-danger" onclick="limpiarTodo()">Limpiar Todo</button>
+                </div>
+            </div>
+
+            <!-- 8. Validadores -->
+            <div class="tab-content" id="tab-validadores">
+                <div class="section-header primary"><h2>Validación y Firma de Documentos</h2></div>
+                <div class="form-card">
+                    <h3>Validar y Exportar Documento Firmado</h3>
+                    <p style="color: var(--color-text-muted); margin-bottom: 20px;">Cada validador selecciona su nombre, ingresa su código OTP y presiona 'Validar'.</p>
+                    <div id="validadores-inputs"></div>
+                    <hr style="margin: 20px 0; border: none; border-top: 2px solid var(--color-gray-light);">
+                    <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                        <button class="btn btn-success" id="btn-exportar-validado" onclick="exportarPDFValidado()" disabled>Exportar PDF Validado</button>
+                        <button class="btn btn-secondary" onclick="reiniciarValidaciones()">Reiniciar Validaciones</button>
+                        <span id="estado-validacion" style="font-weight: 600; color: var(--color-text-muted);">Validaciones: 0/3</span>
+                    </div>
+                </div>
+                <div class="form-card" style="margin-top: 20px;">
+                    <h3>Gestión de Validadores (Requiere Clave de Administrador)</h3>
+                    <div class="form-row" style="margin-bottom: 20px;">
+                        <div class="form-group"><label>Nombre</label><input type="text" id="nuevoValidadorNombre" placeholder="Nombre completo"></div>
+                        <div class="form-group"><label>Cargo</label><input type="text" id="nuevoValidadorCargo" placeholder="Cargo"></div>
+                        <button class="btn btn-primary" onclick="agregarValidador()" style="align-self: flex-end;">Agregar Validador</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="validators-table" id="tabla-validadores">
+                            <thead><tr><th>ID</th><th>Nombre</th><th>Cargo</th><th>Fecha Registro</th><th>Estado</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-secondary" onclick="mostrarQRValidador()">Ver Código QR</button>
+                        <button class="btn btn-secondary" onclick="probarOTPValidador()">Probar OTP</button>
+                        <button class="btn btn-danger" onclick="eliminarValidador()">Eliminar Validador</button>
+                        <button class="btn btn-secondary" onclick="actualizarListaValidadores()">Actualizar Lista</button>
+                    </div>
+                </div>
+                <div class="instructions">
+                    <h4>Instrucciones</h4>
+                    <ol>
+                        <li>Registre al menos 3 validadores (requiere clave de administrador)</li>
+                        <li>Cada validador debe configurar su código secreto en Google Authenticator o similar</li>
+                        <li>Para exportar un PDF validado: seleccione 3 validadores diferentes, cada uno ingresa su código OTP</li>
+                        <li>Si los 3 códigos son válidos, se habilita el botón "Exportar PDF Validado"</li>
+                        <li>El PDF validado incluye un sello de autenticidad único e infalsificable</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal-overlay" id="historial-modal">
+        <div class="modal">
+            <div class="modal-header"><h2>Historial de Recepciones</h2><button class="modal-close" onclick="cerrarHistorial()">&times;</button></div>
+            <div class="modal-body" id="historial-body"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="qr-modal">
+        <div class="modal" style="max-width: 500px;">
+            <div class="modal-header"><h2>Configurar OTP</h2><button class="modal-close" onclick="cerrarQRModal()">&times;</button></div>
+            <div class="modal-body" id="qr-body"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="otp-modal">
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header"><h2>Probar OTP</h2><button class="modal-close" onclick="cerrarOTPModal()">&times;</button></div>
+            <div class="modal-body" id="otp-body"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="admin-modal">
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header"><h2>Clave de Administrador</h2><button class="modal-close" onclick="cerrarAdminModal()">&times;</button></div>
+            <div class="modal-body">
+                <div class="form-group"><label>Ingrese la clave de administrador:</label><input type="password" id="admin-password" placeholder="Contraseña"></div>
+                <div class="btn-group"><button class="btn btn-primary" id="admin-confirm-btn">Confirmar</button><button class="btn btn-secondary" onclick="cerrarAdminModal()">Cancelar</button></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/static/js/recepcion.js"></script>
+</body>
+</html>

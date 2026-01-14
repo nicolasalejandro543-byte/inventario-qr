@@ -41,6 +41,7 @@ class Coche(db.Model):
     proveedor = db.Column(db.String(100))
     numero_viaje = db.Column(db.String(50))
     camara = db.Column(db.Integer)  # 1 al 15
+    lote_secado = db.Column(db.String(50))  # Numero de lote de secado
 
     # Fila 1
     espesor_1 = db.Column(db.String(10))
@@ -118,6 +119,7 @@ class Coche(db.Model):
             'proveedor': self.proveedor,
             'numero_viaje': self.numero_viaje,
             'camara': self.camara,
+            'lote_secado': self.lote_secado,
             'espesor_1': self.espesor_1,
             'largo_1': self.largo_1,
             'plantillas_1': self.plantillas_1,

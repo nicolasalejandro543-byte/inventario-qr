@@ -214,6 +214,7 @@ def mover_coche(coche_id):
     usuario = data.get('usuario', 'Anonimo')
     notas = data.get('notas', '')
     camara = data.get('camara')
+    lote_secado = data.get('lote_secado')
 
     if not nueva_etapa_id:
         return jsonify({'error': 'Se requiere etapa_id'}), 400
@@ -229,12 +230,15 @@ def mover_coche(coche_id):
     if coche.etapa_actual_id == nueva_etapa_id:
         return jsonify({'error': 'El coche ya esta en esa etapa'}), 400
 
-    # Si va a Secado (orden 2), requiere camara
+    # Si va a Secado (orden 2), requiere camara y lote_secado
     if nueva_etapa.orden == 2:
         if not camara:
             return jsonify({'error': 'Se requiere seleccionar una camara para Secado'}), 400
+        if not lote_secado:
+            return jsonify({'error': 'Se requiere ingresar el numero de lote de secado'}), 400
         coche.camara = int(camara)
-        notas = f'Camara {camara}. {notas}' if notas else f'Camara {camara}'
+        coche.lote_secado = lote_secado
+        notas = f'Camara {camara}, Lote {lote_secado}. {notas}' if notas else f'Camara {camara}, Lote {lote_secado}'
 
     # Mover el coche
     coche.mover_a_etapa(nueva_etapa_id, usuario, notas)
@@ -257,6 +261,7 @@ def mover_coches_multiple():
     usuario = data.get('usuario', 'Anonimo')
     notas = data.get('notas', '')
     camara = data.get('camara')
+    lote_secado = data.get('lote_secado')
 
     if not coche_ids:
         return jsonify({'error': 'Se requiere al menos un coche'}), 400
@@ -295,7 +300,7 @@ def mover_coches_multiple():
             })
             continue
 
-        # Si va a Secado (orden 2), requiere camara
+        # Si va a Secado (orden 2), requiere camara y lote_secado
         notas_mov = notas
         if nueva_etapa.orden == 2:
             if not camara:
@@ -305,8 +310,16 @@ def mover_coches_multiple():
                     'error': 'Se requiere seleccionar una camara para Secado'
                 })
                 continue
+            if not lote_secado:
+                resultados['errores'].append({
+                    'coche_id': coche_id,
+                    'codigo_qr': coche.codigo_qr,
+                    'error': 'Se requiere ingresar el numero de lote de secado'
+                })
+                continue
             coche.camara = int(camara)
-            notas_mov = f'Camara {camara}. {notas}' if notas else f'Camara {camara}'
+            coche.lote_secado = lote_secado
+            notas_mov = f'Camara {camara}, Lote {lote_secado}. {notas}' if notas else f'Camara {camara}, Lote {lote_secado}'
 
         # Mover el coche
         coche.mover_a_etapa(nueva_etapa_id, usuario, notas_mov)

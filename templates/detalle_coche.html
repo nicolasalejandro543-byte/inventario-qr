@@ -290,6 +290,12 @@
                     <div class="detail-label">Cámara</div>
                     <div class="detail-value">{{ coche.camara or '-' }}</div>
                 </div>
+                {% if coche.lote_secado %}
+                <div class="detail-item" style="background: #fef3c7;">
+                    <div class="detail-label" style="color: #d97706;">Lote de Secado</div>
+                    <div class="detail-value" style="color: #b45309; font-family: 'JetBrains Mono', monospace;">{{ coche.lote_secado }}</div>
+                </div>
+                {% endif %}
                 <div class="detail-item">
                     <div class="detail-label">Fecha Creación</div>
                     <div class="detail-value">{{ coche.created_at.strftime('%d/%m/%Y %H:%M') }}</div>
@@ -382,7 +388,7 @@
                         <!-- Boton para mover a la siguiente etapa -->
                         <div style="margin-bottom: 16px;">
                             {% if etapa.orden == 2 %}
-                            <!-- Si va a Secado, mostrar selector de camara -->
+                            <!-- Si va a Secado, mostrar selector de camara y lote -->
                             <div class="form-group" style="margin-bottom: 12px;">
                                 <label><i class="bi bi-fire"></i> Seleccionar Camara (Horno):</label>
                                 <select id="camara-secado" style="width: 100%; padding: 12px; border: 2px solid var(--color-warning); border-radius: var(--radius-sm); font-size: 1rem;">
@@ -391,6 +397,10 @@
                                     <option value="{{ i }}">Camara {{ i }}</option>
                                     {% endfor %}
                                 </select>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 12px;">
+                                <label><i class="bi bi-tag"></i> Numero de Lote de Secado:</label>
+                                <input type="text" id="lote-secado" placeholder="Ej: L001, LOTE-2024-01..." style="width: 100%; padding: 12px; border: 2px solid var(--color-warning); border-radius: var(--radius-sm); font-family: 'JetBrains Mono', monospace;">
                             </div>
                             {% endif %}
 
@@ -497,14 +507,23 @@
 async function moverCoche(etapaId, etapaNombre, etapaOrden) {
     const usuario = document.getElementById('usuario-mover').value;
 
-    // Si va a Secado (orden 2), verificar que se selecciono camara
+    // Si va a Secado (orden 2), verificar que se selecciono camara y lote
     let camara = null;
+    let loteSecado = null;
     if (etapaOrden === 2) {
         const camaraSelect = document.getElementById('camara-secado');
+        const loteInput = document.getElementById('lote-secado');
         if (camaraSelect) {
             camara = camaraSelect.value;
             if (!camara) {
                 alert('Debe seleccionar una camara (horno) para Secado');
+                return;
+            }
+        }
+        if (loteInput) {
+            loteSecado = loteInput.value.trim();
+            if (!loteSecado) {
+                alert('Debe ingresar el numero de Lote de Secado');
                 return;
             }
         }
@@ -519,7 +538,8 @@ async function moverCoche(etapaId, etapaNombre, etapaOrden) {
             body: JSON.stringify({
                 etapa_id: etapaId,
                 usuario: usuario,
-                camara: camara
+                camara: camara,
+                lote_secado: loteSecado
             })
         });
 

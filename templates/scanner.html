@@ -333,7 +333,7 @@
                     <input type="text" id="usuario-nombre" placeholder="Opcional">
                 </div>
 
-                <!-- Selector de camara (solo visible cuando va a Secado) -->
+                <!-- Selector de camara y lote de secado (solo visible cuando va a Secado) -->
                 <div id="camara-section" style="display: none; margin-top: 12px;">
                     <label style="font-weight: 600; color: var(--color-warning);">
                         <i class="bi bi-fire"></i> Seleccionar Camara (Horno):
@@ -344,6 +344,11 @@
                         <option value="{{ i }}">Camara {{ i }}</option>
                         {% endfor %}
                     </select>
+
+                    <label style="font-weight: 600; color: var(--color-warning); display: block; margin-top: 12px;">
+                        <i class="bi bi-tag"></i> Numero de Lote de Secado:
+                    </label>
+                    <input type="text" id="lote-secado" placeholder="Ej: L001, LOTE-2024-01..." style="width: 100%; padding: 12px; border: 2px solid var(--color-warning); border-radius: var(--radius-sm); margin-top: 8px; font-family: 'JetBrains Mono', monospace;">
                 </div>
 
                 <!-- Boton de siguiente etapa (generado dinamicamente) -->
@@ -526,6 +531,15 @@ function mostrarCoche(coche) {
     document.getElementById('coche-bft').textContent = (coche.total_bft || 0).toFixed(1) + ' BFT';
 
     // Info grid
+    let loteSecadoHtml = '';
+    if (coche.lote_secado) {
+        loteSecadoHtml = `
+        <div class="coche-info-item" style="background: #fef3c7;">
+            <div class="coche-info-label" style="color: #d97706;">Lote de Secado</div>
+            <div class="coche-info-value" style="color: #b45309; font-family: 'JetBrains Mono', monospace;">${coche.lote_secado}</div>
+        </div>`;
+    }
+
     document.getElementById('coche-info').innerHTML = `
         <div class="coche-info-item">
             <div class="coche-info-label">Registrador</div>
@@ -543,6 +557,7 @@ function mostrarCoche(coche) {
             <div class="coche-info-label">Camara</div>
             <div class="coche-info-value">${coche.camara || '-'}</div>
         </div>
+        ${loteSecadoHtml}
         <div class="coche-info-item">
             <div class="coche-info-label">Plantillas</div>
             <div class="coche-info-value">${(coche.plantillas_1 || 0) + (coche.plantillas_2 || 0) + (coche.plantillas_3 || 0)}</div>
@@ -683,13 +698,21 @@ async function moverCoche(etapaId, etapaNombre, etapaOrden) {
 
     const usuario = document.getElementById('usuario-nombre').value;
     let camara = null;
+    let loteSecado = null;
 
-    // Si va a Secado (orden 2), necesita camara
+    // Si va a Secado (orden 2), necesita camara y lote de secado
     if (etapaOrden === 2) {
         const camaraSelect = document.getElementById('camara-secado');
+        const loteInput = document.getElementById('lote-secado');
         camara = camaraSelect ? camaraSelect.value : null;
+        loteSecado = loteInput ? loteInput.value.trim() : null;
+
         if (!camara) {
             alert('Debe seleccionar una Camara (Horno) para mover a Secado');
+            return;
+        }
+        if (!loteSecado) {
+            alert('Debe ingresar el Numero de Lote de Secado');
             return;
         }
     }
@@ -702,9 +725,12 @@ async function moverCoche(etapaId, etapaNombre, etapaOrden) {
             usuario: usuario
         };
 
-        // Agregar camara si va a Secado
+        // Agregar camara y lote si va a Secado
         if (camara) {
             body.camara = parseInt(camara);
+        }
+        if (loteSecado) {
+            body.lote_secado = loteSecado;
         }
 
         const response = await fetch(`/api/coches/${cocheActual.id}/mover`, {
@@ -718,9 +744,11 @@ async function moverCoche(etapaId, etapaNombre, etapaOrden) {
         if (response.ok) {
             mostrarExito(result.mensaje);
             mostrarCoche(result.coche);
-            // Limpiar selector de camara
+            // Limpiar campos de secado
             const camaraSelect = document.getElementById('camara-secado');
+            const loteInput = document.getElementById('lote-secado');
             if (camaraSelect) camaraSelect.value = '';
+            if (loteInput) loteInput.value = '';
         } else {
             mostrarError(result.error);
         }

@@ -813,7 +813,7 @@
         <button class="filter-btn" onclick="filtrarHoy()">Hoy</button>
         <button class="filter-btn" onclick="filtrarSemana()">Esta Semana</button>
         <button class="filter-btn" onclick="filtrarMes()">Este Mes</button>
-        <button class="filter-btn" onclick="filtrarAnio()">Este Ano</button>
+        <button class="filter-btn" onclick="filtrarAnio()">Este Año</button>
         <div class="date-range">
             <span class="date-range-label">Desde:</span>
             <input type="date" id="fecha-desde">
@@ -1170,7 +1170,7 @@ function filtrarAnio() {
     const hasta = formatDate(hoy);
     document.getElementById('fecha-desde').value = desde;
     document.getElementById('fecha-hasta').value = hasta;
-    fetchStats(desde, hasta, `Mostrando datos del ano ${hoy.getFullYear()}`);
+    fetchStats(desde, hasta, `Mostrando datos del año ${hoy.getFullYear()}`);
 }
 
 function aplicarRangoFechas() {

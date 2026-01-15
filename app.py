@@ -1204,6 +1204,7 @@ def agregar_coches_lote(lote_id):
 
         return jsonify({
             'success': True,
+            'mensaje': f'{len(coches_agregados)} coche(s) agregado(s) al lote',
             'lote': lote.to_dict(),
             'coches_agregados': coches_agregados,
             'errores': errores if errores else None

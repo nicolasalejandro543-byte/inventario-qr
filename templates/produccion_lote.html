@@ -1318,8 +1318,6 @@
             const data = await response.json();
 
             if (data.success) {
-                alert(data.mensaje);
-                // Recargar la pagina para ver los cambios
                 window.location.reload();
             } else {
                 alert('Error: ' + data.error);
@@ -1330,10 +1328,6 @@
     }
 
     async function quitarCocheLote(cocheId) {
-        if (!confirm('Quitar este coche del lote? El coche sera devuelto a Stock Secado.')) {
-            return;
-        }
-
         try {
             const response = await fetch(`/api/lotes/${LOTE.id}/quitar-coche/${cocheId}`, {
                 method: 'POST',
@@ -1342,8 +1336,6 @@
             const data = await response.json();
 
             if (data.success) {
-                alert(data.mensaje);
-                // Recargar la pagina para ver los cambios
                 window.location.reload();
             } else {
                 alert('Error: ' + data.error);

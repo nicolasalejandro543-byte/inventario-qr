@@ -887,13 +887,42 @@
     let plantillasPendientes = [];
     let bloquesPendientes = [];
 
-    // Listas de items ya guardados en esta sesion
-    let plantillasGuardadas = [];
-    let bloquesGuardados = [];
+    // Listas de items ya guardados (cargados del servidor)
+    let plantillasGuardadas = [
+        {% for p in plantillas_guardadas %}
+        {
+            id: {{ p.id }},
+            largo: {{ p.largo }},
+            alto: {{ p.alto }},
+            bft: {{ p.bft_calculado or 0 }},
+            guardado: true
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
 
-    // Inicializar fecha
+    let bloquesGuardados = [
+        {% for b in bloques_guardados %}
+        {
+            id: {{ b.id }},
+            codigo_qr: "{{ b.codigo_qr }}",
+            largo: {{ b.largo or 0 }},
+            peso: {{ b.peso or 0 }},
+            bft: {{ b.bft or 0 }},
+            densidad: {{ b.densidad or 0 }},
+            turno: "{{ b.turno or 'Diurno' }}",
+            calidad: "{{ b.calidad or 'Estándar' }}",
+            secuencia: "{{ b.secuencia or '' }}",
+            empatado: {{ 'true' if b.empatado else 'false' }},
+            guardado: true
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    // Inicializar fecha y mostrar datos guardados
     document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('bloque-fecha').value = new Date().toISOString().split('T')[0];
+        actualizarListaPlantillas();
+        actualizarListaBloques();
         calcularDesperdicio();
     });
 

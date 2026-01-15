@@ -278,10 +278,18 @@ def produccion_lote(lote_id):
     else:
         coches_disponibles = []
 
+    # Obtener bloques ya guardados del lote
+    bloques_guardados = Bloque.query.filter_by(lote_id=lote_id).order_by(Bloque.created_at.desc()).all()
+
+    # Obtener plantillas (procesos) ya guardadas del lote
+    plantillas_guardadas = ProcesoLote.query.filter_by(lote_id=lote_id).order_by(ProcesoLote.created_at.desc()).all()
+
     return render_template('produccion_lote.html',
                           lote=lote,
                           largos_produccion=LARGOS_PRODUCCION,
-                          coches_disponibles=coches_disponibles)
+                          coches_disponibles=coches_disponibles,
+                          bloques_guardados=bloques_guardados,
+                          plantillas_guardadas=plantillas_guardadas)
 
 
 @app.route('/finalizados')

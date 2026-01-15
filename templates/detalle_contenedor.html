@@ -489,9 +489,14 @@
         </div>
 
         {% if contenedor.estado == 'abierto' %}
-        <button class="btn btn-primary no-print" onclick="guardarInfo()">
-            <i class="bi bi-save"></i> Guardar Cambios
-        </button>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            <button class="btn btn-primary no-print" onclick="guardarInfo()">
+                <i class="bi bi-save"></i> Guardar Cambios
+            </button>
+            <button class="btn btn-warning no-print" onclick="cerrarContenedor()">
+                <i class="bi bi-lock"></i> Cerrar Contenedor
+            </button>
+        </div>
         {% endif %}
     </div>
 </div>
@@ -693,11 +698,7 @@
 
 <!-- Acciones -->
 <div class="acciones-bar no-print">
-    {% if contenedor.estado == 'abierto' %}
-    <button class="btn btn-warning" onclick="cerrarContenedor()">
-        <i class="bi bi-lock"></i> Cerrar Contenedor
-    </button>
-    {% elif contenedor.estado == 'cerrado' %}
+    {% if contenedor.estado == 'cerrado' %}
     <button class="btn btn-success" onclick="embarcarContenedor()">
         <i class="bi bi-ship"></i> Marcar como Embarcado
     </button>

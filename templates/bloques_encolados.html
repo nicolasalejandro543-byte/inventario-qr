@@ -551,7 +551,11 @@
          onclick="toggleSelection(this)">
         <input type="checkbox" class="bloque-checkbox" onclick="event.stopPropagation(); toggleSelection(this.parentElement)">
         <div class="bloque-header">
-            <span class="bloque-codigo">{{ bloque.codigo_qr }}</span>
+            {% if bloque.secuencia %}
+            <span class="bloque-codigo">{{ bloque.secuencia }}</span>
+            {% else %}
+            <span class="bloque-codigo">-</span>
+            {% endif %}
             {% if bloque.empatado %}
             <span class="bloque-emp-badge">EMP</span>
             {% endif %}
@@ -578,9 +582,7 @@
         </div>
         <div class="bloque-footer">
             <span>Encolado: {{ bloque.fecha_encolado.strftime('%d/%m/%Y') if bloque.fecha_encolado else 'N/A' }}</span>
-            {% if bloque.secuencia %}
-            <span class="bloque-secuencia">{{ bloque.secuencia }}</span>
-            {% endif %}
+            <span class="bloque-secuencia">{{ bloque.codigo_qr }}</span>
         </div>
     </div>
     {% endfor %}

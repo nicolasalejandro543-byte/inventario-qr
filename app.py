@@ -471,7 +471,9 @@ def bloques_presentados():
 @app.route('/bloques/encolados')
 def bloques_encolados():
     """Vista de bloques encolados con filtros."""
-    bloques = Bloque.query.filter_by(estado='encolado').order_by(Bloque.fecha_encolado.desc()).all()
+    bloques_todos = Bloque.query.filter_by(estado='encolado').order_by(Bloque.fecha_encolado.desc()).all()
+    # Filtrar bloques que no estan asignados a ningun contenedor
+    bloques = [b for b in bloques_todos if len(b.contenedores) == 0]
 
     # Obtener valores únicos para filtros
     secuencias_raw = list(set(b.secuencia for b in bloques if b.secuencia))

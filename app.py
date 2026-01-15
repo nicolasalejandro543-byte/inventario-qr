@@ -1,10 +1,15 @@
 import os
 from datetime import datetime
-from flask import Flask, render_template, request, jsonify, send_file, redirect
+from functools import wraps
+from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, session
 from models import db, Etapa, Coche, Movimiento, Lote, Bloque, ProcesoLote, Contenedor, contenedor_bloques, lote_coches, init_etapas, ESPESORES, LARGOS, LARGOS_PRODUCCION, LARGOS_CONTENEDOR
 from qr_service import generar_codigo_unico, generar_codigo_lote, generar_codigo_bloque, generar_codigo_contenedor, generar_imagen_qr
 from config import get_config
 import io
+
+# Credenciales de acceso (pueden configurarse via variables de entorno)
+ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'skycomposite2024')
 
 app = Flask(__name__)
 
@@ -19,9 +24,47 @@ with app.app_context():
     init_etapas()
 
 
+# ==================== AUTENTICACION ====================
+
+def login_required(f):
+    """Decorador para proteger rutas que requieren autenticacion."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('logged_in'):
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Pagina de login."""
+    error = None
+    if request.method == 'POST':
+        username = request.form.get('username', '')
+        password = request.form.get('password', '')
+
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            session['logged_in'] = True
+            session['username'] = username
+            return redirect(url_for('dashboard'))
+        else:
+            error = 'Usuario o contraseña incorrectos'
+
+    return render_template('login.html', error=error)
+
+
+@app.route('/logout')
+def logout():
+    """Cerrar sesion."""
+    session.clear()
+    return redirect(url_for('login'))
+
+
 # ==================== RUTAS WEB ====================
 
 @app.route('/etapa/<int:etapa_id>')
+@login_required
 def ver_etapa(etapa_id):
     """Ver coches de una etapa específica."""
     etapa = Etapa.query.get_or_404(etapa_id)
@@ -87,6 +130,7 @@ def ver_etapa(etapa_id):
 
 
 @app.route('/scanner')
+@login_required
 def scanner():
     """Página del scanner QR para móviles."""
     etapas = Etapa.query.order_by(Etapa.orden).all()
@@ -94,12 +138,14 @@ def scanner():
 
 
 @app.route('/recepcion')
+@login_required
 def recepcion_madera():
     """Página de Recepción de Madera Verde."""
     return render_template('recepcion_madera.html')
 
 
 @app.route('/')
+@login_required
 def dashboard():
     """Dashboard principal - Resumen con Inventario y Produccion."""
     etapas = Etapa.query.order_by(Etapa.orden).all()
@@ -222,6 +268,7 @@ def dashboard():
 
 
 @app.route('/api/dashboard/stats')
+@login_required
 def dashboard_stats_api():
     """API para obtener estadísticas del dashboard filtradas por fecha."""
     from datetime import datetime, timedelta
@@ -356,6 +403,7 @@ def dashboard_stats_api():
 
 
 @app.route('/nuevo')
+@login_required
 def nuevo_coche_form():
     """Formulario para crear nuevo coche."""
     etapas = Etapa.query.order_by(Etapa.orden).all()
@@ -365,6 +413,7 @@ def nuevo_coche_form():
 
 
 @app.route('/produccion')
+@login_required
 def produccion():
     """Vista de producción - seleccionar lote disponible para procesar."""
     # Lotes disponibles en Ingreso a Taller (estado disponible o sin estado)
@@ -393,6 +442,7 @@ def produccion():
 
 
 @app.route('/produccion/<int:lote_id>')
+@login_required
 def produccion_lote(lote_id):
     """Vista de trabajo de un lote en producción."""
     lote = Lote.query.get_or_404(lote_id)
@@ -427,6 +477,7 @@ def produccion_lote(lote_id):
 
 
 @app.route('/finalizados')
+@login_required
 def lotes_finalizados():
     """Vista de lotes finalizados."""
     lotes = Lote.query.filter_by(estado='finalizado').order_by(Lote.fecha_finalizado.desc()).all()
@@ -434,6 +485,7 @@ def lotes_finalizados():
 
 
 @app.route('/finalizado/<int:lote_id>')
+@login_required
 def detalle_lote_finalizado(lote_id):
     """Vista de detalle de un lote finalizado."""
     lote = Lote.query.get_or_404(lote_id)
@@ -443,6 +495,7 @@ def detalle_lote_finalizado(lote_id):
 
 
 @app.route('/bloques/presentados')
+@login_required
 def bloques_presentados():
     """Vista de bloques presentados con filtros."""
     bloques = Bloque.query.filter_by(estado='presentado').order_by(Bloque.created_at.desc()).all()
@@ -469,6 +522,7 @@ def bloques_presentados():
 
 
 @app.route('/bloques/encolados')
+@login_required
 def bloques_encolados():
     """Vista de bloques encolados con filtros."""
     bloques_todos = Bloque.query.filter_by(estado='encolado').order_by(Bloque.fecha_encolado.desc()).all()
@@ -497,6 +551,7 @@ def bloques_encolados():
 
 
 @app.route('/bloque/<int:bloque_id>')
+@login_required
 def detalle_bloque(bloque_id):
     """Página de detalle de un bloque."""
     bloque = Bloque.query.get_or_404(bloque_id)
@@ -504,6 +559,7 @@ def detalle_bloque(bloque_id):
 
 
 @app.route('/coche/<int:coche_id>')
+@login_required
 def detalle_coche(coche_id):
     """Página de detalle de un coche."""
     coche = Coche.query.get_or_404(coche_id)
@@ -513,6 +569,7 @@ def detalle_coche(coche_id):
 
 
 @app.route('/lotes')
+@login_required
 def ver_lotes():
     """Página para ver todos los lotes."""
     lotes = Lote.query.order_by(Lote.created_at.desc()).all()
@@ -520,6 +577,7 @@ def ver_lotes():
 
 
 @app.route('/lote/<int:lote_id>')
+@login_required
 def detalle_lote(lote_id):
     """Página de detalle de un lote."""
     lote = Lote.query.get_or_404(lote_id)
@@ -529,6 +587,7 @@ def detalle_lote(lote_id):
 # ==================== API REST ====================
 
 @app.route('/api/coches', methods=['GET'])
+@login_required
 def listar_coches():
     """Lista todos los coches."""
     coches = Coche.query.all()
@@ -536,6 +595,7 @@ def listar_coches():
 
 
 @app.route('/api/coches', methods=['POST'])
+@login_required
 def crear_coche():
     """Crea un nuevo coche. Siempre inicia en Madera Verde (etapa 1)."""
     data = request.get_json()
@@ -592,6 +652,7 @@ def crear_coche():
 
 
 @app.route('/api/coches/<codigo_qr>', methods=['GET'])
+@login_required
 def obtener_coche_por_qr(codigo_qr):
     """Obtiene un coche por su código QR."""
     coche = Coche.query.filter_by(codigo_qr=codigo_qr).first()
@@ -603,6 +664,7 @@ def obtener_coche_por_qr(codigo_qr):
 
 
 @app.route('/api/coches/<int:coche_id>', methods=['PUT'])
+@login_required
 def editar_coche(coche_id):
     """Edita un coche existente. Solo permitido en Madera Verde."""
     coche = Coche.query.get_or_404(coche_id)
@@ -654,6 +716,7 @@ def editar_coche(coche_id):
 
 
 @app.route('/api/coches/<int:coche_id>', methods=['DELETE'])
+@login_required
 def eliminar_coche(coche_id):
     """Elimina un coche. Solo permitido en Madera Verde."""
     coche = Coche.query.get_or_404(coche_id)
@@ -678,6 +741,7 @@ def eliminar_coche(coche_id):
 
 
 @app.route('/api/coches/<int:coche_id>/mover', methods=['POST'])
+@login_required
 def mover_coche(coche_id):
     """Mueve un coche a una nueva etapa. Flujo: Madera Verde -> Secado -> Stock Secado -> Taller"""
     coche = Coche.query.get_or_404(coche_id)
@@ -729,6 +793,7 @@ def mover_coche(coche_id):
 
 
 @app.route('/api/coches/mover-multiple', methods=['POST'])
+@login_required
 def mover_coches_multiple():
     """Mueve múltiples coches a una nueva etapa."""
     data = request.get_json()
@@ -821,6 +886,7 @@ def mover_coches_multiple():
 
 
 @app.route('/api/coches/<int:coche_id>/cambiar-camara', methods=['POST'])
+@login_required
 def cambiar_camara(coche_id):
     """Permite cambiar de camara cuando esta en Secado (emergencia: horno danado)."""
     coche = Coche.query.get_or_404(coche_id)
@@ -859,6 +925,7 @@ def cambiar_camara(coche_id):
 
 
 @app.route('/api/coches/cambiar-camara-multiple', methods=['POST'])
+@login_required
 def cambiar_camara_multiple():
     """Permite cambiar de camara a multiples coches en Secado."""
     data = request.get_json()
@@ -937,6 +1004,7 @@ def cambiar_camara_multiple():
 
 
 @app.route('/api/coches/<int:coche_id>/qr', methods=['GET'])
+@login_required
 def obtener_qr_imagen(coche_id):
     """Devuelve la imagen QR de un coche."""
     coche = Coche.query.get_or_404(coche_id)
@@ -952,6 +1020,7 @@ def obtener_qr_imagen(coche_id):
 
 
 @app.route('/api/coches/<int:coche_id>/historial', methods=['GET'])
+@login_required
 def obtener_historial(coche_id):
     """Obtiene el historial de movimientos de un coche."""
     movimientos = Movimiento.query.filter_by(coche_id=coche_id).order_by(Movimiento.timestamp.desc()).all()
@@ -959,6 +1028,7 @@ def obtener_historial(coche_id):
 
 
 @app.route('/api/etapas', methods=['GET'])
+@login_required
 def listar_etapas():
     """Lista todas las etapas."""
     etapas = Etapa.query.order_by(Etapa.orden).all()
@@ -966,6 +1036,7 @@ def listar_etapas():
 
 
 @app.route('/api/secado/camara/<int:camara>/lote/<lote_secado>')
+@login_required
 def obtener_lote_secado(camara, lote_secado):
     """Obtiene información de un lote de secado para impresión."""
     etapa_secado = Etapa.query.filter_by(orden=2).first()
@@ -1044,6 +1115,7 @@ def obtener_lote_secado(camara, lote_secado):
 
 
 @app.route('/api/recepcion/resumen-compras', methods=['GET'])
+@login_required
 def resumen_compras():
     """Obtiene resumen de compras por rango de fechas."""
     from datetime import datetime, timedelta
@@ -1135,6 +1207,7 @@ def resumen_compras():
 
 
 @app.route('/api/dashboard/resumen', methods=['GET'])
+@login_required
 def resumen_dashboard():
     """Obtiene resumen para el dashboard."""
     etapas = Etapa.query.order_by(Etapa.orden).all()
@@ -1167,6 +1240,7 @@ def resumen_dashboard():
 
 
 @app.route('/api/scan', methods=['POST'])
+@login_required
 def escanear_qr():
     """Procesa un escaneo QR desde móvil. Busca coches, lotes y bloques."""
     data = request.get_json()
@@ -1210,6 +1284,7 @@ def escanear_qr():
 # ==================== API LOTES ====================
 
 @app.route('/api/lotes', methods=['GET'])
+@login_required
 def listar_lotes():
     """Lista todos los lotes."""
     lotes = Lote.query.order_by(Lote.created_at.desc()).all()
@@ -1217,6 +1292,7 @@ def listar_lotes():
 
 
 @app.route('/api/lotes', methods=['POST'])
+@login_required
 def crear_lote():
     """Crea un nuevo lote combinando coches de Stock Seco y los mueve a Ingreso a Taller."""
     data = request.get_json()
@@ -1299,6 +1375,7 @@ def crear_lote():
 
 
 @app.route('/api/lotes/<int:lote_id>/agregar-coches', methods=['POST'])
+@login_required
 def agregar_coches_lote(lote_id):
     """Agrega coches a un lote existente (no finalizado)."""
     try:
@@ -1359,6 +1436,7 @@ def agregar_coches_lote(lote_id):
 
 
 @app.route('/api/lotes/<int:lote_id>/quitar-coche/<int:coche_id>', methods=['POST'])
+@login_required
 def quitar_coche_lote(lote_id, coche_id):
     """Quita un coche del lote y lo devuelve a Stock Secado."""
     try:
@@ -1415,6 +1493,7 @@ def quitar_coche_lote(lote_id, coche_id):
 
 
 @app.route('/api/lotes/<int:lote_id>', methods=['GET'])
+@login_required
 def obtener_lote(lote_id):
     """Obtiene un lote por su ID."""
     lote = Lote.query.get_or_404(lote_id)
@@ -1422,6 +1501,7 @@ def obtener_lote(lote_id):
 
 
 @app.route('/api/lotes/<codigo_qr>', methods=['GET'])
+@login_required
 def obtener_lote_por_qr(codigo_qr):
     """Obtiene un lote por su código QR."""
     lote = Lote.query.filter_by(codigo_qr=codigo_qr).first()
@@ -1433,6 +1513,7 @@ def obtener_lote_por_qr(codigo_qr):
 
 
 @app.route('/api/lotes/<int:lote_id>/qr', methods=['GET'])
+@login_required
 def obtener_qr_lote(lote_id):
     """Devuelve la imagen QR de un lote."""
     lote = Lote.query.get_or_404(lote_id)
@@ -1450,6 +1531,7 @@ def obtener_qr_lote(lote_id):
 # ==================== API PRODUCCION - BLOQUES ====================
 
 @app.route('/api/bloques', methods=['GET'])
+@login_required
 def listar_bloques():
     """Lista todos los bloques."""
     estado = request.args.get('estado')
@@ -1461,6 +1543,7 @@ def listar_bloques():
 
 
 @app.route('/api/bloques', methods=['POST'])
+@login_required
 def crear_bloque():
     """Crea un nuevo bloque presentado con código QR."""
     data = request.get_json()
@@ -1531,6 +1614,7 @@ def crear_bloque():
 
 
 @app.route('/api/bloques/<int:bloque_id>', methods=['GET'])
+@login_required
 def obtener_bloque(bloque_id):
     """Obtiene un bloque por su ID."""
     bloque = Bloque.query.get_or_404(bloque_id)
@@ -1538,6 +1622,7 @@ def obtener_bloque(bloque_id):
 
 
 @app.route('/api/bloques/<int:bloque_id>/qr', methods=['GET'])
+@login_required
 def obtener_qr_bloque(bloque_id):
     """Devuelve la imagen QR de un bloque."""
     bloque = Bloque.query.get_or_404(bloque_id)
@@ -1553,6 +1638,7 @@ def obtener_qr_bloque(bloque_id):
 
 
 @app.route('/api/bloques/<int:bloque_id>/encolar', methods=['POST'])
+@login_required
 def encolar_bloque(bloque_id):
     """Mueve un bloque de presentado a encolado, actualizando el peso."""
     bloque = Bloque.query.get_or_404(bloque_id)
@@ -1577,6 +1663,7 @@ def encolar_bloque(bloque_id):
 
 
 @app.route('/api/bloques/encolar-multiple', methods=['POST'])
+@login_required
 def encolar_bloques_multiple():
     """Encola múltiples bloques a la vez."""
     data = request.get_json()
@@ -1639,6 +1726,7 @@ def encolar_bloques_multiple():
 # ==================== API PRODUCCION - PROCESO ====================
 
 @app.route('/api/proceso', methods=['GET'])
+@login_required
 def listar_procesos():
     """Lista todos los procesos de lotes."""
     procesos = ProcesoLote.query.order_by(ProcesoLote.created_at.desc()).all()
@@ -1646,6 +1734,7 @@ def listar_procesos():
 
 
 @app.route('/api/proceso', methods=['POST'])
+@login_required
 def crear_proceso():
     """Crea un nuevo proceso de lote (cálculo de madera plantillada)."""
     data = request.get_json()
@@ -1696,6 +1785,7 @@ def crear_proceso():
 
 
 @app.route('/api/proceso/<int:proceso_id>', methods=['GET'])
+@login_required
 def obtener_proceso(proceso_id):
     """Obtiene un proceso por su ID."""
     proceso = ProcesoLote.query.get_or_404(proceso_id)
@@ -1703,6 +1793,7 @@ def obtener_proceso(proceso_id):
 
 
 @app.route('/api/proceso/<int:proceso_id>', methods=['DELETE'])
+@login_required
 def eliminar_proceso(proceso_id):
     """Elimina una plantilla/proceso por su ID."""
     proceso = ProcesoLote.query.get_or_404(proceso_id)
@@ -1722,6 +1813,7 @@ def eliminar_proceso(proceso_id):
 
 
 @app.route('/api/bloques/<int:bloque_id>', methods=['DELETE'])
+@login_required
 def eliminar_bloque(bloque_id):
     """Elimina un bloque por su ID."""
     bloque = Bloque.query.get_or_404(bloque_id)
@@ -1745,6 +1837,7 @@ def eliminar_bloque(bloque_id):
 
 
 @app.route('/api/lotes-taller', methods=['GET'])
+@login_required
 def listar_lotes_taller():
     """Lista lotes disponibles en Ingreso a Taller."""
     lotes = Lote.query.order_by(Lote.created_at.desc()).all()
@@ -1752,6 +1845,7 @@ def listar_lotes_taller():
 
 
 @app.route('/api/lotes/<int:lote_id>/iniciar', methods=['POST'])
+@login_required
 def iniciar_lote(lote_id):
     """Inicia el proceso de un lote (lo mueve a producción)."""
     lote = Lote.query.get_or_404(lote_id)
@@ -1772,6 +1866,7 @@ def iniciar_lote(lote_id):
 
 
 @app.route('/api/lotes/<int:lote_id>/finalizar', methods=['POST'])
+@login_required
 def finalizar_lote(lote_id):
     """Finaliza el proceso de un lote."""
     lote = Lote.query.get_or_404(lote_id)
@@ -1792,6 +1887,7 @@ def finalizar_lote(lote_id):
 
 
 @app.route('/api/lotes/<int:lote_id>/editar-finalizado', methods=['POST'])
+@login_required
 def editar_lote_finalizado(lote_id):
     """Edita un lote finalizado con verificacion de contraseña."""
     data = request.json
@@ -1832,6 +1928,7 @@ def editar_lote_finalizado(lote_id):
 
 
 @app.route('/api/lotes/<int:lote_id>/reabrir', methods=['POST'])
+@login_required
 def reabrir_lote_finalizado(lote_id):
     """Reabre un lote finalizado para editarlo en producción."""
     data = request.json
@@ -1861,6 +1958,7 @@ def reabrir_lote_finalizado(lote_id):
 # ==================== CONTENEDORES (EMBARQUE) ====================
 
 @app.route('/contenedores')
+@login_required
 def ver_contenedores():
     """Vista principal de contenedores de embarque."""
     contenedores_abiertos = Contenedor.query.filter_by(estado='abierto').order_by(Contenedor.created_at.desc()).all()
@@ -1878,6 +1976,7 @@ def ver_contenedores():
 
 
 @app.route('/contenedor/<int:contenedor_id>')
+@login_required
 def ver_contenedor(contenedor_id):
     """Vista detalle de un contenedor."""
     contenedor = Contenedor.query.get_or_404(contenedor_id)
@@ -1893,6 +1992,7 @@ def ver_contenedor(contenedor_id):
 
 
 @app.route('/api/contenedores', methods=['GET'])
+@login_required
 def listar_contenedores():
     """Lista todos los contenedores."""
     contenedores = Contenedor.query.order_by(Contenedor.created_at.desc()).all()
@@ -1900,6 +2000,7 @@ def listar_contenedores():
 
 
 @app.route('/api/contenedores', methods=['POST'])
+@login_required
 def crear_contenedor():
     """Crea un nuevo contenedor de embarque."""
     data = request.get_json()
@@ -1946,6 +2047,7 @@ def crear_contenedor():
 
 
 @app.route('/api/contenedores/<int:contenedor_id>', methods=['GET'])
+@login_required
 def obtener_contenedor(contenedor_id):
     """Obtiene un contenedor por ID."""
     contenedor = Contenedor.query.get_or_404(contenedor_id)
@@ -1953,6 +2055,7 @@ def obtener_contenedor(contenedor_id):
 
 
 @app.route('/api/contenedores/<int:contenedor_id>', methods=['PUT'])
+@login_required
 def actualizar_contenedor(contenedor_id):
     """Actualiza información de un contenedor."""
     contenedor = Contenedor.query.get_or_404(contenedor_id)
@@ -1999,6 +2102,7 @@ def actualizar_contenedor(contenedor_id):
 
 
 @app.route('/api/contenedores/<int:contenedor_id>/agregar-bloque', methods=['POST'])
+@login_required
 def agregar_bloque_contenedor(contenedor_id):
     """Agrega un bloque encolado al contenedor."""
     contenedor = Contenedor.query.get_or_404(contenedor_id)
@@ -2037,6 +2141,7 @@ def agregar_bloque_contenedor(contenedor_id):
 
 
 @app.route('/api/contenedores/<int:contenedor_id>/agregar-bloques', methods=['POST'])
+@login_required
 def agregar_bloques_contenedor(contenedor_id):
     """Agrega múltiples bloques encolados al contenedor."""
     contenedor = Contenedor.query.get_or_404(contenedor_id)
@@ -2082,6 +2187,7 @@ def agregar_bloques_contenedor(contenedor_id):
 
 
 @app.route('/api/contenedores/<int:contenedor_id>/remover-bloque', methods=['POST'])
+@login_required
 def remover_bloque_contenedor(contenedor_id):
     """Remueve un bloque del contenedor."""
     contenedor = Contenedor.query.get_or_404(contenedor_id)
@@ -2113,6 +2219,7 @@ def remover_bloque_contenedor(contenedor_id):
 
 
 @app.route('/api/contenedores/<int:contenedor_id>/cerrar', methods=['POST'])
+@login_required
 def cerrar_contenedor(contenedor_id):
     """Cierra un contenedor (no se pueden agregar más bloques)."""
     contenedor = Contenedor.query.get_or_404(contenedor_id)
@@ -2134,6 +2241,7 @@ def cerrar_contenedor(contenedor_id):
 
 
 @app.route('/api/contenedores/<int:contenedor_id>/embarcar', methods=['POST'])
+@login_required
 def embarcar_contenedor(contenedor_id):
     """Marca un contenedor como embarcado."""
     contenedor = Contenedor.query.get_or_404(contenedor_id)
@@ -2155,6 +2263,7 @@ def embarcar_contenedor(contenedor_id):
 
 
 @app.route('/api/bloques-encolados-disponibles', methods=['GET'])
+@login_required
 def listar_bloques_encolados_disponibles():
     """Lista bloques encolados que no están asignados a ningún contenedor."""
     bloques_encolados = Bloque.query.filter_by(estado='encolado').all()
@@ -2163,6 +2272,7 @@ def listar_bloques_encolados_disponibles():
 
 
 @app.route('/api/reset-database', methods=['POST'])
+@login_required
 def reset_database():
     """Resetea la base de datos - SOLO PARA DESARROLLO."""
     data = request.json
@@ -2194,6 +2304,7 @@ def reset_database():
 
 
 @app.route('/reset-db')
+@login_required
 def reset_db_page():
     """Página para resetear la base de datos."""
     return '''

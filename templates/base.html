@@ -117,6 +117,15 @@
             background: rgba(255,255,255,0.25);
         }
 
+        .header-nav a.logout-btn {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .header-nav a.logout-btn:hover {
+            background: rgba(239, 68, 68, 0.4);
+        }
+
         /* Cards */
         .card {
             background: white;
@@ -376,6 +385,7 @@
                 <a href="/"><i class="bi bi-grid-3x3-gap"></i> <span>Procesos</span></a>
                 <a href="/scanner"><i class="bi bi-qr-code-scan"></i> <span>Scanner</span></a>
                 <a href="/nuevo"><i class="bi bi-plus-circle"></i> <span>Nuevo</span></a>
+                <a href="/logout" class="logout-btn"><i class="bi bi-box-arrow-right"></i> <span>Salir</span></a>
             </nav>
         </header>
 

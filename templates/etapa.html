@@ -1302,7 +1302,17 @@
                 <span><i class="bi bi-box-seam"></i> {{ datos.count }} coches</span>
                 <span><i class="bi bi-rulers"></i> {{ "%.1f"|format(datos.total_bft) }} BFT</span>
             </div>
-            <i class="bi bi-chevron-down camara-toggle" id="toggle-{{ camara_num }}"></i>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <button class="btn btn-sm" style="background: #10b981; color: white; padding: 6px 12px;"
+                        onclick="event.stopPropagation(); seleccionarTodaCamara({{ camara_num }})" title="Seleccionar todos los coches de esta cámara">
+                    <i class="bi bi-check2-all"></i> Seleccionar Todo
+                </button>
+                <button class="btn btn-sm" style="background: #17a2b8; color: white; padding: 6px 12px;"
+                        onclick="event.stopPropagation(); moverCamaraAStockSecado({{ camara_num }})" title="Mover toda la cámara a Stock Secado">
+                    <i class="bi bi-arrow-right-circle"></i> Mover a Stock
+                </button>
+                <i class="bi bi-chevron-down camara-toggle" id="toggle-{{ camara_num }}"></i>
+            </div>
         </div>
         <div class="camara-body" id="camara-body-{{ camara_num }}">
             <!-- Agrupacion por Lote de Secado -->
@@ -1892,6 +1902,80 @@ function toggleCamara(camaraNum) {
     } else {
         body.classList.add('show');
         toggle.classList.remove('collapsed');
+    }
+}
+
+// Seleccionar todos los coches de una cámara
+function seleccionarTodaCamara(camaraNum) {
+    const camaraBody = document.getElementById('camara-body-' + camaraNum);
+    if (!camaraBody) return;
+
+    // Asegurar que la cámara esté expandida
+    if (!camaraBody.classList.contains('show')) {
+        camaraBody.classList.add('show');
+        const toggle = document.getElementById('toggle-' + camaraNum);
+        if (toggle) toggle.classList.remove('collapsed');
+    }
+
+    // Seleccionar todos los checkboxes dentro de esta cámara
+    const checkboxes = camaraBody.querySelectorAll('.coche-checkbox');
+    checkboxes.forEach(checkbox => {
+        const cocheId = parseInt(checkbox.dataset.cocheId);
+        const card = document.querySelector(`.coche-card[data-coche-id="${cocheId}"]`);
+
+        checkbox.checked = true;
+        selectedCoches.add(cocheId);
+        if (card) card.classList.add('selected');
+    });
+
+    updateSelectionUI();
+
+    // Mostrar mensaje
+    const count = checkboxes.length;
+    alert(`Se seleccionaron ${count} coches de la Cámara ${camaraNum}`);
+}
+
+// Mover toda la cámara a Stock Secado directamente
+async function moverCamaraAStockSecado(camaraNum) {
+    const camaraBody = document.getElementById('camara-body-' + camaraNum);
+    if (!camaraBody) return;
+
+    // Obtener todos los IDs de coches de esta cámara
+    const checkboxes = camaraBody.querySelectorAll('.coche-checkbox');
+    const cochesIds = Array.from(checkboxes).map(cb => parseInt(cb.dataset.cocheId));
+
+    if (cochesIds.length === 0) {
+        alert('No hay coches en esta cámara');
+        return;
+    }
+
+    // Confirmar acción
+    if (!confirm(`¿Mover ${cochesIds.length} coches de la Cámara ${camaraNum} a Stock Secado?`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/coches/mover-multiple', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                coches_ids: cochesIds,
+                nueva_etapa_id: 3  // Stock Secado es etapa 3
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert(`${cochesIds.length} coches movidos a Stock Secado exitosamente`);
+            window.location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Error desconocido'));
+        }
+    } catch (error) {
+        alert('Error de conexión: ' + error.message);
     }
 }
 

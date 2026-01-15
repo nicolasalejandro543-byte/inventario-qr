@@ -1300,6 +1300,64 @@
         checkbox.closest('.coche-disponible-item').classList.toggle('selected', checkbox.checked);
     }
 
+    // Funcion helper para guardar pendientes silenciosamente
+    async function guardarPendientesSilenciosamente() {
+        if (plantillasPendientes.length === 0 && bloquesPendientes.length === 0) {
+            return true; // Nada que guardar
+        }
+
+        let errores = [];
+
+        // Guardar plantillas
+        for (const p of plantillasPendientes) {
+            try {
+                const response = await fetch('/api/proceso', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        lote_id: LOTE.id,
+                        largo: p.largo,
+                        alto: p.alto,
+                        usuario: 'Usuario'
+                    })
+                });
+                const data = await response.json();
+                if (!data.success) {
+                    errores.push('Plantilla: ' + (data.error || 'Error desconocido'));
+                }
+            } catch (error) {
+                errores.push('Plantilla: ' + error.message);
+            }
+        }
+
+        // Guardar bloques
+        for (const b of bloquesPendientes) {
+            try {
+                const response = await fetch('/api/bloques', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ...b,
+                        lote_id: LOTE.id
+                    })
+                });
+                const data = await response.json();
+                if (!data.success) {
+                    errores.push('Bloque: ' + (data.error || 'Error desconocido'));
+                }
+            } catch (error) {
+                errores.push('Bloque: ' + error.message);
+            }
+        }
+
+        if (errores.length > 0) {
+            alert('Algunos items no se pudieron guardar:\n' + errores.join('\n'));
+            return false;
+        }
+
+        return true;
+    }
+
     async function agregarCochesSeleccionados() {
         const checkboxes = document.querySelectorAll('.coche-disponible-item input[type="checkbox"]:checked');
         const cochesIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
@@ -1307,6 +1365,14 @@
         if (cochesIds.length === 0) {
             alert('Seleccione al menos un coche para agregar');
             return;
+        }
+
+        // Guardar pendientes antes de modificar coches
+        if (plantillasPendientes.length > 0 || bloquesPendientes.length > 0) {
+            const guardado = await guardarPendientesSilenciosamente();
+            if (!guardado) {
+                return; // Hubo errores, no continuar
+            }
         }
 
         try {
@@ -1328,6 +1394,14 @@
     }
 
     async function quitarCocheLote(cocheId) {
+        // Guardar pendientes antes de modificar coches
+        if (plantillasPendientes.length > 0 || bloquesPendientes.length > 0) {
+            const guardado = await guardarPendientesSilenciosamente();
+            if (!guardado) {
+                return; // Hubo errores, no continuar
+            }
+        }
+
         try {
             const response = await fetch(`/api/lotes/${LOTE.id}/quitar-coche/${cocheId}`, {
                 method: 'POST',

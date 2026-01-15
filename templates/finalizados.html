@@ -324,6 +324,161 @@
             min-width: 700px;
         }
     }
+
+    /* Filtros de fecha */
+    .filters-card {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        padding: 16px 20px;
+        margin-bottom: 20px;
+    }
+
+    .filters-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .filters-title {
+        font-weight: 600;
+        font-size: 0.95rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--color-text);
+    }
+
+    .filters-title i {
+        color: #20c997;
+    }
+
+    .filters-row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .quick-filters {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .filter-btn {
+        padding: 8px 16px;
+        border: 2px solid var(--color-gray-light);
+        background: white;
+        border-radius: var(--radius-md);
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: var(--color-text-muted);
+    }
+
+    .filter-btn:hover {
+        border-color: #20c997;
+        color: #20c997;
+    }
+
+    .filter-btn.active {
+        background: linear-gradient(135deg, #20c997, #28a745);
+        color: white;
+        border-color: transparent;
+    }
+
+    .date-range {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-left: auto;
+    }
+
+    .date-range label {
+        font-size: 0.85rem;
+        color: var(--color-text-muted);
+        font-weight: 600;
+    }
+
+    .date-range input[type="date"] {
+        padding: 8px 12px;
+        border: 2px solid var(--color-gray-light);
+        border-radius: var(--radius-md);
+        font-family: inherit;
+        font-size: 0.85rem;
+    }
+
+    .date-range input[type="date"]:focus {
+        outline: none;
+        border-color: #20c997;
+    }
+
+    .btn-aplicar {
+        padding: 8px 16px;
+        background: linear-gradient(135deg, #20c997, #28a745);
+        color: white;
+        border: none;
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 0.85rem;
+    }
+
+    .btn-aplicar:hover {
+        transform: scale(1.02);
+    }
+
+    .btn-limpiar {
+        padding: 8px 16px;
+        background: var(--color-gray-light);
+        color: var(--color-text-muted);
+        border: none;
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 0.85rem;
+    }
+
+    .filter-info {
+        margin-top: 12px;
+        padding: 10px 16px;
+        background: rgba(32, 201, 151, 0.1);
+        border-radius: var(--radius-md);
+        font-size: 0.85rem;
+        color: #20c997;
+        display: none;
+    }
+
+    .filter-info.active {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    @media (max-width: 768px) {
+        .filters-row {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .date-range {
+            margin-left: 0;
+            flex-wrap: wrap;
+        }
+
+        .quick-filters {
+            justify-content: center;
+        }
+    }
+
+    @media print {
+        .filters-card {
+            display: none !important;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -379,6 +534,39 @@
 </div>
 
 {% if lotes %}
+<!-- Filtros de fecha -->
+<div class="filters-card no-print">
+    <div class="filters-header">
+        <span class="filters-title">
+            <i class="bi bi-funnel"></i> Filtrar por Fecha
+        </span>
+    </div>
+    <div class="filters-row">
+        <div class="quick-filters">
+            <button class="filter-btn" onclick="filtrarHoy()">Hoy</button>
+            <button class="filter-btn" onclick="filtrarSemana()">Esta Semana</button>
+            <button class="filter-btn" onclick="filtrarMes()">Este Mes</button>
+            <button class="filter-btn" onclick="filtrarAnio()">Este Año</button>
+            <button class="filter-btn active" onclick="filtrarTodo()">Todo</button>
+        </div>
+        <div class="date-range">
+            <label>Desde:</label>
+            <input type="date" id="fecha-desde">
+            <label>Hasta:</label>
+            <input type="date" id="fecha-hasta">
+            <button class="btn-aplicar" onclick="aplicarRangoFechas()">
+                <i class="bi bi-check"></i> Aplicar
+            </button>
+            <button class="btn-limpiar" onclick="limpiarFiltros()">
+                <i class="bi bi-x"></i> Limpiar
+            </button>
+        </div>
+    </div>
+    <div class="filter-info" id="filter-info">
+        <i class="bi bi-info-circle"></i>
+        <span id="filter-info-text"></span>
+    </div>
+</div>
 <!-- Resumen -->
 <div class="summary-cards">
     <div class="summary-card">
@@ -419,7 +607,12 @@
         </thead>
         <tbody>
             {% for lote in lotes %}
-            <tr onclick="window.location='/finalizado/{{ lote.id }}'">
+            <tr onclick="window.location='/finalizado/{{ lote.id }}'"
+                data-fecha="{{ lote.fecha_finalizado.strftime('%Y-%m-%d') if lote.fecha_finalizado else '' }}"
+                data-bft-total="{{ lote.total_bft }}"
+                data-bft-usado="{{ lote.bft_usado or 0 }}"
+                data-desperdicio-bft="{{ lote.desperdicio_bft or 0 }}"
+                data-coches="{{ lote.cantidad_coches }}">
                 <td class="codigo-lote">{{ lote.codigo_qr }}</td>
                 <td>{{ lote.cantidad_coches }}</td>
                 <td class="valor-mono">{{ "%.1f"|format(lote.total_bft) }}</td>
@@ -451,4 +644,184 @@
     </a>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // ==================== FILTROS DE FECHA ====================
+
+    function setActiveButton(btn) {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+    }
+
+    function formatFecha(date) {
+        return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function filtrarPorRango(fechaDesde, fechaHasta, textoInfo) {
+        const rows = document.querySelectorAll('.lotes-table tbody tr');
+        let visibles = 0;
+        let totalBft = 0;
+        let bftUsado = 0;
+        let desperdicioBft = 0;
+
+        rows.forEach(row => {
+            const fechaStr = row.dataset.fecha;
+            if (!fechaStr) {
+                row.style.display = 'none';
+                return;
+            }
+
+            const fecha = new Date(fechaStr);
+            const mostrar = fecha >= fechaDesde && fecha <= fechaHasta;
+
+            if (mostrar) {
+                row.style.display = '';
+                visibles++;
+                totalBft += parseFloat(row.dataset.bftTotal) || 0;
+                bftUsado += parseFloat(row.dataset.bftUsado) || 0;
+                desperdicioBft += parseFloat(row.dataset.desperdicioBft) || 0;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // Actualizar resumen
+        actualizarResumen(visibles, totalBft, bftUsado, desperdicioBft);
+
+        // Mostrar info del filtro
+        const filterInfo = document.getElementById('filter-info');
+        const filterInfoText = document.getElementById('filter-info-text');
+        if (textoInfo) {
+            filterInfoText.textContent = `${textoInfo} - Mostrando ${visibles} lotes`;
+            filterInfo.classList.add('active');
+        }
+    }
+
+    function actualizarResumen(cantidad, totalBft, bftUsado, desperdicioBft) {
+        const cards = document.querySelectorAll('.summary-card .summary-value');
+        if (cards.length >= 4) {
+            cards[0].textContent = cantidad;
+            cards[1].textContent = totalBft.toFixed(1);
+            cards[2].textContent = bftUsado.toFixed(1);
+
+            const promDesp = totalBft > 0 ? (desperdicioBft / totalBft * 100) : 0;
+            cards[3].textContent = promDesp.toFixed(1) + '%';
+            cards[3].style.color = promDesp < 18 ? '#28a745' : '#ef4444';
+        }
+    }
+
+    function filtrarHoy() {
+        setActiveButton(event.target);
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        const fin = new Date();
+        fin.setHours(23, 59, 59, 999);
+        filtrarPorRango(hoy, fin, `Hoy (${formatFecha(hoy)})`);
+
+        document.getElementById('fecha-desde').value = hoy.toISOString().split('T')[0];
+        document.getElementById('fecha-hasta').value = hoy.toISOString().split('T')[0];
+    }
+
+    function filtrarSemana() {
+        setActiveButton(event.target);
+        const hoy = new Date();
+        const inicioSemana = new Date(hoy);
+        inicioSemana.setDate(hoy.getDate() - hoy.getDay());
+        inicioSemana.setHours(0, 0, 0, 0);
+
+        const finSemana = new Date(hoy);
+        finSemana.setHours(23, 59, 59, 999);
+
+        filtrarPorRango(inicioSemana, finSemana, `Esta semana (${formatFecha(inicioSemana)} - ${formatFecha(finSemana)})`);
+
+        document.getElementById('fecha-desde').value = inicioSemana.toISOString().split('T')[0];
+        document.getElementById('fecha-hasta').value = finSemana.toISOString().split('T')[0];
+    }
+
+    function filtrarMes() {
+        setActiveButton(event.target);
+        const hoy = new Date();
+        const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+        inicioMes.setHours(0, 0, 0, 0);
+
+        const finMes = new Date(hoy);
+        finMes.setHours(23, 59, 59, 999);
+
+        const nombreMes = hoy.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+        filtrarPorRango(inicioMes, finMes, `Este mes (${nombreMes})`);
+
+        document.getElementById('fecha-desde').value = inicioMes.toISOString().split('T')[0];
+        document.getElementById('fecha-hasta').value = finMes.toISOString().split('T')[0];
+    }
+
+    function filtrarAnio() {
+        setActiveButton(event.target);
+        const hoy = new Date();
+        const inicioAnio = new Date(hoy.getFullYear(), 0, 1);
+        inicioAnio.setHours(0, 0, 0, 0);
+
+        const finAnio = new Date(hoy);
+        finAnio.setHours(23, 59, 59, 999);
+
+        filtrarPorRango(inicioAnio, finAnio, `Este año (${hoy.getFullYear()})`);
+
+        document.getElementById('fecha-desde').value = inicioAnio.toISOString().split('T')[0];
+        document.getElementById('fecha-hasta').value = finAnio.toISOString().split('T')[0];
+    }
+
+    function filtrarTodo() {
+        setActiveButton(event.target);
+        const rows = document.querySelectorAll('.lotes-table tbody tr');
+        let totalBft = 0;
+        let bftUsado = 0;
+        let desperdicioBft = 0;
+
+        rows.forEach(row => {
+            row.style.display = '';
+            totalBft += parseFloat(row.dataset.bftTotal) || 0;
+            bftUsado += parseFloat(row.dataset.bftUsado) || 0;
+            desperdicioBft += parseFloat(row.dataset.desperdicioBft) || 0;
+        });
+
+        actualizarResumen(rows.length, totalBft, bftUsado, desperdicioBft);
+
+        document.getElementById('fecha-desde').value = '';
+        document.getElementById('fecha-hasta').value = '';
+        document.getElementById('filter-info').classList.remove('active');
+    }
+
+    function aplicarRangoFechas() {
+        setActiveButton(null);
+        const desdeStr = document.getElementById('fecha-desde').value;
+        const hastaStr = document.getElementById('fecha-hasta').value;
+
+        if (!desdeStr || !hastaStr) {
+            alert('Seleccione ambas fechas');
+            return;
+        }
+
+        const desde = new Date(desdeStr);
+        desde.setHours(0, 0, 0, 0);
+
+        const hasta = new Date(hastaStr);
+        hasta.setHours(23, 59, 59, 999);
+
+        if (desde > hasta) {
+            alert('La fecha "Desde" debe ser anterior a la fecha "Hasta"');
+            return;
+        }
+
+        filtrarPorRango(desde, hasta, `${formatFecha(desde)} - ${formatFecha(hasta)}`);
+    }
+
+    function limpiarFiltros() {
+        // Simular click en "Todo"
+        const btnTodo = document.querySelector('.filter-btn:last-of-type');
+        if (btnTodo) {
+            btnTodo.click();
+        }
+    }
+</script>
 {% endblock %}

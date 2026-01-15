@@ -1982,16 +1982,13 @@ function updateSelectionUI() {
         selectAllCheckbox.checked = selectedCoches.size === allCheckboxes.length;
     }
 
-    // Mostrar/ocultar boton de crear lote segun cantidad de coches (min 2)
+    // Mostrar/ocultar boton de crear lote segun cantidad de coches (min 1)
     const btnCrearLote = document.getElementById('btn-crear-lote-flotante');
     const loteWarning = document.getElementById('lote-warning');
     if (btnCrearLote && loteWarning) {
-        if (count >= 2) {
+        if (count >= 1) {
             btnCrearLote.style.display = 'inline-flex';
             loteWarning.style.display = 'none';
-        } else if (count > 0) {
-            btnCrearLote.style.display = 'none';
-            loteWarning.style.display = 'inline-flex';
         } else {
             btnCrearLote.style.display = 'none';
             loteWarning.style.display = 'none';
@@ -2300,9 +2297,9 @@ function calcularTotalBftSeleccionados() {
 }
 
 function openCrearLoteModal() {
-    // Validar que haya al menos 2 coches seleccionados
-    if (selectedCoches.size < 2) {
-        alert('Debe seleccionar al menos 2 coches para crear un lote.');
+    // Validar que haya al menos 1 coche seleccionado
+    if (selectedCoches.size < 1) {
+        alert('Debe seleccionar al menos 1 coche para crear un lote.');
         return;
     }
 

@@ -627,7 +627,7 @@
                     <h4>{{ coche.codigo_qr }}</h4>
                     <span>{{ "%.1f"|format(coche.total_bft) }} BFT | {{ coche.proveedor or 'Sin proveedor' }}</span>
                 </div>
-                {% if lote.coches|length > 2 %}
+                {% if lote.coches|length > 1 %}
                 <button class="btn-quitar-coche" onclick="quitarCocheLote({{ coche.id }})" title="Devolver a Stock Secado">
                     <i class="bi bi-x-circle"></i> Quitar
                 </button>
@@ -641,9 +641,9 @@
         </p>
         {% endif %}
 
-        {% if lote.coches|length <= 2 %}
+        {% if lote.coches|length <= 1 %}
         <p style="font-size: 0.85rem; color: var(--color-text-muted); margin-top: 12px; text-align: center;">
-            <i class="bi bi-info-circle"></i> El lote debe tener minimo 2 coches. No se pueden quitar mas coches.
+            <i class="bi bi-info-circle"></i> El lote debe tener minimo 1 coche. No se puede quitar el ultimo coche.
         </p>
         {% endif %}
     </div>

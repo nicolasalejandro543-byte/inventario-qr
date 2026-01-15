@@ -704,7 +704,7 @@ function updateSelectionBar() {
     countEl.textContent = selectedCoches.size;
     bftEl.textContent = totalBft.toFixed(1);
 
-    if (selectedCoches.size >= 2) {
+    if (selectedCoches.size >= 1) {
         bar.classList.add('show');
     } else {
         bar.classList.remove('show');
@@ -725,8 +725,8 @@ function selectTurnoOption(turno) {
 
 // Abrir modal
 function openCrearLoteModal() {
-    if (selectedCoches.size < 2) {
-        alert('Debe seleccionar al menos 2 coches para crear un lote.');
+    if (selectedCoches.size < 1) {
+        alert('Debe seleccionar al menos 1 coche para crear un lote.');
         return;
     }
 

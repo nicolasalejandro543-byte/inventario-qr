@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, send_file, redirect
-from models import db, Etapa, Coche, Movimiento, Lote, Bloque, ProcesoLote, Contenedor, contenedor_bloques, init_etapas, ESPESORES, LARGOS, LARGOS_PRODUCCION, LARGOS_CONTENEDOR
+from models import db, Etapa, Coche, Movimiento, Lote, Bloque, ProcesoLote, Contenedor, contenedor_bloques, lote_coches, init_etapas, ESPESORES, LARGOS, LARGOS_PRODUCCION, LARGOS_CONTENEDOR
 from qr_service import generar_codigo_unico, generar_codigo_lote, generar_codigo_bloque, generar_codigo_contenedor, generar_imagen_qr
 from config import get_config
 import io
@@ -205,8 +205,11 @@ def dashboard():
     contenedores_abiertos = Contenedor.query.filter_by(estado='abierto').all()
     contenedores_total = Contenedor.query.count()
 
+    # Filtrar etapas para no mostrar "Ingreso a Taller" (orden=4)
+    etapas_visibles = [e for e in etapas if e.orden != 4]
+
     return render_template('dashboard.html',
-                          etapas=etapas,
+                          etapas=etapas_visibles,
                           stats_por_etapa=stats_por_etapa,
                           ultimas_actividades=ultimas_actividades,
                           lotes_en_proceso=lotes_en_proceso,
@@ -238,8 +241,15 @@ def produccion():
     # Lotes en proceso
     lotes_en_proceso = Lote.query.filter_by(estado='en_proceso').order_by(Lote.fecha_inicio_proceso.desc()).all()
 
-    # Coches disponibles en Stock Secado (etapa 3) sin lote asignado
-    coches_stock_secado = Coche.query.filter_by(etapa_orden=3, lote_id=None).order_by(Coche.codigo_qr).all()
+    # Coches disponibles en Stock Secado (etapa orden=3) sin lote asignado
+    etapa_stock_secado = Etapa.query.filter_by(orden=3).first()
+    if etapa_stock_secado:
+        # Filtrar coches que NO estan en ningun lote
+        coches_stock_secado = Coche.query.filter_by(etapa_actual_id=etapa_stock_secado.id).filter(
+            ~Coche.id.in_(db.session.query(lote_coches.c.coche_id))
+        ).order_by(Coche.codigo_qr).all()
+    else:
+        coches_stock_secado = []
 
     return render_template('produccion.html',
                           lotes_disponibles=lotes_disponibles,
@@ -258,8 +268,15 @@ def produccion_lote(lote_id):
         lote.iniciar_proceso()
         db.session.commit()
 
-    # Obtener coches disponibles en Stock Secado (etapa 3) para agregar al lote
-    coches_disponibles = Coche.query.filter_by(etapa_orden=3, lote_id=None).order_by(Coche.codigo_qr).all()
+    # Obtener coches disponibles en Stock Secado (etapa orden=3) para agregar al lote
+    etapa_stock_secado = Etapa.query.filter_by(orden=3).first()
+    if etapa_stock_secado:
+        # Filtrar coches que NO estan en ningun lote
+        coches_disponibles = Coche.query.filter_by(etapa_actual_id=etapa_stock_secado.id).filter(
+            ~Coche.id.in_(db.session.query(lote_coches.c.coche_id))
+        ).order_by(Coche.codigo_qr).all()
+    else:
+        coches_disponibles = []
 
     return render_template('produccion_lote.html',
                           lote=lote,
@@ -1068,10 +1085,6 @@ def crear_lote():
     if not coche_ids:
         return jsonify({'error': 'Se requiere al menos un coche para crear el lote'}), 400
 
-    # Validar que el lote tenga mas de 1 coche
-    if len(coche_ids) < 2:
-        return jsonify({'error': 'Un lote debe tener al menos 2 coches. No se pueden crear lotes con un solo coche.'}), 400
-
     # Verificar que la etapa Stock Seco existe
     etapa_stock_seco = Etapa.query.filter_by(orden=3).first()
     etapa_taller = Etapa.query.filter_by(orden=4).first()
@@ -1150,7 +1163,8 @@ def agregar_coches_lote(lote_id):
     if lote.estado == 'finalizado':
         return jsonify({'error': 'No se pueden agregar coches a un lote finalizado'}), 400
 
-    coche_ids = data.get('coche_ids', [])
+    # Aceptar ambos nombres de parametro para compatibilidad
+    coche_ids = data.get('coches_ids', data.get('coche_ids', []))
     usuario = data.get('usuario', 'Anonimo')
 
     if not coche_ids:
@@ -1199,12 +1213,18 @@ def quitar_coche_lote(lote_id, coche_id):
     if lote.estado == 'finalizado':
         return jsonify({'error': 'No se pueden quitar coches de un lote finalizado'}), 400
 
-    if coche not in lote.coches:
+    # Refrescar la relacion para asegurar datos actualizados
+    db.session.refresh(lote)
+
+    # Verificar con consulta directa a la tabla de relacion
+    coche_en_lote = db.session.query(lote_coches).filter_by(lote_id=lote_id, coche_id=coche_id).first()
+    if not coche_en_lote:
         return jsonify({'error': 'El coche no pertenece a este lote'}), 400
 
-    # Verificar que el lote no quede con menos de 2 coches
-    if len(lote.coches) <= 2:
-        return jsonify({'error': 'El lote debe tener al menos 2 coches. No se puede quitar este coche.'}), 400
+    # Verificar que el lote no quede vacio
+    cantidad_coches = db.session.query(lote_coches).filter_by(lote_id=lote_id).count()
+    if cantidad_coches <= 1:
+        return jsonify({'error': 'El lote debe tener al menos 1 coche. No se puede quitar el ultimo coche.'}), 400
 
     usuario = data.get('usuario', 'Anonimo')
     etapa_stock_seco = Etapa.query.filter_by(orden=3).first()

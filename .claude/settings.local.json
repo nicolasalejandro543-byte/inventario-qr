@@ -17,7 +17,8 @@
       "Bash(Write-Host \"Archivos eliminados\")",
       "Bash(git add:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nAgregar impresion multiple de QRs en vista de etapas\n\n- Boton \"Imprimir QRs\" en barra flotante de seleccion\n- Contenedor de impresion con formato 2 columnas\n- Funcion JavaScript para generar vista de impresion\n- Estilos CSS para ocultar elementos no imprimibles\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

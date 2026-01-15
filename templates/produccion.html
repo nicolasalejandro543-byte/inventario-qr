@@ -481,7 +481,7 @@
 <!-- Lotes en Proceso -->
 {% if lotes_en_proceso %}
 <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 16px; color: #e83e8c;">
-    <i class="bi bi-play-circle"></i> Lotes en Proceso ({{ lotes_en_proceso|length }})
+    <i class="bi bi-play-circle"></i> Turnos en Proceso ({{ lotes_en_proceso|length }})
 </h3>
 <div class="lotes-grid">
     {% for lote in lotes_en_proceso %}
@@ -522,7 +522,7 @@
 
 <!-- Lotes Disponibles -->
 <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 16px; color: #6f42c1;">
-    <i class="bi bi-box-seam"></i> Lotes Disponibles ({{ lotes_disponibles|length }})
+    <i class="bi bi-box-seam"></i> Turnos Disponibles ({{ lotes_disponibles|length }})
 </h3>
 
 {% if lotes_disponibles %}
@@ -563,16 +563,16 @@
 </div>
 {% endif %}
 
-<!-- Crear Nuevo Lote desde Stock Secado -->
+<!-- Crear Nuevo Turno desde Stock Secado -->
 <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 16px; margin-top: 30px; color: #17a2b8;">
-    <i class="bi bi-plus-circle"></i> Crear Nuevo Lote
+    <i class="bi bi-plus-circle"></i> Crear Nuevo Turno
 </h3>
 
 {% if coches_stock_secado %}
 <div class="coches-secado-section">
     <div class="coches-secado-header">
         <span><i class="bi bi-archive"></i> Coches en Stock Secado ({{ coches_stock_secado|length }})</span>
-        <span style="font-size: 0.85rem; opacity: 0.9;">Seleccione 2 o mas coches para crear un lote</span>
+        <span style="font-size: 0.85rem; opacity: 0.9;">Seleccione 2 o mas coches para crear un turno</span>
     </div>
     <div class="coches-secado-body">
         <div class="coches-secado-grid">
@@ -594,7 +594,7 @@
                 <span id="selected-bft">0</span> BFT
             </div>
             <button class="btn" style="background: #6f42c1; color: white;" onclick="openCrearLoteModal()">
-                <i class="bi bi-box-seam"></i> Crear Lote
+                <i class="bi bi-box-seam"></i> Crear Turno
             </button>
         </div>
     </div>
@@ -611,18 +611,18 @@
 <div class="modal-overlay" id="crear-lote-modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h3><i class="bi bi-box-seam"></i> Crear Nuevo Lote</h3>
+            <h3><i class="bi bi-box-seam"></i> Crear Nuevo Turno</h3>
         </div>
         <div class="modal-body">
             <div id="lote-result-message" class="result-message"></div>
 
             <div id="lote-form-section">
                 <p style="margin-bottom: 16px; color: var(--color-text-muted);">
-                    Se creara un lote con <strong id="lote-modal-count">0</strong> coches seleccionados.
+                    Se creara un turno con <strong id="lote-modal-count">0</strong> coches seleccionados.
                 </p>
 
                 <div class="lote-resumen" style="background: var(--color-bg-light); padding: 16px; border-radius: var(--radius-md); margin-bottom: 16px;">
-                    <h4 style="margin-bottom: 12px; font-size: 0.95rem; color: var(--color-text-muted);">Resumen del Lote:</h4>
+                    <h4 style="margin-bottom: 12px; font-size: 0.95rem; color: var(--color-text-muted);">Resumen del Turno:</h4>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                         <div>
                             <span style="font-size: 0.85rem; color: var(--color-text-muted);">Coches:</span>
@@ -662,7 +662,7 @@
                 <div style="color: var(--color-success); font-size: 3rem; margin-bottom: 16px;">
                     <i class="bi bi-check-circle-fill"></i>
                 </div>
-                <h4 style="margin-bottom: 8px;">Lote Creado Exitosamente</h4>
+                <h4 style="margin-bottom: 8px;">Turno Creado Exitosamente</h4>
                 <p id="lote-codigo-creado" style="font-family: 'JetBrains Mono', monospace; font-size: 1.2rem; color: #6f42c1; margin-bottom: 16px;"></p>
                 <div style="margin-bottom: 16px;">
                     <img id="lote-qr-imagen" src="" alt="QR del Lote" style="max-width: 200px; border: 2px solid #6f42c1; border-radius: var(--radius-md);">
@@ -675,7 +675,7 @@
         <div class="modal-footer">
             <button class="btn btn-secondary" id="btn-cancelar-lote" onclick="closeCrearLoteModal()">Cancelar</button>
             <button class="btn" style="background: #6f42c1; color: white;" id="btn-confirmar-lote" onclick="confirmarCrearLote()">
-                <i class="bi bi-check-lg"></i> Crear Lote
+                <i class="bi bi-check-lg"></i> Crear Turno
             </button>
         </div>
     </div>
@@ -741,7 +741,7 @@ function selectTurnoOption(turno) {
 // Abrir modal
 function openCrearLoteModal() {
     if (selectedCoches.size < 1) {
-        alert('Debe seleccionar al menos 1 coche para crear un lote.');
+        alert('Debe seleccionar al menos 1 coche para crear un turno.');
         return;
     }
 
@@ -810,14 +810,14 @@ async function confirmarCrearLote() {
             btn.style.display = 'none';
             document.getElementById('btn-cancelar-lote').textContent = 'Cerrar';
         } else {
-            showResultMessage(data.error || 'Error al crear el lote', 'error');
+            showResultMessage(data.error || 'Error al crear el turno', 'error');
             btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-check-lg"></i> Crear Lote';
+            btn.innerHTML = '<i class="bi bi-check-lg"></i> Crear Turno';
         }
     } catch (error) {
         showResultMessage('Error de conexion: ' + error.message, 'error');
         btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-check-lg"></i> Crear Lote';
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Crear Turno';
     }
 }
 

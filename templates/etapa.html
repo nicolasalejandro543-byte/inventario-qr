@@ -133,6 +133,32 @@
         background: #5a32a3;
     }
 
+    .floating-actions .btn-imprimir {
+        background: #6366f1;
+    }
+
+    .floating-actions .btn-imprimir:hover {
+        background: #4f46e5;
+    }
+
+    /* QR Print Container */
+    .qr-print-container {
+        display: none;
+    }
+
+    @media print {
+        .no-print { display: none !important; }
+        body * { visibility: hidden; }
+        .qr-print-container, .qr-print-container * { visibility: visible; }
+        .qr-print-container {
+            display: block !important;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+        }
+    }
+
     /* Modal de movimiento masivo */
     .modal-overlay {
         position: fixed;
@@ -955,7 +981,7 @@
 
 {% block content %}
 <!-- Barra de navegación rápida a etapas -->
-<div class="etapas-nav">
+<div class="etapas-nav no-print">
     <a href="/etapa/1" class="etapa-nav-btn madera-verde {% if etapa.orden == 1 %}active{% endif %}">
         <i class="bi bi-tree"></i>
         <span>Madera Verde</span>
@@ -1367,11 +1393,14 @@
     {% endif %}
 
     <!-- Barra flotante de acciones -->
-    <div class="floating-actions" id="floating-actions">
+    <div class="floating-actions no-print" id="floating-actions">
         <div class="selected-count">
             <i class="bi bi-check2-square"></i>
             <span id="floating-count">0</span> coches seleccionados
         </div>
+        <button class="btn btn-imprimir" onclick="imprimirQRsSeleccionados()">
+            <i class="bi bi-printer"></i> Imprimir QRs
+        </button>
         <button class="btn btn-mover" onclick="openMoverModal()">
             <i class="bi bi-arrow-right-circle"></i> Mover Etapa
         </button>
@@ -1391,6 +1420,11 @@
         <button class="btn btn-cancelar" onclick="clearSelection()">
             <i class="bi bi-x-lg"></i> Cancelar
         </button>
+    </div>
+
+    <!-- Contenedor para impresion de QRs -->
+    <div class="qr-print-container" id="qr-print-container">
+        <div class="qr-print-grid" id="qr-print-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; padding: 20px;"></div>
     </div>
 
     <!-- Modal para mover coches -->
@@ -2008,6 +2042,44 @@ function showResultMessage(message, type) {
     const resultMessage = document.getElementById('result-message');
     resultMessage.textContent = message;
     resultMessage.className = 'result-message ' + type;
+}
+
+// Funcion para imprimir QRs seleccionados
+function imprimirQRsSeleccionados() {
+    if (selectedCoches.size === 0) {
+        alert('Seleccione al menos un coche');
+        return;
+    }
+
+    const printGrid = document.getElementById('qr-print-grid');
+    let html = '';
+
+    selectedCoches.forEach(cocheId => {
+        const card = document.querySelector(`.coche-card[data-coche-id="${cocheId}"]`);
+        if (card) {
+            const codigo = card.dataset.codigoQr;
+            const proveedor = card.querySelector('.coche-detail-value')?.textContent || '-';
+            const bftElement = card.querySelector('.coche-bft');
+            const bft = bftElement ? bftElement.textContent.replace(' BFT', '') : '0';
+
+            html += `
+                <div style="border: 2px solid #000; border-radius: 8px; padding: 20px; text-align: center; page-break-inside: avoid;">
+                    <div style="font-family: monospace; font-weight: bold; font-size: 1.1rem; margin-bottom: 10px;">${codigo}</div>
+                    <img src="/api/coches/${cocheId}/qr" alt="QR" style="width: 120px; height: 120px; margin: 10px auto;">
+                    <div style="border-top: 1px solid #ccc; margin-top: 10px; padding-top: 10px; text-align: left; font-size: 0.85rem;">
+                        <div><strong>BFT:</strong> ${bft}</div>
+                        <div><strong>Etapa:</strong> ${etapaActual.nombre}</div>
+                    </div>
+                </div>
+            `;
+        }
+    });
+
+    printGrid.innerHTML = html;
+
+    setTimeout(() => {
+        window.print();
+    }, 500);
 }
 
 // Cerrar modal al hacer clic fuera

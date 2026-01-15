@@ -1206,44 +1206,57 @@ def agregar_coches_lote(lote_id):
 @app.route('/api/lotes/<int:lote_id>/quitar-coche/<int:coche_id>', methods=['POST'])
 def quitar_coche_lote(lote_id, coche_id):
     """Quita un coche del lote y lo devuelve a Stock Secado."""
-    lote = Lote.query.get_or_404(lote_id)
-    coche = Coche.query.get_or_404(coche_id)
-    data = request.get_json() or {}
+    try:
+        lote = Lote.query.get(lote_id)
+        if not lote:
+            return jsonify({'error': 'Lote no encontrado'}), 404
 
-    if lote.estado == 'finalizado':
-        return jsonify({'error': 'No se pueden quitar coches de un lote finalizado'}), 400
+        coche = Coche.query.get(coche_id)
+        if not coche:
+            return jsonify({'error': 'Coche no encontrado'}), 404
 
-    # Refrescar la relacion para asegurar datos actualizados
-    db.session.refresh(lote)
+        data = request.get_json() or {}
 
-    # Verificar con consulta directa a la tabla de relacion
-    coche_en_lote = db.session.query(lote_coches).filter_by(lote_id=lote_id, coche_id=coche_id).first()
-    if not coche_en_lote:
-        return jsonify({'error': 'El coche no pertenece a este lote'}), 400
+        if lote.estado == 'finalizado':
+            return jsonify({'error': 'No se pueden quitar coches de un lote finalizado'}), 400
 
-    # Verificar que el lote no quede vacio
-    cantidad_coches = db.session.query(lote_coches).filter_by(lote_id=lote_id).count()
-    if cantidad_coches <= 1:
-        return jsonify({'error': 'El lote debe tener al menos 1 coche. No se puede quitar el ultimo coche.'}), 400
+        # Refrescar la relacion para asegurar datos actualizados
+        db.session.refresh(lote)
 
-    usuario = data.get('usuario', 'Anonimo')
-    etapa_stock_seco = Etapa.query.filter_by(orden=3).first()
+        # Verificar con consulta directa a la tabla de relacion
+        coche_en_lote = db.session.query(lote_coches).filter_by(lote_id=lote_id, coche_id=coche_id).first()
+        if not coche_en_lote:
+            return jsonify({'error': 'El coche no pertenece a este lote'}), 400
 
-    # Quitar coche del lote
-    lote.coches.remove(coche)
+        # Verificar que el lote no quede vacio
+        cantidad_coches = db.session.query(lote_coches).filter_by(lote_id=lote_id).count()
+        if cantidad_coches <= 1:
+            return jsonify({'error': 'El lote debe tener al menos 1 coche. No se puede quitar el ultimo coche.'}), 400
 
-    # Mover coche a Stock Secado
-    coche.mover_a_etapa(etapa_stock_seco.id, usuario, f'Removido del lote {lote.codigo_qr}')
+        usuario = data.get('usuario', 'Anonimo')
+        etapa_stock_seco = Etapa.query.filter_by(orden=3).first()
 
-    # Recalcular totales del lote
-    lote.calcular_total_bft()
-    db.session.commit()
+        if not etapa_stock_seco:
+            return jsonify({'error': 'No se encontro la etapa Stock Secado'}), 500
 
-    return jsonify({
-        'success': True,
-        'mensaje': f'Coche {coche.codigo_qr} removido del lote y devuelto a Stock Secado',
-        'lote': lote.to_dict()
-    })
+        # Quitar coche del lote
+        lote.coches.remove(coche)
+
+        # Mover coche a Stock Secado
+        coche.mover_a_etapa(etapa_stock_seco.id, usuario, f'Removido del lote {lote.codigo_qr}')
+
+        # Recalcular totales del lote
+        lote.calcular_total_bft()
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'mensaje': f'Coche {coche.codigo_qr} removido del lote y devuelto a Stock Secado',
+            'lote': lote.to_dict()
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Error interno: {str(e)}'}), 500
 
 
 @app.route('/api/lotes/<int:lote_id>', methods=['GET'])

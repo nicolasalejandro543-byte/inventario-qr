@@ -973,13 +973,36 @@
 
     function removerPlantilla(index, esGuardada) {
         if (esGuardada) {
-            // No se pueden remover las guardadas
-            alert('Esta plantilla ya fue guardada y no se puede eliminar');
+            alert('Usa el boton de eliminar para las plantillas guardadas');
             return;
         }
         plantillasPendientes.splice(index, 1);
         actualizarListaPlantillas();
         calcularDesperdicio();
+    }
+
+    async function eliminarPlantillaGuardada(plantillaId, index) {
+        if (!confirm('¿Eliminar esta plantilla guardada?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/proceso/${plantillaId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                plantillasGuardadas.splice(index, 1);
+                actualizarListaPlantillas();
+                calcularDesperdicio();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        } catch (error) {
+            alert('Error de conexion: ' + error.message);
+        }
     }
 
     function actualizarListaPlantillas() {
@@ -996,6 +1019,9 @@
                         <span>BFT: <strong style="color: var(--color-success);">${p.bft.toFixed(2)}</strong></span>
                         <span style="color: var(--color-success); font-size: 0.8rem;">Guardada</span>
                     </div>
+                    <button class="btn-remove" onclick="eliminarPlantillaGuardada(${p.id}, ${i})" title="Eliminar plantilla">
+                        <i class="bi bi-trash"></i>
+                    </button>
                 </div>
             `;
         });
@@ -1075,12 +1101,36 @@
 
     function removerBloque(index, esGuardado) {
         if (esGuardado) {
-            alert('Este bloque ya fue guardado y no se puede eliminar');
+            alert('Usa el boton de eliminar para los bloques guardados');
             return;
         }
         bloquesPendientes.splice(index, 1);
         actualizarListaBloques();
         calcularDesperdicio();
+    }
+
+    async function eliminarBloqueGuardado(bloqueId, index) {
+        if (!confirm('¿Eliminar este bloque guardado?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/bloques/${bloqueId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                bloquesGuardados.splice(index, 1);
+                actualizarListaBloques();
+                calcularDesperdicio();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        } catch (error) {
+            alert('Error de conexion: ' + error.message);
+        }
     }
 
     function actualizarListaBloques() {
@@ -1100,6 +1150,9 @@
                         <span>${b.turno}</span>
                         <span style="color: var(--color-success); font-size: 0.8rem;">Guardado</span>
                     </div>
+                    <button class="btn-remove" onclick="eliminarBloqueGuardado(${b.id}, ${i})" title="Eliminar bloque">
+                        <i class="bi bi-trash"></i>
+                    </button>
                 </div>
             `;
         });
@@ -1329,6 +1382,9 @@
         checkbox.closest('.coche-disponible-item').classList.toggle('selected', checkbox.checked);
     }
 
+    // Flag para prevenir doble clic
+    let operacionEnCurso = false;
+
     // Funcion helper para guardar pendientes silenciosamente
     async function guardarPendientesSilenciosamente() {
         if (plantillasPendientes.length === 0 && bloquesPendientes.length === 0) {
@@ -1337,8 +1393,14 @@
 
         let errores = [];
 
+        // Copiar y limpiar las listas ANTES de guardar para evitar duplicados
+        const plantillasAGuardar = [...plantillasPendientes];
+        const bloquesAGuardar = [...bloquesPendientes];
+        plantillasPendientes = [];
+        bloquesPendientes = [];
+
         // Guardar plantillas
-        for (const p of plantillasPendientes) {
+        for (const p of plantillasAGuardar) {
             try {
                 const response = await fetch('/api/proceso', {
                     method: 'POST',
@@ -1360,7 +1422,7 @@
         }
 
         // Guardar bloques
-        for (const b of bloquesPendientes) {
+        for (const b of bloquesAGuardar) {
             try {
                 const response = await fetch('/api/bloques', {
                     method: 'POST',
@@ -1388,11 +1450,26 @@
     }
 
     async function agregarCochesSeleccionados() {
+        // Prevenir doble clic
+        if (operacionEnCurso) return;
+        operacionEnCurso = true;
+
+        const btn = event.target.closest('button');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Procesando...';
+        }
+
         const checkboxes = document.querySelectorAll('.coche-disponible-item input[type="checkbox"]:checked');
         const cochesIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
 
         if (cochesIds.length === 0) {
             alert('Seleccione al menos un coche para agregar');
+            operacionEnCurso = false;
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-plus"></i> Agregar Seleccionados';
+            }
             return;
         }
 
@@ -1400,6 +1477,11 @@
         if (plantillasPendientes.length > 0 || bloquesPendientes.length > 0) {
             const guardado = await guardarPendientesSilenciosamente();
             if (!guardado) {
+                operacionEnCurso = false;
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-plus"></i> Agregar Seleccionados';
+                }
                 return; // Hubo errores, no continuar
             }
         }
@@ -1416,17 +1498,32 @@
                 window.location.reload();
             } else {
                 alert('Error: ' + data.error);
+                operacionEnCurso = false;
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-plus"></i> Agregar Seleccionados';
+                }
             }
         } catch (error) {
             alert('Error de conexion: ' + error.message);
+            operacionEnCurso = false;
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-plus"></i> Agregar Seleccionados';
+            }
         }
     }
 
     async function quitarCocheLote(cocheId) {
+        // Prevenir doble clic
+        if (operacionEnCurso) return;
+        operacionEnCurso = true;
+
         // Guardar pendientes antes de modificar coches
         if (plantillasPendientes.length > 0 || bloquesPendientes.length > 0) {
             const guardado = await guardarPendientesSilenciosamente();
             if (!guardado) {
+                operacionEnCurso = false;
                 return; // Hubo errores, no continuar
             }
         }
@@ -1442,9 +1539,11 @@
                 window.location.reload();
             } else {
                 alert('Error: ' + data.error);
+                operacionEnCurso = false;
             }
         } catch (error) {
             alert('Error de conexion: ' + error.message);
+            operacionEnCurso = false;
         }
     }
 

@@ -1566,6 +1566,48 @@ def obtener_proceso(proceso_id):
     return jsonify(proceso.to_dict())
 
 
+@app.route('/api/proceso/<int:proceso_id>', methods=['DELETE'])
+def eliminar_proceso(proceso_id):
+    """Elimina una plantilla/proceso por su ID."""
+    proceso = ProcesoLote.query.get_or_404(proceso_id)
+    lote = proceso.lote
+
+    # No permitir eliminar si el lote está finalizado
+    if lote and lote.estado == 'finalizado':
+        return jsonify({'error': 'No se puede eliminar de un lote finalizado'}), 400
+
+    db.session.delete(proceso)
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'mensaje': f'Plantilla eliminada correctamente'
+    })
+
+
+@app.route('/api/bloques/<int:bloque_id>', methods=['DELETE'])
+def eliminar_bloque(bloque_id):
+    """Elimina un bloque por su ID."""
+    bloque = Bloque.query.get_or_404(bloque_id)
+    lote = bloque.lote
+
+    # No permitir eliminar si el lote está finalizado
+    if lote and lote.estado == 'finalizado':
+        return jsonify({'error': 'No se puede eliminar de un lote finalizado'}), 400
+
+    # No permitir eliminar si el bloque ya fue encolado o está en un contenedor
+    if bloque.estado != 'presentado':
+        return jsonify({'error': f'No se puede eliminar un bloque en estado {bloque.estado}'}), 400
+
+    db.session.delete(bloque)
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'mensaje': f'Bloque {bloque.codigo_qr} eliminado correctamente'
+    })
+
+
 @app.route('/api/lotes-taller', methods=['GET'])
 def listar_lotes_taller():
     """Lista lotes disponibles en Ingreso a Taller."""

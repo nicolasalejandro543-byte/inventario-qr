@@ -172,7 +172,6 @@
     .etapa-nav-btn.madera-verde { background: linear-gradient(135deg, #28a745, #20c997); }
     .etapa-nav-btn.secado { background: linear-gradient(135deg, #ffc107, #fd7e14); }
     .etapa-nav-btn.stock-secado { background: linear-gradient(135deg, #17a2b8, #20c997); }
-    .etapa-nav-btn.ingreso-a-taller { background: linear-gradient(135deg, #6f42c1, #e83e8c); }
     .etapa-nav-btn.produccion { background: linear-gradient(135deg, #e83e8c, #fd7e14); }
     .etapa-nav-btn.bloques-presentados { background: linear-gradient(135deg, #f59e0b, #d97706); }
     .etapa-nav-btn.bloques-encolados { background: linear-gradient(135deg, #10b981, #059669); }
@@ -197,6 +196,223 @@
         .etapa-nav-btn span {
             display: none;
         }
+    }
+
+    /* Estilos para seccion de coches de Stock Secado */
+    .coches-secado-section {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+        margin-bottom: 30px;
+    }
+
+    .coches-secado-header {
+        padding: 16px 20px;
+        background: linear-gradient(135deg, #17a2b8, #20c997);
+        color: white;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .coches-secado-body {
+        padding: 20px;
+    }
+
+    .coches-secado-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 12px;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .coche-select-card {
+        background: var(--color-bg);
+        border-radius: var(--radius-md);
+        padding: 14px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        cursor: pointer;
+        border: 2px solid transparent;
+        transition: all 0.2s;
+    }
+
+    .coche-select-card:hover {
+        border-color: #17a2b8;
+        background: rgba(23, 162, 184, 0.05);
+    }
+
+    .coche-select-card.selected {
+        border-color: #6f42c1;
+        background: rgba(111, 66, 193, 0.1);
+    }
+
+    .coche-select-card input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+    }
+
+    .coche-select-info {
+        flex: 1;
+    }
+
+    .coche-select-info h4 {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 700;
+        color: var(--color-primary);
+        margin-bottom: 2px;
+        font-size: 0.95rem;
+    }
+
+    .coche-select-info span {
+        font-size: 0.8rem;
+        color: var(--color-text-muted);
+    }
+
+    .crear-lote-bar {
+        margin-top: 16px;
+        padding: 16px;
+        background: linear-gradient(135deg, rgba(111, 66, 193, 0.1), rgba(111, 66, 193, 0.05));
+        border-radius: var(--radius-md);
+        display: none;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .crear-lote-bar.show {
+        display: flex;
+    }
+
+    .crear-lote-info {
+        font-weight: 600;
+        color: #6f42c1;
+    }
+
+    /* Modal crear lote */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+    }
+
+    .modal-overlay.show {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: var(--radius-lg);
+        width: 90%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    .modal-header {
+        padding: 20px 24px;
+        background: linear-gradient(135deg, #6f42c1, #5a32a3);
+        color: white;
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.25rem;
+    }
+
+    .modal-body {
+        padding: 24px;
+    }
+
+    .modal-footer {
+        padding: 16px 24px;
+        background: var(--color-bg-light);
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    }
+
+    .turno-selector {
+        display: flex;
+        gap: 12px;
+    }
+
+    .turno-option {
+        flex: 1;
+        padding: 16px;
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        text-align: center;
+        transition: all 0.2s;
+        border: 2px solid var(--color-gray-light);
+        background: white;
+    }
+
+    .turno-option:hover {
+        border-color: var(--color-primary);
+    }
+
+    .turno-option.selected {
+        border-color: var(--color-primary);
+        background: rgba(0, 163, 255, 0.1);
+    }
+
+    .turno-option.diurno.selected {
+        border-color: #f59e0b;
+        background: rgba(245, 158, 11, 0.1);
+    }
+
+    .turno-option.nocturno.selected {
+        border-color: #6366f1;
+        background: rgba(99, 102, 241, 0.1);
+    }
+
+    .turno-option-icon {
+        font-size: 1.5rem;
+        margin-bottom: 8px;
+    }
+
+    .turno-option.diurno .turno-option-icon {
+        color: #f59e0b;
+    }
+
+    .turno-option.nocturno .turno-option-icon {
+        color: #6366f1;
+    }
+
+    .result-message {
+        padding: 12px 16px;
+        border-radius: var(--radius-sm);
+        margin-bottom: 16px;
+        display: none;
+    }
+
+    .result-message.error {
+        display: block;
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .result-message.success {
+        display: block;
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+        border: 1px solid rgba(16, 185, 129, 0.2);
     }
 </style>
 {% endblock %}
@@ -330,14 +546,277 @@
     </div>
     {% endfor %}
 </div>
+{% endif %}
+
+<!-- Crear Nuevo Lote desde Stock Secado -->
+<h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 16px; margin-top: 30px; color: #17a2b8;">
+    <i class="bi bi-plus-circle"></i> Crear Nuevo Lote
+</h3>
+
+{% if coches_stock_secado %}
+<div class="coches-secado-section">
+    <div class="coches-secado-header">
+        <span><i class="bi bi-archive"></i> Coches en Stock Secado ({{ coches_stock_secado|length }})</span>
+        <span style="font-size: 0.85rem; opacity: 0.9;">Seleccione 2 o mas coches para crear un lote</span>
+    </div>
+    <div class="coches-secado-body">
+        <div class="coches-secado-grid">
+            {% for coche in coches_stock_secado %}
+            <div class="coche-select-card" data-coche-id="{{ coche.id }}" data-bft="{{ coche.total_bft or 0 }}" onclick="toggleCocheSelection({{ coche.id }})">
+                <input type="checkbox" id="coche-{{ coche.id }}" onclick="event.stopPropagation(); toggleCocheSelection({{ coche.id }})">
+                <div class="coche-select-info">
+                    <h4>{{ coche.codigo_qr }}</h4>
+                    <span>{{ "%.1f"|format(coche.total_bft or 0) }} BFT | {{ coche.proveedor or 'Sin proveedor' }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="crear-lote-bar" id="crear-lote-bar">
+            <div class="crear-lote-info">
+                <i class="bi bi-check2-square"></i>
+                <span id="selected-count">0</span> coches seleccionados -
+                <span id="selected-bft">0</span> BFT
+            </div>
+            <button class="btn" style="background: #6f42c1; color: white;" onclick="openCrearLoteModal()">
+                <i class="bi bi-box-seam"></i> Crear Lote
+            </button>
+        </div>
+    </div>
+</div>
 {% else %}
 <div class="empty-state">
     <i class="bi bi-inbox"></i>
-    <h3>No hay lotes disponibles</h3>
-    <p>Crea lotes desde Stock Secado seleccionando coches y haciendo clic en "Crear Lote"</p>
-    <a href="/etapa/3" class="btn btn-primary" style="margin-top: 16px;">
-        <i class="bi bi-plus"></i> Ir a Stock Secado
-    </a>
+    <h3>No hay coches en Stock Secado</h3>
+    <p>Los coches apareceran aqui cuando pasen del proceso de Secado</p>
 </div>
 {% endif %}
+
+<!-- Modal para crear lote -->
+<div class="modal-overlay" id="crear-lote-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="bi bi-box-seam"></i> Crear Nuevo Lote</h3>
+        </div>
+        <div class="modal-body">
+            <div id="lote-result-message" class="result-message"></div>
+
+            <div id="lote-form-section">
+                <p style="margin-bottom: 16px; color: var(--color-text-muted);">
+                    Se creara un lote con <strong id="lote-modal-count">0</strong> coches seleccionados.
+                </p>
+
+                <div class="lote-resumen" style="background: var(--color-bg-light); padding: 16px; border-radius: var(--radius-md); margin-bottom: 16px;">
+                    <h4 style="margin-bottom: 12px; font-size: 0.95rem; color: var(--color-text-muted);">Resumen del Lote:</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div>
+                            <span style="font-size: 0.85rem; color: var(--color-text-muted);">Coches:</span>
+                            <strong id="lote-resumen-coches" style="display: block; font-size: 1.5rem; color: #6f42c1;">0</strong>
+                        </div>
+                        <div>
+                            <span style="font-size: 0.85rem; color: var(--color-text-muted);">Total BFT:</span>
+                            <strong id="lote-resumen-bft" style="display: block; font-size: 1.5rem; color: var(--color-success);">0</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="margin-bottom: 12px; display: block; font-weight: 600;">Turno:</label>
+                    <div class="turno-selector">
+                        <div class="turno-option diurno selected" onclick="selectTurnoOption('Diurno')">
+                            <input type="radio" name="turno-lote" value="Diurno" checked style="display: none;">
+                            <div class="turno-option-icon"><i class="bi bi-sun-fill"></i></div>
+                            <div class="turno-option-label">Diurno</div>
+                        </div>
+                        <div class="turno-option nocturno" onclick="selectTurnoOption('Nocturno')">
+                            <input type="radio" name="turno-lote" value="Nocturno" style="display: none;">
+                            <div class="turno-option-icon"><i class="bi bi-moon-fill"></i></div>
+                            <div class="turno-option-label">Nocturno</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="lote-notas" style="display: block; font-weight: 600; margin-bottom: 8px;">Notas (opcional):</label>
+                    <input type="text" id="lote-notas" placeholder="Ej: Pedido cliente X, Orden de trabajo #123..." style="width: 100%; padding: 10px; border: 2px solid var(--color-gray-light); border-radius: var(--radius-sm);">
+                </div>
+            </div>
+
+            <!-- Seccion de exito con QR -->
+            <div id="lote-success-section" style="display: none; text-align: center;">
+                <div style="color: var(--color-success); font-size: 3rem; margin-bottom: 16px;">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+                <h4 style="margin-bottom: 8px;">Lote Creado Exitosamente</h4>
+                <p id="lote-codigo-creado" style="font-family: 'JetBrains Mono', monospace; font-size: 1.2rem; color: #6f42c1; margin-bottom: 16px;"></p>
+                <div style="margin-bottom: 16px;">
+                    <img id="lote-qr-imagen" src="" alt="QR del Lote" style="max-width: 200px; border: 2px solid #6f42c1; border-radius: var(--radius-md);">
+                </div>
+                <p style="font-size: 0.9rem; color: var(--color-text-muted);">
+                    Total: <strong id="lote-total-creado">0</strong> coches - <strong id="lote-bft-creado">0</strong> BFT
+                </p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="btn-cancelar-lote" onclick="closeCrearLoteModal()">Cancelar</button>
+            <button class="btn" style="background: #6f42c1; color: white;" id="btn-confirmar-lote" onclick="confirmarCrearLote()">
+                <i class="bi bi-check-lg"></i> Crear Lote
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+// Variables globales
+const selectedCoches = new Set();
+let selectedTurno = 'Diurno';
+
+// Seleccionar/deseleccionar coche
+function toggleCocheSelection(cocheId) {
+    const card = document.querySelector(`.coche-select-card[data-coche-id="${cocheId}"]`);
+    const checkbox = document.getElementById(`coche-${cocheId}`);
+
+    if (selectedCoches.has(cocheId)) {
+        selectedCoches.delete(cocheId);
+        card.classList.remove('selected');
+        checkbox.checked = false;
+    } else {
+        selectedCoches.add(cocheId);
+        card.classList.add('selected');
+        checkbox.checked = true;
+    }
+
+    updateSelectionBar();
+}
+
+// Actualizar barra de seleccion
+function updateSelectionBar() {
+    const bar = document.getElementById('crear-lote-bar');
+    const countEl = document.getElementById('selected-count');
+    const bftEl = document.getElementById('selected-bft');
+
+    let totalBft = 0;
+    selectedCoches.forEach(cocheId => {
+        const card = document.querySelector(`.coche-select-card[data-coche-id="${cocheId}"]`);
+        totalBft += parseFloat(card.dataset.bft) || 0;
+    });
+
+    countEl.textContent = selectedCoches.size;
+    bftEl.textContent = totalBft.toFixed(1);
+
+    if (selectedCoches.size >= 2) {
+        bar.classList.add('show');
+    } else {
+        bar.classList.remove('show');
+    }
+}
+
+// Seleccionar turno
+function selectTurnoOption(turno) {
+    selectedTurno = turno;
+    document.querySelectorAll('.turno-option').forEach(opt => {
+        opt.classList.remove('selected');
+        if ((turno === 'Diurno' && opt.classList.contains('diurno')) ||
+            (turno === 'Nocturno' && opt.classList.contains('nocturno'))) {
+            opt.classList.add('selected');
+        }
+    });
+}
+
+// Abrir modal
+function openCrearLoteModal() {
+    if (selectedCoches.size < 2) {
+        alert('Debe seleccionar al menos 2 coches para crear un lote.');
+        return;
+    }
+
+    let totalBft = 0;
+    selectedCoches.forEach(cocheId => {
+        const card = document.querySelector(`.coche-select-card[data-coche-id="${cocheId}"]`);
+        totalBft += parseFloat(card.dataset.bft) || 0;
+    });
+
+    document.getElementById('lote-modal-count').textContent = selectedCoches.size;
+    document.getElementById('lote-resumen-coches').textContent = selectedCoches.size;
+    document.getElementById('lote-resumen-bft').textContent = totalBft.toFixed(1);
+
+    // Resetear modal
+    document.getElementById('lote-result-message').className = 'result-message';
+    document.getElementById('lote-form-section').style.display = 'block';
+    document.getElementById('lote-success-section').style.display = 'none';
+    document.getElementById('btn-confirmar-lote').style.display = 'inline-flex';
+    document.getElementById('btn-cancelar-lote').textContent = 'Cancelar';
+    document.getElementById('lote-notas').value = '';
+
+    selectedTurno = 'Diurno';
+    selectTurnoOption('Diurno');
+
+    document.getElementById('crear-lote-modal').classList.add('show');
+}
+
+// Cerrar modal
+function closeCrearLoteModal() {
+    document.getElementById('crear-lote-modal').classList.remove('show');
+    if (document.getElementById('lote-success-section').style.display !== 'none') {
+        window.location.reload();
+    }
+}
+
+// Crear lote
+async function confirmarCrearLote() {
+    const notas = document.getElementById('lote-notas').value || '';
+    const btn = document.getElementById('btn-confirmar-lote');
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Creando...';
+
+    try {
+        const response = await fetch('/api/lotes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                coche_ids: Array.from(selectedCoches),
+                usuario: 'Usuario Web',
+                turno: selectedTurno,
+                notas: notas
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById('lote-form-section').style.display = 'none';
+            document.getElementById('lote-success-section').style.display = 'block';
+            document.getElementById('lote-codigo-creado').textContent = data.lote.codigo_qr;
+            document.getElementById('lote-qr-imagen').src = `/api/lotes/${data.lote.id}/qr`;
+            document.getElementById('lote-total-creado').textContent = data.lote.cantidad_coches;
+            document.getElementById('lote-bft-creado').textContent = data.lote.total_bft.toFixed(1);
+
+            btn.style.display = 'none';
+            document.getElementById('btn-cancelar-lote').textContent = 'Cerrar';
+        } else {
+            showResultMessage(data.error || 'Error al crear el lote', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg"></i> Crear Lote';
+        }
+    } catch (error) {
+        showResultMessage('Error de conexion: ' + error.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Crear Lote';
+    }
+}
+
+function showResultMessage(message, type) {
+    const el = document.getElementById('lote-result-message');
+    el.textContent = message;
+    el.className = 'result-message ' + type;
+}
+
+// Cerrar modal al hacer clic fuera
+document.getElementById('crear-lote-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeCrearLoteModal();
+    }
+});
+</script>
 {% endblock %}

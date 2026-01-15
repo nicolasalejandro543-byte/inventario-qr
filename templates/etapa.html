@@ -950,7 +950,6 @@
     .etapa-nav-btn.madera-verde { background: linear-gradient(135deg, #28a745, #20c997); }
     .etapa-nav-btn.secado { background: linear-gradient(135deg, #ffc107, #fd7e14); }
     .etapa-nav-btn.stock-secado { background: linear-gradient(135deg, #17a2b8, #20c997); }
-    .etapa-nav-btn.ingreso-a-taller { background: linear-gradient(135deg, #6f42c1, #e83e8c); }
     .etapa-nav-btn.produccion { background: linear-gradient(135deg, #e83e8c, #fd7e14); }
     .etapa-nav-btn.bloques-presentados { background: linear-gradient(135deg, #f59e0b, #d97706); }
     .etapa-nav-btn.bloques-encolados { background: linear-gradient(135deg, #10b981, #059669); }
@@ -1321,7 +1320,7 @@
                         </div>
                     </div>
                     {% if lote_sec != 'Sin Lote' %}
-                    <button class="btn btn-sm" style="background: #d97706; color: white;" onclick="event.stopPropagation(); imprimirLoteSecado({{ camara_num }}, '{{ lote_sec }}')">
+                    <button class="btn btn-sm" style="background: #d97706; color: white;" onclick="event.stopPropagation(); abrirImprimirSecadoModal({{ camara_num }}, '{{ lote_sec }}')">
                         <i class="bi bi-printer"></i> Imprimir Lote
                     </button>
                     {% endif %}
@@ -1436,14 +1435,6 @@
             <i class="bi bi-fire"></i> Cambiar Camara
         </button>
         {% endif %}
-        {% if etapa.orden == 3 %}
-        <button class="btn btn-crear-lote" id="btn-crear-lote-flotante" onclick="openCrearLoteModal()" style="display: none;">
-            <i class="bi bi-box-seam"></i> Crear Lote
-        </button>
-        <span id="lote-warning" class="btn" style="background: #6b7280; cursor: not-allowed; display: none;">
-            <i class="bi bi-exclamation-triangle"></i> Min. 2 coches
-        </span>
-        {% endif %}
         <button class="btn btn-cancelar" onclick="clearSelection()">
             <i class="bi bi-x-lg"></i> Cancelar
         </button>
@@ -1534,83 +1525,41 @@
             </div>
         </div>
     </div>
-    {% endif %}
 
-    {% if etapa.orden == 3 %}
-    <!-- Modal para crear lote -->
-    <div class="modal-overlay" id="crear-lote-modal">
+    <!-- Modal para imprimir lote de secado -->
+    <div class="modal-overlay" id="imprimir-secado-modal">
         <div class="modal-content">
-            <div class="modal-header" style="background: linear-gradient(135deg, #6f42c1, #5a32a3);">
-                <h3><i class="bi bi-box-seam"></i> Crear Nuevo Lote</h3>
+            <div class="modal-header" style="background: linear-gradient(135deg, #d97706, #f59e0b);">
+                <h3><i class="bi bi-printer"></i> Imprimir Lote de Secado</h3>
             </div>
             <div class="modal-body">
-                <div id="lote-result-message" class="result-message"></div>
+                <p style="margin-bottom: 16px; color: var(--color-text-muted);">
+                    Complete los siguientes datos antes de imprimir:
+                </p>
 
-                <div id="lote-form-section">
-                    <p style="margin-bottom: 16px; color: var(--color-text-muted);">
-                        Se creara un lote con <strong id="lote-modal-count">0</strong> coches seleccionados.
-                    </p>
-
-                    <div class="lote-resumen" style="background: var(--color-bg-light); padding: 16px; border-radius: var(--radius-md); margin-bottom: 16px;">
-                        <h4 style="margin-bottom: 12px; font-size: 0.95rem; color: var(--color-text-muted);">Resumen del Lote:</h4>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                            <div>
-                                <span style="font-size: 0.85rem; color: var(--color-text-muted);">Coches:</span>
-                                <strong id="lote-resumen-coches" style="display: block; font-size: 1.5rem; color: #6f42c1;">0</strong>
-                            </div>
-                            <div>
-                                <span style="font-size: 0.85rem; color: var(--color-text-muted);">Total BFT:</span>
-                                <strong id="lote-resumen-bft" style="display: block; font-size: 1.5rem; color: var(--color-success);">0</strong>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-group" style="margin-bottom: 16px;">
-                        <label style="margin-bottom: 12px;">Turno:</label>
-                        <div class="turno-selector">
-                            <div class="turno-option diurno selected" onclick="selectTurnoOption('Diurno')">
-                                <input type="radio" name="turno-lote" value="Diurno" checked>
-                                <div class="turno-option-icon"><i class="bi bi-sun-fill"></i></div>
-                                <div class="turno-option-label">Diurno</div>
-                            </div>
-                            <div class="turno-option nocturno" onclick="selectTurnoOption('Nocturno')">
-                                <input type="radio" name="turno-lote" value="Nocturno">
-                                <div class="turno-option-icon"><i class="bi bi-moon-fill"></i></div>
-                                <div class="turno-option-label">Nocturno</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-group" style="margin-bottom: 16px;">
-                        <label for="lote-notas">Notas (opcional):</label>
-                        <input type="text" id="lote-notas" placeholder="Ej: Pedido cliente X, Orden de trabajo #123...">
-                    </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="print-responsable"><i class="bi bi-person"></i> Responsable de Secado:</label>
+                    <input type="text" id="print-responsable" placeholder="Nombre del responsable">
                 </div>
 
-                <!-- Seccion de exito con QR -->
-                <div id="lote-success-section" style="display: none; text-align: center;">
-                    <div style="color: var(--color-success); font-size: 3rem; margin-bottom: 16px;">
-                        <i class="bi bi-check-circle-fill"></i>
-                    </div>
-                    <h4 style="margin-bottom: 8px;">Lote Creado Exitosamente</h4>
-                    <p id="lote-codigo-creado" style="font-family: 'JetBrains Mono', monospace; font-size: 1.2rem; color: #6f42c1; margin-bottom: 16px;"></p>
-                    <div style="margin-bottom: 16px;">
-                        <img id="lote-qr-imagen" src="" alt="QR del Lote" style="max-width: 200px; border: 2px solid #6f42c1; border-radius: var(--radius-md);">
-                    </div>
-                    <p style="font-size: 0.9rem; color: var(--color-text-muted);">
-                        Total: <strong id="lote-total-creado">0</strong> coches - <strong id="lote-bft-creado">0</strong> BFT
-                    </p>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="print-observaciones"><i class="bi bi-chat-text"></i> Observaciones:</label>
+                    <textarea id="print-observaciones" rows="3" placeholder="Observaciones generales del lote..." style="width: 100%; padding: 10px; border: 2px solid var(--color-gray-light); border-radius: var(--radius-sm); font-family: inherit; resize: vertical;"></textarea>
                 </div>
+
+                <input type="hidden" id="print-camara">
+                <input type="hidden" id="print-lote">
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" id="btn-cancelar-lote" onclick="closeCrearLoteModal()">Cancelar</button>
-                <button class="btn" style="background: #6f42c1; color: white;" id="btn-confirmar-lote" onclick="confirmarCrearLote()">
-                    <i class="bi bi-check-lg"></i> Crear Lote
+                <button class="btn btn-secondary" onclick="closeImprimirSecadoModal()">Cancelar</button>
+                <button class="btn" style="background: #d97706; color: white;" onclick="confirmarImprimirSecado()">
+                    <i class="bi bi-printer"></i> Imprimir
                 </button>
             </div>
         </div>
     </div>
     {% endif %}
+
 {% else %}
     {% if etapa.orden == 4 and lotes %}
     <!-- Si no hay coches pero si hay lotes en Ingreso a Taller -->
@@ -1906,12 +1855,11 @@ const etapaActual = {
     nombre: '{{ etapa.nombre }}'
 };
 
-// Etapas disponibles
+// Etapas disponibles (flujo: Madera Verde -> Secado -> Stock Secado -> Produccion via Lotes)
 const etapas = [
     { id: 1, orden: 1, nombre: 'Madera Verde', color: '#28a745', icono: 'bi-tree' },
     { id: 2, orden: 2, nombre: 'Secado', color: '#ffc107', icono: 'bi-sun' },
-    { id: 3, orden: 3, nombre: 'Stock Secado', color: '#17a2b8', icono: 'bi-archive' },
-    { id: 4, orden: 4, nombre: 'Ingreso a Taller', color: '#6f42c1', icono: 'bi-tools' }
+    { id: 3, orden: 3, nombre: 'Stock Secado', color: '#17a2b8', icono: 'bi-archive' }
 ];
 
 // Set para almacenar IDs de coches seleccionados
@@ -2062,17 +2010,13 @@ function openMoverModal() {
     resultMessage.textContent = '';
     selectedEtapaId = null;
 
-    // Generar opciones de etapas (todas disponibles excepto la actual y Taller)
+    // Generar opciones de etapas (todas disponibles excepto la actual)
     let html = '';
     etapas.forEach(etapa => {
-        // Ingreso a Taller (orden 4) solo acepta lotes, no coches individuales
-        const isTaller = etapa.orden === 4;
-        const isDisabled = etapa.id === etapaActual.id || isTaller;
+        const isDisabled = etapa.id === etapaActual.id;
         const disabledClass = isDisabled ? 'disabled' : '';
         let disabledText = '';
-        if (isTaller) {
-            disabledText = '(Solo acepta lotes)';
-        } else if (etapa.id === etapaActual.id) {
+        if (etapa.id === etapaActual.id) {
             disabledText = '(Etapa actual)';
         } else if (etapa.orden === etapaActual.orden + 1) {
             disabledText = '(Siguiente etapa)';
@@ -2472,9 +2416,31 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Funcion para imprimir lote de secado (solo en Secado)
+// Funciones para imprimir lote de secado (solo en Secado)
 {% if etapa.orden == 2 %}
-async function imprimirLoteSecado(camara, loteSecado) {
+function abrirImprimirSecadoModal(camara, loteSecado) {
+    document.getElementById('print-camara').value = camara;
+    document.getElementById('print-lote').value = loteSecado;
+    document.getElementById('print-responsable').value = '';
+    document.getElementById('print-observaciones').value = '';
+    document.getElementById('imprimir-secado-modal').classList.add('show');
+}
+
+function closeImprimirSecadoModal() {
+    document.getElementById('imprimir-secado-modal').classList.remove('show');
+}
+
+function confirmarImprimirSecado() {
+    const camara = document.getElementById('print-camara').value;
+    const loteSecado = document.getElementById('print-lote').value;
+    const responsable = document.getElementById('print-responsable').value.trim();
+    const observaciones = document.getElementById('print-observaciones').value.trim();
+
+    closeImprimirSecadoModal();
+    imprimirLoteSecado(camara, loteSecado, responsable, observaciones);
+}
+
+async function imprimirLoteSecado(camara, loteSecado, responsable = '', observaciones = '') {
     try {
         const response = await fetch(`/api/secado/camara/${camara}/lote/${loteSecado}`);
         const data = await response.json();
@@ -2636,11 +2602,15 @@ async function imprimirLoteSecado(camara, loteSecado) {
                     </div>
                     <div class="observaciones">
                         <div class="obs-title">Observaciones Generales:</div>
+                        ${observaciones ? `<div style="padding: 5px; font-size: 9px; line-height: 1.4;">${observaciones}</div>` : `
                         <div class="obs-lines"></div>
                         <div class="obs-lines"></div>
                         <div class="obs-lines"></div>
-                        <div class="obs-lines"></div>
-                        <div class="firma">Responsable de Secado</div>
+                        <div class="obs-lines"></div>`}
+                        <div class="firma">
+                            ${responsable ? `<strong>${responsable}</strong><br>` : ''}
+                            Responsable de Secado
+                        </div>
                     </div>
                 </div>
             </body>

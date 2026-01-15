@@ -573,8 +573,7 @@ function mostrarCoche(coche) {
     const etapasOrden = {
         1: { id: 1, nombre: 'Madera Verde', color: '#22c55e' },
         2: { id: 2, nombre: 'Secado', color: '#f59e0b' },
-        3: { id: 3, nombre: 'Stock Secado', color: '#3b82f6' },
-        4: { id: 4, nombre: 'Ingreso a Taller', color: '#8b5cf6' }
+        3: { id: 3, nombre: 'Stock Secado', color: '#3b82f6' }
     };
 
     const ordenActual = coche.etapa_actual.orden;
@@ -587,23 +586,13 @@ function mostrarCoche(coche) {
     camaraSection.style.display = 'none';
     cambiarCamaraSection.style.display = 'none';
 
-    // Si esta en la ultima etapa (Taller), no hay siguiente
-    if (ordenActual >= 4) {
-        siguienteEtapaDiv.innerHTML = `
-            <div style="padding: 16px; background: #f0fdf4; border-radius: var(--radius-sm); text-align: center;">
-                <i class="bi bi-check-circle" style="color: var(--color-success); font-size: 1.5rem;"></i>
-                <p style="margin-top: 8px; color: var(--color-success); font-weight: 600;">
-                    Este coche ya completó todo el proceso
-                </p>
-            </div>
-        `;
-    } else if (ordenActual === 3) {
-        // Stock Secado: coches deben asignarse a lote de produccion para ir a Taller
+    // Si esta en Stock Secado, debe asignarse a lote de produccion
+    if (ordenActual >= 3) {
         siguienteEtapaDiv.innerHTML = `
             <div style="padding: 16px; background: #eff6ff; border-radius: var(--radius-sm); text-align: center;">
                 <i class="bi bi-info-circle" style="color: var(--color-primary); font-size: 1.5rem;"></i>
                 <p style="margin-top: 8px; color: var(--color-text);">
-                    Este coche debe ser asignado a un <strong>Lote de Producción</strong> para continuar al Taller.
+                    Este coche debe ser asignado a un <strong>Lote de Producción</strong> para continuar.
                 </p>
                 <a href="/produccion" class="btn btn-primary" style="margin-top: 12px;">
                     <i class="bi bi-gear"></i> Ir a Producción
@@ -738,8 +727,8 @@ function mostrarLote(lote) {
 
     // Etapa actual (los lotes estan en Taller)
     const etapaSpan = document.getElementById('etapa-actual');
-    etapaSpan.textContent = 'Ingreso a Taller';
-    etapaSpan.style.backgroundColor = '#6f42c1';
+    etapaSpan.textContent = 'Producción';
+    etapaSpan.style.backgroundColor = '#e83e8c';
 
     // BFT
     document.getElementById('coche-bft').textContent = (lote.total_bft || 0).toFixed(1) + ' BFT';

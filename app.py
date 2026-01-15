@@ -238,9 +238,13 @@ def produccion():
     # Lotes en proceso
     lotes_en_proceso = Lote.query.filter_by(estado='en_proceso').order_by(Lote.fecha_inicio_proceso.desc()).all()
 
+    # Coches disponibles en Stock Secado (etapa 3) sin lote asignado
+    coches_stock_secado = Coche.query.filter_by(etapa_orden=3, lote_id=None).order_by(Coche.codigo_qr).all()
+
     return render_template('produccion.html',
                           lotes_disponibles=lotes_disponibles,
                           lotes_en_proceso=lotes_en_proceso,
+                          coches_stock_secado=coches_stock_secado,
                           largos_produccion=LARGOS_PRODUCCION)
 
 

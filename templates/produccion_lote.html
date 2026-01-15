@@ -625,7 +625,7 @@
             <div class="coche-card" id="coche-card-{{ coche.id }}">
                 <div class="coche-info">
                     <h4>{{ coche.codigo_qr }}</h4>
-                    <span>{{ "%.1f"|format(coche.bft) }} BFT | {{ coche.proveedor or 'Sin proveedor' }}</span>
+                    <span>{{ "%.1f"|format(coche.total_bft) }} BFT | {{ coche.proveedor or 'Sin proveedor' }}</span>
                 </div>
                 {% if lote.coches|length > 2 %}
                 <button class="btn-quitar-coche" onclick="quitarCocheLote({{ coche.id }})" title="Devolver a Stock Secado">
@@ -669,7 +669,7 @@
                     <div>
                         <strong style="font-family: 'JetBrains Mono', monospace;">{{ coche.codigo_qr }}</strong>
                         <span style="color: var(--color-text-muted); margin-left: 12px;">
-                            {{ "%.1f"|format(coche.bft) }} BFT | {{ coche.proveedor or 'Sin proveedor' }}
+                            {{ "%.1f"|format(coche.total_bft) }} BFT | {{ coche.proveedor or 'Sin proveedor' }}
                         </span>
                     </div>
                 </div>

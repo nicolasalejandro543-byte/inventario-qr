@@ -221,6 +221,140 @@ def dashboard():
                           largos_produccion=LARGOS_PRODUCCION)
 
 
+@app.route('/api/dashboard/stats')
+def dashboard_stats_api():
+    """API para obtener estadísticas del dashboard filtradas por fecha."""
+    from datetime import datetime, timedelta
+
+    fecha_desde = request.args.get('desde')
+    fecha_hasta = request.args.get('hasta')
+
+    # Parsear fechas
+    desde = None
+    hasta = None
+    if fecha_desde:
+        try:
+            desde = datetime.strptime(fecha_desde, '%Y-%m-%d')
+        except:
+            pass
+    if fecha_hasta:
+        try:
+            hasta = datetime.strptime(fecha_hasta, '%Y-%m-%d')
+            # Incluir todo el día hasta
+            hasta = hasta + timedelta(days=1)
+        except:
+            pass
+
+    etapas = Etapa.query.order_by(Etapa.orden).all()
+
+    # Stats por etapa (filtrar por fecha de creación del coche)
+    lotes_en_uso = Lote.query.filter(
+        Lote.estado.in_(['en_proceso', 'finalizado'])
+    ).all()
+    coches_en_lotes_usados_ids = set()
+    for lote in lotes_en_uso:
+        for coche in lote.coches:
+            coches_en_lotes_usados_ids.add(coche.id)
+
+    stats_por_etapa = {}
+    for etapa in etapas:
+        query = Coche.query.filter_by(etapa_actual_id=etapa.id)
+        if desde:
+            query = query.filter(Coche.created_at >= desde)
+        if hasta:
+            query = query.filter(Coche.created_at < hasta)
+        coches = query.all()
+
+        if etapa.orden == 4:
+            coches = [c for c in coches if c.id not in coches_en_lotes_usados_ids]
+
+        total_coches = len(coches)
+        total_bft = sum(c.total_bft or 0 for c in coches)
+        stats_por_etapa[etapa.id] = {
+            'total_coches': total_coches,
+            'total_bft': round(total_bft, 1)
+        }
+
+    # Lotes en proceso
+    query_en_proceso = Lote.query.filter_by(estado='en_proceso')
+    if desde:
+        query_en_proceso = query_en_proceso.filter(Lote.fecha_inicio_proceso >= desde)
+    if hasta:
+        query_en_proceso = query_en_proceso.filter(Lote.fecha_inicio_proceso < hasta)
+    lotes_en_proceso = query_en_proceso.all()
+    lotes_en_proceso_count = len(lotes_en_proceso)
+    lotes_en_proceso_bft = sum(l.bft_disponible or 0 for l in lotes_en_proceso)
+
+    # Lotes finalizados
+    query_finalizados = Lote.query.filter_by(estado='finalizado')
+    if desde:
+        query_finalizados = query_finalizados.filter(Lote.fecha_finalizado >= desde)
+    if hasta:
+        query_finalizados = query_finalizados.filter(Lote.fecha_finalizado < hasta)
+    lotes_finalizados = query_finalizados.all()
+    lotes_finalizados_count = len(lotes_finalizados)
+    lotes_finalizados_bft = sum(l.bft_usado or 0 for l in lotes_finalizados)
+
+    # Bloques presentados
+    query_presentados = Bloque.query.filter_by(estado='presentado')
+    if desde:
+        query_presentados = query_presentados.filter(Bloque.created_at >= desde)
+    if hasta:
+        query_presentados = query_presentados.filter(Bloque.created_at < hasta)
+    bloques_presentados = query_presentados.all()
+    bloques_presentados_count = len(bloques_presentados)
+    bloques_presentados_bft = sum(b.bft or 0 for b in bloques_presentados)
+
+    # Bloques encolados
+    query_encolados = Bloque.query.filter_by(estado='encolado')
+    if desde:
+        query_encolados = query_encolados.filter(Bloque.fecha_encolado >= desde)
+    if hasta:
+        query_encolados = query_encolados.filter(Bloque.fecha_encolado < hasta)
+    bloques_encolados = query_encolados.all()
+    bloques_encolados_count = len(bloques_encolados)
+    bloques_encolados_bft = sum(b.bft or 0 for b in bloques_encolados)
+
+    # Contenedores
+    query_contenedores_abiertos = Contenedor.query.filter_by(estado='abierto')
+    if desde:
+        query_contenedores_abiertos = query_contenedores_abiertos.filter(Contenedor.created_at >= desde)
+    if hasta:
+        query_contenedores_abiertos = query_contenedores_abiertos.filter(Contenedor.created_at < hasta)
+    contenedores_abiertos_count = query_contenedores_abiertos.count()
+
+    query_contenedores_total = Contenedor.query
+    if desde:
+        query_contenedores_total = query_contenedores_total.filter(Contenedor.created_at >= desde)
+    if hasta:
+        query_contenedores_total = query_contenedores_total.filter(Contenedor.created_at < hasta)
+    contenedores_total = query_contenedores_total.count()
+
+    return jsonify({
+        'stats_por_etapa': stats_por_etapa,
+        'produccion': {
+            'count': lotes_en_proceso_count,
+            'bft': round(lotes_en_proceso_bft, 1)
+        },
+        'finalizados': {
+            'count': lotes_finalizados_count,
+            'bft': round(lotes_finalizados_bft, 1)
+        },
+        'bloques_presentados': {
+            'count': bloques_presentados_count,
+            'bft': round(bloques_presentados_bft, 1)
+        },
+        'bloques_encolados': {
+            'count': bloques_encolados_count,
+            'bft': round(bloques_encolados_bft, 1)
+        },
+        'contenedores': {
+            'abiertos': contenedores_abiertos_count,
+            'total': contenedores_total
+        }
+    })
+
+
 @app.route('/nuevo')
 def nuevo_coche_form():
     """Formulario para crear nuevo coche."""

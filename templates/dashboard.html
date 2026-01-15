@@ -4,6 +4,127 @@
 
 {% block head %}
 <style>
+    /* Filtros de fecha */
+    .filters-card {
+        background: white;
+        border-radius: var(--radius-lg);
+        padding: 16px 20px;
+        margin-bottom: 20px;
+        box-shadow: var(--shadow-md);
+    }
+
+    .filters-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+        font-weight: 600;
+        color: var(--color-text-muted);
+        font-size: 0.85rem;
+    }
+
+    .filters-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .filter-btn {
+        padding: 8px 16px;
+        border: 2px solid var(--color-gray-light);
+        background: white;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: var(--color-text);
+    }
+
+    .filter-btn:hover {
+        border-color: var(--color-primary);
+        color: var(--color-primary);
+    }
+
+    .filter-btn.active {
+        background: var(--color-primary);
+        border-color: var(--color-primary);
+        color: white;
+    }
+
+    .date-range {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: auto;
+    }
+
+    .date-range input {
+        padding: 8px 12px;
+        border: 2px solid var(--color-gray-light);
+        border-radius: var(--radius-md);
+        font-size: 0.85rem;
+        width: 140px;
+    }
+
+    .date-range input:focus {
+        outline: none;
+        border-color: var(--color-primary);
+    }
+
+    .date-range-label {
+        font-size: 0.8rem;
+        color: var(--color-text-muted);
+    }
+
+    .btn-aplicar {
+        padding: 8px 16px;
+        background: var(--color-primary);
+        color: white;
+        border: none;
+        border-radius: var(--radius-md);
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-aplicar:hover {
+        background: #0284c7;
+    }
+
+    .filter-info {
+        font-size: 0.8rem;
+        color: var(--color-text-muted);
+        margin-top: 10px;
+        padding: 8px 12px;
+        background: var(--color-bg);
+        border-radius: var(--radius-sm);
+        display: none;
+    }
+
+    .filter-info.show {
+        display: block;
+    }
+
+    @media (max-width: 768px) {
+        .filters-row {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .date-range {
+            margin-left: 0;
+            flex-wrap: wrap;
+        }
+
+        .date-range input {
+            flex: 1;
+            min-width: 120px;
+        }
+    }
+
     /* Barra de navegacion rapida */
     .etapas-nav {
         display: flex;
@@ -681,13 +802,41 @@
     <i class="bi bi-grid-3x3-gap"></i> Procesos Generales
 </h2>
 
+<!-- Filtros de fecha -->
+<div class="filters-card">
+    <div class="filters-header">
+        <i class="bi bi-funnel"></i>
+        Filtrar por Fecha
+    </div>
+    <div class="filters-row">
+        <button class="filter-btn active" onclick="filtrarTodo()">Todo</button>
+        <button class="filter-btn" onclick="filtrarHoy()">Hoy</button>
+        <button class="filter-btn" onclick="filtrarSemana()">Esta Semana</button>
+        <button class="filter-btn" onclick="filtrarMes()">Este Mes</button>
+        <button class="filter-btn" onclick="filtrarAnio()">Este Ano</button>
+        <div class="date-range">
+            <span class="date-range-label">Desde:</span>
+            <input type="date" id="fecha-desde">
+            <span class="date-range-label">Hasta:</span>
+            <input type="date" id="fecha-hasta">
+            <button class="btn-aplicar" onclick="aplicarRangoFechas()">
+                <i class="bi bi-search"></i> Aplicar
+            </button>
+        </div>
+    </div>
+    <div class="filter-info" id="filter-info">
+        <i class="bi bi-info-circle"></i>
+        <span id="filter-info-text"></span>
+    </div>
+</div>
+
 <!-- Tarjetas de etapas + Produccion + Bloques + Finalizados -->
 <div class="stats-grid">
     <!-- Etapas del inventario -->
     {% for etapa in etapas %}
     {% set stats = stats_por_etapa[etapa.id] %}
     {% set class_name = etapa.nombre|lower|replace(' ', '-') %}
-    <a href="/etapa/{{ etapa.id }}" class="stat-card {{ class_name }}">
+    <a href="/etapa/{{ etapa.id }}" class="stat-card {{ class_name }}" data-etapa-id="{{ etapa.id }}">
         <div class="stat-header">
             <span class="stat-title">{{ etapa.nombre }}</span>
             <div class="stat-icon {{ class_name }}">
@@ -704,11 +853,11 @@
         </div>
         <div class="stat-content">
             <div>
-                <div class="stat-value {{ class_name }}">{{ stats.total_coches }}</div>
+                <div class="stat-value {{ class_name }}" id="etapa-{{ etapa.id }}-count">{{ stats.total_coches }}</div>
                 <div class="stat-label">Coches</div>
             </div>
             <div class="stat-bft">
-                <div class="stat-bft-value">{{ "%.1f"|format(stats.total_bft) }}</div>
+                <div class="stat-bft-value" id="etapa-{{ etapa.id }}-bft">{{ "%.1f"|format(stats.total_bft) }}</div>
                 <div class="stat-bft-label">BFT Total</div>
             </div>
         </div>
@@ -716,7 +865,7 @@
     {% endfor %}
 
     <!-- Produccion (Lotes en proceso) -->
-    <a href="/produccion" class="stat-card produccion">
+    <a href="/produccion" class="stat-card produccion" id="card-produccion">
         <div class="stat-header">
             <span class="stat-title">Produccion</span>
             <div class="stat-icon produccion">
@@ -725,18 +874,18 @@
         </div>
         <div class="stat-content">
             <div>
-                <div class="stat-value produccion">{{ lotes_en_proceso|length }}</div>
+                <div class="stat-value produccion" id="produccion-count">{{ lotes_en_proceso|length }}</div>
                 <div class="stat-label">Lotes en Proceso</div>
             </div>
             <div class="stat-bft">
-                <div class="stat-bft-value">{{ "%.1f"|format(lotes_en_proceso|sum(attribute='bft_disponible') if lotes_en_proceso else 0) }}</div>
+                <div class="stat-bft-value" id="produccion-bft">{{ "%.1f"|format(lotes_en_proceso|sum(attribute='bft_disponible') if lotes_en_proceso else 0) }}</div>
                 <div class="stat-bft-label">BFT Disponible</div>
             </div>
         </div>
     </a>
 
     <!-- Lotes Finalizados -->
-    <a href="/finalizados" class="stat-card finalizados">
+    <a href="/finalizados" class="stat-card finalizados" id="card-finalizados">
         <div class="stat-header">
             <span class="stat-title">Finalizados</span>
             <div class="stat-icon finalizados">
@@ -745,18 +894,18 @@
         </div>
         <div class="stat-content">
             <div>
-                <div class="stat-value finalizados">{{ lotes_finalizados|length }}</div>
+                <div class="stat-value finalizados" id="finalizados-count">{{ lotes_finalizados|length }}</div>
                 <div class="stat-label">Lotes</div>
             </div>
             <div class="stat-bft">
-                <div class="stat-bft-value">{{ "%.1f"|format(lotes_finalizados|sum(attribute='bft_usado') if lotes_finalizados else 0) }}</div>
+                <div class="stat-bft-value" id="finalizados-bft">{{ "%.1f"|format(lotes_finalizados|sum(attribute='bft_usado') if lotes_finalizados else 0) }}</div>
                 <div class="stat-bft-label">BFT Procesado</div>
             </div>
         </div>
     </a>
 
     <!-- Bloques Presentados -->
-    <a href="/bloques/presentados" class="stat-card bloques-presentados">
+    <a href="/bloques/presentados" class="stat-card bloques-presentados" id="card-bloques-presentados">
         <div class="stat-header">
             <span class="stat-title">Bloques Presentados</span>
             <div class="stat-icon bloques-presentados">
@@ -765,18 +914,18 @@
         </div>
         <div class="stat-content">
             <div>
-                <div class="stat-value bloques-presentados">{{ bloques_presentados|length if bloques_presentados else 0 }}</div>
+                <div class="stat-value bloques-presentados" id="bloques-presentados-count">{{ bloques_presentados|length if bloques_presentados else 0 }}</div>
                 <div class="stat-label">Bloques</div>
             </div>
             <div class="stat-bft">
-                <div class="stat-bft-value">{{ "%.1f"|format(bloques_presentados|sum(attribute='bft') if bloques_presentados else 0) }}</div>
+                <div class="stat-bft-value" id="bloques-presentados-bft">{{ "%.1f"|format(bloques_presentados|sum(attribute='bft') if bloques_presentados else 0) }}</div>
                 <div class="stat-bft-label">BFT Total</div>
             </div>
         </div>
     </a>
 
     <!-- Bloques Encolados -->
-    <a href="/bloques/encolados" class="stat-card bloques-encolados">
+    <a href="/bloques/encolados" class="stat-card bloques-encolados" id="card-bloques-encolados">
         <div class="stat-header">
             <span class="stat-title">Bloques Encolados</span>
             <div class="stat-icon bloques-encolados">
@@ -785,18 +934,18 @@
         </div>
         <div class="stat-content">
             <div>
-                <div class="stat-value bloques-encolados">{{ bloques_encolados|length if bloques_encolados else 0 }}</div>
+                <div class="stat-value bloques-encolados" id="bloques-encolados-count">{{ bloques_encolados|length if bloques_encolados else 0 }}</div>
                 <div class="stat-label">Bloques</div>
             </div>
             <div class="stat-bft">
-                <div class="stat-bft-value">{{ "%.1f"|format(bloques_encolados|sum(attribute='bft') if bloques_encolados else 0) }}</div>
+                <div class="stat-bft-value" id="bloques-encolados-bft">{{ "%.1f"|format(bloques_encolados|sum(attribute='bft') if bloques_encolados else 0) }}</div>
                 <div class="stat-bft-label">BFT Total</div>
             </div>
         </div>
     </a>
 
     <!-- Contenedores -->
-    <a href="/contenedores" class="stat-card contenedores">
+    <a href="/contenedores" class="stat-card contenedores" id="card-contenedores">
         <div class="stat-header">
             <span class="stat-title">Contenedores</span>
             <div class="stat-icon contenedores">
@@ -805,11 +954,11 @@
         </div>
         <div class="stat-content">
             <div>
-                <div class="stat-value contenedores">{{ contenedores_abiertos|length if contenedores_abiertos else 0 }}</div>
+                <div class="stat-value contenedores" id="contenedores-abiertos-count">{{ contenedores_abiertos|length if contenedores_abiertos else 0 }}</div>
                 <div class="stat-label">Abiertos</div>
             </div>
             <div class="stat-bft">
-                <div class="stat-bft-value">{{ contenedores_total if contenedores_total else 0 }}</div>
+                <div class="stat-bft-value" id="contenedores-total-count">{{ contenedores_total if contenedores_total else 0 }}</div>
                 <div class="stat-bft-label">Total</div>
             </div>
         </div>
@@ -901,5 +1050,154 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+// Funciones de filtrado por fecha
+function setActiveButton(btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+
+function formatDate(date) {
+    return date.toISOString().split('T')[0];
+}
+
+function showFilterInfo(text) {
+    const info = document.getElementById('filter-info');
+    const infoText = document.getElementById('filter-info-text');
+    infoText.textContent = text;
+    info.classList.add('show');
+}
+
+function hideFilterInfo() {
+    document.getElementById('filter-info').classList.remove('show');
+}
+
+function updateStats(data) {
+    // Actualizar etapas
+    for (const [etapaId, stats] of Object.entries(data.stats_por_etapa)) {
+        const countEl = document.getElementById(`etapa-${etapaId}-count`);
+        const bftEl = document.getElementById(`etapa-${etapaId}-bft`);
+        if (countEl) countEl.textContent = stats.total_coches;
+        if (bftEl) bftEl.textContent = stats.total_bft.toFixed(1);
+    }
+
+    // Actualizar Produccion
+    document.getElementById('produccion-count').textContent = data.produccion.count;
+    document.getElementById('produccion-bft').textContent = data.produccion.bft.toFixed(1);
+
+    // Actualizar Finalizados
+    document.getElementById('finalizados-count').textContent = data.finalizados.count;
+    document.getElementById('finalizados-bft').textContent = data.finalizados.bft.toFixed(1);
+
+    // Actualizar Bloques Presentados
+    document.getElementById('bloques-presentados-count').textContent = data.bloques_presentados.count;
+    document.getElementById('bloques-presentados-bft').textContent = data.bloques_presentados.bft.toFixed(1);
+
+    // Actualizar Bloques Encolados
+    document.getElementById('bloques-encolados-count').textContent = data.bloques_encolados.count;
+    document.getElementById('bloques-encolados-bft').textContent = data.bloques_encolados.bft.toFixed(1);
+
+    // Actualizar Contenedores
+    document.getElementById('contenedores-abiertos-count').textContent = data.contenedores.abiertos;
+    document.getElementById('contenedores-total-count').textContent = data.contenedores.total;
+}
+
+async function fetchStats(desde, hasta, infoText) {
+    let url = '/api/dashboard/stats?';
+    if (desde) url += `desde=${desde}&`;
+    if (hasta) url += `hasta=${hasta}`;
+
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+        updateStats(data);
+        if (infoText) {
+            showFilterInfo(infoText);
+        } else {
+            hideFilterInfo();
+        }
+    } catch (error) {
+        console.error('Error fetching stats:', error);
+    }
+}
+
+function filtrarTodo() {
+    setActiveButton(event.target);
+    document.getElementById('fecha-desde').value = '';
+    document.getElementById('fecha-hasta').value = '';
+    fetchStats(null, null, null);
+}
+
+function filtrarHoy() {
+    setActiveButton(event.target);
+    const hoy = new Date();
+    const desde = formatDate(hoy);
+    document.getElementById('fecha-desde').value = desde;
+    document.getElementById('fecha-hasta').value = desde;
+    fetchStats(desde, desde, `Mostrando datos de hoy: ${hoy.toLocaleDateString('es-ES')}`);
+}
+
+function filtrarSemana() {
+    setActiveButton(event.target);
+    const hoy = new Date();
+    const primerDia = new Date(hoy);
+    primerDia.setDate(hoy.getDate() - hoy.getDay());
+    const desde = formatDate(primerDia);
+    const hasta = formatDate(hoy);
+    document.getElementById('fecha-desde').value = desde;
+    document.getElementById('fecha-hasta').value = hasta;
+    fetchStats(desde, hasta, `Mostrando datos de esta semana: ${primerDia.toLocaleDateString('es-ES')} - ${hoy.toLocaleDateString('es-ES')}`);
+}
+
+function filtrarMes() {
+    setActiveButton(event.target);
+    const hoy = new Date();
+    const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    const desde = formatDate(primerDia);
+    const hasta = formatDate(hoy);
+    document.getElementById('fecha-desde').value = desde;
+    document.getElementById('fecha-hasta').value = hasta;
+    const nombreMes = hoy.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+    fetchStats(desde, hasta, `Mostrando datos de ${nombreMes}`);
+}
+
+function filtrarAnio() {
+    setActiveButton(event.target);
+    const hoy = new Date();
+    const primerDia = new Date(hoy.getFullYear(), 0, 1);
+    const desde = formatDate(primerDia);
+    const hasta = formatDate(hoy);
+    document.getElementById('fecha-desde').value = desde;
+    document.getElementById('fecha-hasta').value = hasta;
+    fetchStats(desde, hasta, `Mostrando datos del ano ${hoy.getFullYear()}`);
+}
+
+function aplicarRangoFechas() {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    const desde = document.getElementById('fecha-desde').value;
+    const hasta = document.getElementById('fecha-hasta').value;
+
+    if (!desde && !hasta) {
+        fetchStats(null, null, null);
+        return;
+    }
+
+    let infoText = 'Mostrando datos';
+    if (desde && hasta) {
+        const desdeDate = new Date(desde);
+        const hastaDate = new Date(hasta);
+        infoText = `Mostrando datos desde ${desdeDate.toLocaleDateString('es-ES')} hasta ${hastaDate.toLocaleDateString('es-ES')}`;
+    } else if (desde) {
+        const desdeDate = new Date(desde);
+        infoText = `Mostrando datos desde ${desdeDate.toLocaleDateString('es-ES')}`;
+    } else if (hasta) {
+        const hastaDate = new Date(hasta);
+        infoText = `Mostrando datos hasta ${hastaDate.toLocaleDateString('es-ES')}`;
+    }
+
+    fetchStats(desde, hasta, infoText);
+}
+</script>
 {% endblock %}
 

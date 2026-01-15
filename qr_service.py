@@ -12,10 +12,10 @@ def generar_codigo_unico():
 
 
 def generar_codigo_lote():
-    """Genera un código único para el QR de lotes."""
+    """Genera un código único para el QR de lotes/turnos de producción."""
     timestamp = datetime.now().strftime('%Y%m%d')
     unique_id = uuid.uuid4().hex[:6].upper()
-    return f"LOT-{timestamp}-{unique_id}"
+    return f"PRO-{timestamp}-{unique_id}"
 
 
 def generar_codigo_bloque():

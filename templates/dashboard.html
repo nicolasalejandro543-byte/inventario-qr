@@ -52,21 +52,22 @@
     .stats-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
-        gap: 16px;
-        margin-bottom: 30px;
+        gap: 12px;
+        margin-bottom: 24px;
     }
 
     .stat-card {
         background: white;
         border-radius: var(--radius-lg);
-        padding: 20px;
+        padding: 14px 16px;
         box-shadow: var(--shadow-md);
         cursor: pointer;
         transition: all 0.3s ease;
-        border-left: 5px solid;
+        border-left: 4px solid;
         text-decoration: none;
         color: inherit;
         display: block;
+        min-height: 90px;
     }
 
     .stat-card:hover {
@@ -86,23 +87,23 @@
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        margin-bottom: 12px;
+        margin-bottom: 8px;
     }
 
     .stat-title {
-        font-size: 0.9rem;
+        font-size: 0.8rem;
         font-weight: 600;
         color: var(--color-text-muted);
     }
 
     .stat-icon {
-        width: 44px;
-        height: 44px;
-        border-radius: 12px;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 20px;
+        font-size: 16px;
         color: white;
     }
 
@@ -122,7 +123,7 @@
     }
 
     .stat-value {
-        font-size: 2.2rem;
+        font-size: 1.6rem;
         font-weight: 700;
         line-height: 1;
     }
@@ -141,20 +142,20 @@
     }
 
     .stat-bft-value {
-        font-size: 1.3rem;
+        font-size: 1rem;
         font-weight: 700;
         font-family: 'JetBrains Mono', monospace;
     }
 
     .stat-bft-label {
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         color: var(--color-text-muted);
     }
 
     .stat-label {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         color: var(--color-text-muted);
-        margin-top: 4px;
+        margin-top: 2px;
     }
 
     /* Movimientos */

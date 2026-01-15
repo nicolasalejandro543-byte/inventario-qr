@@ -281,7 +281,7 @@ class Bloque(db.Model):
     lote_id = db.Column(db.Integer, db.ForeignKey('lotes.id'), nullable=True)
 
     # Datos del bloque
-    fecha = db.Column(db.Date, default=datetime.now().date)
+    fecha = db.Column(db.Date, default=lambda: datetime.now().date())
     turno = db.Column(db.String(20), default='Diurno')  # Diurno / Nocturno
     calidad = db.Column(db.String(20), default='Estándar')  # Estándar / Liviano
     secuencia = db.Column(db.String(50))  # Ingreso manual

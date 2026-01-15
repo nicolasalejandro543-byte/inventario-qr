@@ -1,4 +1,5 @@
 import os
+import re
 from datetime import datetime
 from functools import wraps
 from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, session
@@ -10,6 +11,8 @@ import io
 # Credenciales de acceso (pueden configurarse via variables de entorno)
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'skycomposite2024')
+EDIT_LOTE_PASSWORD = os.environ.get('EDIT_LOTE_PASSWORD', 'admin1208')
+RESET_DB_PASSWORD = os.environ.get('RESET_DB_PASSWORD', 'resetdb2024')
 
 app = Flask(__name__)
 
@@ -1803,6 +1806,10 @@ def eliminar_proceso(proceso_id):
     if lote and lote.estado == 'finalizado':
         return jsonify({'error': 'No se puede eliminar de un lote finalizado'}), 400
 
+    # Revertir el BFT usado del lote
+    if lote and proceso.bft_calculado:
+        lote.bft_usado = max(0, (lote.bft_usado or 0) - proceso.bft_calculado)
+
     db.session.delete(proceso)
     db.session.commit()
 
@@ -1826,6 +1833,10 @@ def eliminar_bloque(bloque_id):
     # No permitir eliminar si el bloque ya fue encolado o está en un contenedor
     if bloque.estado != 'presentado':
         return jsonify({'error': f'No se puede eliminar un bloque en estado {bloque.estado}'}), 400
+
+    # Revertir el BFT usado del lote
+    if lote and bloque.bft:
+        lote.bft_usado = max(0, (lote.bft_usado or 0) - bloque.bft)
 
     db.session.delete(bloque)
     db.session.commit()
@@ -1894,7 +1905,7 @@ def editar_lote_finalizado(lote_id):
     password = data.get('password', '')
 
     # Verificar contraseña
-    if password != 'admin1208':
+    if password != EDIT_LOTE_PASSWORD:
         return jsonify({'error': 'Contraseña incorrecta'}), 403
 
     lote = Lote.query.get_or_404(lote_id)
@@ -1935,7 +1946,7 @@ def reabrir_lote_finalizado(lote_id):
     password = data.get('password', '')
 
     # Verificar contraseña
-    if password != 'admin1208':
+    if password != EDIT_LOTE_PASSWORD:
         return jsonify({'error': 'Contraseña incorrecta'}), 403
 
     lote = Lote.query.get_or_404(lote_id)
@@ -2005,11 +2016,22 @@ def crear_contenedor():
     """Crea un nuevo contenedor de embarque."""
     data = request.get_json()
 
-    # Obtener el siguiente número secuencial
-    ultimo = Contenedor.query.order_by(Contenedor.id.desc()).first()
-    siguiente_num = (ultimo.id + 1) if ultimo else 1
+    # Buscar el número secuencial más alto usado en códigos existentes
+    siguiente_num = 1
+    contenedores = Contenedor.query.all()
+    for c in contenedores:
+        match = re.search(r'SC-B-000-(\d+)', c.codigo)
+        if match:
+            num = int(match.group(1))
+            if num >= siguiente_num:
+                siguiente_num = num + 1
 
     codigo = generar_codigo_contenedor(siguiente_num)
+
+    # Verificar que el código no exista (por seguridad)
+    while Contenedor.query.filter_by(codigo=codigo).first():
+        siguiente_num += 1
+        codigo = generar_codigo_contenedor(siguiente_num)
 
     # Parsear fechas si vienen
     fecha_carga = None
@@ -2279,7 +2301,7 @@ def reset_database():
     password = data.get('password', '')
 
     # Contraseña de seguridad
-    if password != 'resetdb2024':
+    if password != RESET_DB_PASSWORD:
         return jsonify({'error': 'Contraseña incorrecta'}), 403
 
     try:
@@ -2337,7 +2359,7 @@ def reset_db_page():
             </ul>
             <p>Las etapas (Madera Verde, Secado, etc.) se mantienen.</p>
         </div>
-        <input type="password" id="password" placeholder="Contraseña: resetdb2024">
+        <input type="password" id="password" placeholder="Ingrese la contraseña">
         <button onclick="resetDB()">🗑️ BORRAR TODA LA BASE DE DATOS</button>
         <div id="result"></div>
         <script>

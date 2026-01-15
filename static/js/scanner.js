@@ -153,9 +153,10 @@ function mostrarResultado(coche) {
             </span>
         </div>
         <h5 class="text-primary">${coche.codigo_qr}</h5>
-        <p class="mb-1"><strong>Descripción:</strong> ${coche.descripcion}</p>
-        <p class="mb-1"><strong>Cantidad:</strong> ${coche.cantidad} unidades</p>
-        ${coche.responsable ? `<p class="mb-1"><strong>Responsable:</strong> ${coche.responsable}</p>` : ''}
+        <p class="mb-1"><strong>Total BFT:</strong> ${coche.total_bft || 0}</p>
+        ${coche.proveedor ? `<p class="mb-1"><strong>Proveedor:</strong> ${coche.proveedor}</p>` : ''}
+        ${coche.registrador ? `<p class="mb-1"><strong>Registrador:</strong> ${coche.registrador}</p>` : ''}
+        ${coche.notas ? `<p class="mb-1"><strong>Notas:</strong> ${coche.notas}</p>` : ''}
     `;
 
     // Actualizar estado de botones de etapa

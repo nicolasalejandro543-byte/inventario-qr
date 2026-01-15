@@ -1157,50 +1157,60 @@ def crear_lote():
 @app.route('/api/lotes/<int:lote_id>/agregar-coches', methods=['POST'])
 def agregar_coches_lote(lote_id):
     """Agrega coches a un lote existente (no finalizado)."""
-    lote = Lote.query.get_or_404(lote_id)
-    data = request.get_json()
+    try:
+        lote = Lote.query.get(lote_id)
+        if not lote:
+            return jsonify({'error': 'Lote no encontrado'}), 404
 
-    if lote.estado == 'finalizado':
-        return jsonify({'error': 'No se pueden agregar coches a un lote finalizado'}), 400
+        data = request.get_json(silent=True) or {}
 
-    # Aceptar ambos nombres de parametro para compatibilidad
-    coche_ids = data.get('coches_ids', data.get('coche_ids', []))
-    usuario = data.get('usuario', 'Anonimo')
+        if lote.estado == 'finalizado':
+            return jsonify({'error': 'No se pueden agregar coches a un lote finalizado'}), 400
 
-    if not coche_ids:
-        return jsonify({'error': 'Se requiere al menos un coche'}), 400
+        # Aceptar ambos nombres de parametro para compatibilidad
+        coche_ids = data.get('coches_ids', data.get('coche_ids', []))
+        usuario = data.get('usuario', 'Anonimo')
 
-    etapa_stock_seco = Etapa.query.filter_by(orden=3).first()
-    etapa_taller = Etapa.query.filter_by(orden=4).first()
+        if not coche_ids:
+            return jsonify({'error': 'Se requiere al menos un coche'}), 400
 
-    coches_agregados = []
-    errores = []
+        etapa_stock_seco = Etapa.query.filter_by(orden=3).first()
+        etapa_taller = Etapa.query.filter_by(orden=4).first()
 
-    for coche_id in coche_ids:
-        coche = Coche.query.get(coche_id)
-        if not coche:
-            errores.append({'coche_id': coche_id, 'error': 'Coche no encontrado'})
-            continue
-        if coche.etapa_actual_id != etapa_stock_seco.id:
-            errores.append({'coche_id': coche_id, 'error': 'El coche no esta en Stock Secado'})
-            continue
-        if coche in lote.coches:
-            errores.append({'coche_id': coche_id, 'error': 'El coche ya esta en el lote'})
-            continue
+        if not etapa_stock_seco or not etapa_taller:
+            return jsonify({'error': 'No se encontraron las etapas necesarias'}), 500
 
-        lote.coches.append(coche)
-        coche.mover_a_etapa(etapa_taller.id, usuario, f'Agregado al lote {lote.codigo_qr}')
-        coches_agregados.append(coche.codigo_qr)
+        coches_agregados = []
+        errores = []
 
-    lote.calcular_total_bft()
-    db.session.commit()
+        for coche_id in coche_ids:
+            coche = Coche.query.get(coche_id)
+            if not coche:
+                errores.append({'coche_id': coche_id, 'error': 'Coche no encontrado'})
+                continue
+            if coche.etapa_actual_id != etapa_stock_seco.id:
+                errores.append({'coche_id': coche_id, 'error': 'El coche no esta en Stock Secado'})
+                continue
+            if coche in lote.coches:
+                errores.append({'coche_id': coche_id, 'error': 'El coche ya esta en el lote'})
+                continue
 
-    return jsonify({
-        'success': True,
-        'lote': lote.to_dict(),
-        'coches_agregados': coches_agregados,
-        'errores': errores if errores else None
-    })
+            lote.coches.append(coche)
+            coche.mover_a_etapa(etapa_taller.id, usuario, f'Agregado al lote {lote.codigo_qr}')
+            coches_agregados.append(coche.codigo_qr)
+
+        lote.calcular_total_bft()
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'lote': lote.to_dict(),
+            'coches_agregados': coches_agregados,
+            'errores': errores if errores else None
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Error interno: {str(e)}'}), 500
 
 
 @app.route('/api/lotes/<int:lote_id>/quitar-coche/<int:coche_id>', methods=['POST'])
@@ -1215,7 +1225,7 @@ def quitar_coche_lote(lote_id, coche_id):
         if not coche:
             return jsonify({'error': 'Coche no encontrado'}), 404
 
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
 
         if lote.estado == 'finalizado':
             return jsonify({'error': 'No se pueden quitar coches de un lote finalizado'}), 400

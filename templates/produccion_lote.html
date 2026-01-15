@@ -414,6 +414,164 @@
         .form-row { flex-direction: column; }
         .stats-grid { grid-template-columns: repeat(2, 1fr); }
     }
+
+    /* Estilos para gestion de coches */
+    .coches-section {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+
+    .coches-header {
+        padding: 14px 20px;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: white;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .coches-body {
+        padding: 20px;
+    }
+
+    .coches-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 12px;
+    }
+
+    .coche-card {
+        background: var(--color-bg);
+        border-radius: var(--radius-md);
+        padding: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border: 2px solid transparent;
+        transition: all 0.2s;
+    }
+
+    .coche-card:hover {
+        border-color: #6366f1;
+        background: rgba(99, 102, 241, 0.05);
+    }
+
+    .coche-info h4 {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 700;
+        color: var(--color-primary);
+        margin-bottom: 4px;
+    }
+
+    .coche-info span {
+        font-size: 0.85rem;
+        color: var(--color-text-muted);
+    }
+
+    .btn-quitar-coche {
+        background: var(--color-danger);
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+    }
+
+    .btn-quitar-coche:hover {
+        background: #dc2626;
+        transform: scale(1.05);
+    }
+
+    /* Modal agregar coches */
+    .modal-coches-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-coches-overlay.active {
+        display: flex;
+    }
+
+    .modal-coches {
+        background: white;
+        border-radius: var(--radius-lg);
+        width: 90%;
+        max-width: 600px;
+        max-height: 80vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .modal-coches-header {
+        padding: 16px 20px;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: white;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-coches-body {
+        padding: 20px;
+        overflow-y: auto;
+        flex: 1;
+    }
+
+    .coches-disponibles-list {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .coche-disponible-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        border-radius: var(--radius-sm);
+        margin-bottom: 8px;
+        background: var(--color-bg);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .coche-disponible-item:hover {
+        background: rgba(99, 102, 241, 0.1);
+    }
+
+    .coche-disponible-item.selected {
+        background: rgba(99, 102, 241, 0.2);
+        border: 2px solid #6366f1;
+    }
+
+    .coche-disponible-item input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+    }
+
+    .modal-coches-footer {
+        padding: 16px 20px;
+        border-top: 1px solid var(--color-gray-light);
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+    }
 </style>
 {% endblock %}
 
@@ -446,6 +604,88 @@
                 <div class="stat-label">BFT Disponible</div>
                 <div class="stat-value warning" id="lote-bft-disponible">{{ "%.1f"|format(lote.bft_disponible) }}</div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gestion de Coches del Lote -->
+<div class="coches-section no-print">
+    <div class="coches-header">
+        <span><i class="bi bi-truck"></i> Coches del Lote ({{ lote.coches|length }})</span>
+        {% if coches_disponibles|length > 0 %}
+        <button class="btn btn-secondary" onclick="abrirModalAgregarCoches()" style="background: white; color: #6366f1;">
+            <i class="bi bi-plus-circle"></i> Agregar Coches
+        </button>
+        {% endif %}
+    </div>
+    <div class="coches-body">
+        {% if lote.coches|length > 0 %}
+        <div class="coches-grid" id="coches-lote-grid">
+            {% for coche in lote.coches %}
+            <div class="coche-card" id="coche-card-{{ coche.id }}">
+                <div class="coche-info">
+                    <h4>{{ coche.codigo_qr }}</h4>
+                    <span>{{ "%.1f"|format(coche.bft) }} BFT | {{ coche.proveedor or 'Sin proveedor' }}</span>
+                </div>
+                {% if lote.coches|length > 2 %}
+                <button class="btn-quitar-coche" onclick="quitarCocheLote({{ coche.id }})" title="Devolver a Stock Secado">
+                    <i class="bi bi-x-circle"></i> Quitar
+                </button>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="text-align: center; color: var(--color-text-muted); padding: 20px;">
+            No hay coches en este lote
+        </p>
+        {% endif %}
+
+        {% if lote.coches|length <= 2 %}
+        <p style="font-size: 0.85rem; color: var(--color-text-muted); margin-top: 12px; text-align: center;">
+            <i class="bi bi-info-circle"></i> El lote debe tener minimo 2 coches. No se pueden quitar mas coches.
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal para Agregar Coches -->
+<div class="modal-coches-overlay" id="modal-agregar-coches">
+    <div class="modal-coches">
+        <div class="modal-coches-header">
+            <span><i class="bi bi-plus-circle"></i> Agregar Coches al Lote</span>
+            <button onclick="cerrarModalAgregarCoches()" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer;">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="modal-coches-body">
+            <p style="margin-bottom: 16px; color: var(--color-text-muted);">
+                Seleccione los coches de Stock Secado que desea agregar al lote:
+            </p>
+            <div class="coches-disponibles-list">
+                {% for coche in coches_disponibles %}
+                <div class="coche-disponible-item" onclick="toggleCocheSeleccion({{ coche.id }})">
+                    <input type="checkbox" id="coche-sel-{{ coche.id }}" value="{{ coche.id }}">
+                    <div>
+                        <strong style="font-family: 'JetBrains Mono', monospace;">{{ coche.codigo_qr }}</strong>
+                        <span style="color: var(--color-text-muted); margin-left: 12px;">
+                            {{ "%.1f"|format(coche.bft) }} BFT | {{ coche.proveedor or 'Sin proveedor' }}
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+                {% if coches_disponibles|length == 0 %}
+                <p style="text-align: center; color: var(--color-text-muted); padding: 20px;">
+                    No hay coches disponibles en Stock Secado
+                </p>
+                {% endif %}
+            </div>
+        </div>
+        <div class="modal-coches-footer">
+            <button class="btn btn-secondary" onclick="cerrarModalAgregarCoches()">Cancelar</button>
+            <button class="btn btn-primary" onclick="agregarCochesSeleccionados()">
+                <i class="bi bi-plus"></i> Agregar Seleccionados
+            </button>
         </div>
     </div>
 </div>
@@ -1038,6 +1278,79 @@
 
     function ocultarQRs() {
         document.getElementById('qr-preview-section').classList.remove('active');
+    }
+
+    // ==================== GESTION DE COCHES ====================
+    function abrirModalAgregarCoches() {
+        document.getElementById('modal-agregar-coches').classList.add('active');
+    }
+
+    function cerrarModalAgregarCoches() {
+        document.getElementById('modal-agregar-coches').classList.remove('active');
+        // Limpiar selecciones
+        document.querySelectorAll('.coche-disponible-item input[type="checkbox"]').forEach(cb => {
+            cb.checked = false;
+            cb.closest('.coche-disponible-item').classList.remove('selected');
+        });
+    }
+
+    function toggleCocheSeleccion(cocheId) {
+        const checkbox = document.getElementById('coche-sel-' + cocheId);
+        checkbox.checked = !checkbox.checked;
+        checkbox.closest('.coche-disponible-item').classList.toggle('selected', checkbox.checked);
+    }
+
+    async function agregarCochesSeleccionados() {
+        const checkboxes = document.querySelectorAll('.coche-disponible-item input[type="checkbox"]:checked');
+        const cochesIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+        if (cochesIds.length === 0) {
+            alert('Seleccione al menos un coche para agregar');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/lotes/${LOTE.id}/agregar-coches`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ coches_ids: cochesIds })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                alert(data.mensaje);
+                // Recargar la pagina para ver los cambios
+                window.location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        } catch (error) {
+            alert('Error de conexion: ' + error.message);
+        }
+    }
+
+    async function quitarCocheLote(cocheId) {
+        if (!confirm('Quitar este coche del lote? El coche sera devuelto a Stock Secado.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/lotes/${LOTE.id}/quitar-coche/${cocheId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                alert(data.mensaje);
+                // Recargar la pagina para ver los cambios
+                window.location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        } catch (error) {
+            alert('Error de conexion: ' + error.message);
+        }
     }
 
     // ==================== FINALIZAR LOTE ====================

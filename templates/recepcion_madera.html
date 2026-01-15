@@ -1039,7 +1039,7 @@
                 <a href="/recepcion" class="active"><i class="bi bi-truck"></i> Recepcion</a>
                 <a href="/"><i class="bi bi-grid-3x3-gap"></i> Inventario</a>
                 <a href="/scanner"><i class="bi bi-qr-code-scan"></i> Scanner</a>
-                <a href="/nuevo"><i class="bi bi-plus-circle"></i> Nuevo Coche</a>
+                <a href="#" onclick="abrirResumenCompras(event)"><i class="bi bi-file-earmark-bar-graph"></i> Resumen</a>
             </nav>
         </header>
 
@@ -1404,6 +1404,183 @@
     </div>
 
     <div class="toast-container" id="toast-container"></div>
+
+    <!-- Modal de Resumen de Compras -->
+    <div class="modal-overlay" id="resumen-compras-modal">
+        <div class="modal" style="max-width: 800px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">
+                <h2><i class="bi bi-file-earmark-bar-graph"></i> Resumen de Compras</h2>
+                <button class="modal-close" onclick="cerrarResumenCompras()" style="color: white;">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; align-items: flex-end;">
+                    <div class="form-group" style="flex: 1; min-width: 150px;">
+                        <label>Fecha Inicio</label>
+                        <input type="date" id="resumen-fecha-inicio" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px;">
+                    </div>
+                    <div class="form-group" style="flex: 1; min-width: 150px;">
+                        <label>Fecha Fin</label>
+                        <input type="date" id="resumen-fecha-fin" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px;">
+                    </div>
+                    <button class="btn btn-primary" onclick="cargarResumenCompras()" style="height: 44px;">
+                        <i class="bi bi-search"></i> Buscar
+                    </button>
+                </div>
+                <div id="resumen-compras-content" style="min-height: 200px;">
+                    <p style="text-align: center; color: #6b7280;">Seleccione un rango de fechas y haga clic en "Buscar"</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // Funciones para Resumen de Compras
+    function abrirResumenCompras(e) {
+        e.preventDefault();
+        // Establecer fechas por defecto (mes actual)
+        const hoy = new Date();
+        const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+        document.getElementById('resumen-fecha-inicio').value = primerDia.toISOString().split('T')[0];
+        document.getElementById('resumen-fecha-fin').value = hoy.toISOString().split('T')[0];
+        document.getElementById('resumen-compras-modal').style.display = 'flex';
+    }
+
+    function cerrarResumenCompras() {
+        document.getElementById('resumen-compras-modal').style.display = 'none';
+    }
+
+    async function cargarResumenCompras() {
+        const fechaInicio = document.getElementById('resumen-fecha-inicio').value;
+        const fechaFin = document.getElementById('resumen-fecha-fin').value;
+        const content = document.getElementById('resumen-compras-content');
+
+        if (!fechaInicio || !fechaFin) {
+            alert('Seleccione ambas fechas');
+            return;
+        }
+
+        content.innerHTML = '<p style="text-align: center;"><i class="bi bi-hourglass-split"></i> Cargando...</p>';
+
+        try {
+            const response = await fetch(`/api/recepcion/resumen-compras?fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`);
+            const data = await response.json();
+
+            if (!data.success) {
+                content.innerHTML = `<p style="text-align: center; color: #ef4444;">Error: ${data.error}</p>`;
+                return;
+            }
+
+            // Generar tabla de proveedores
+            let proveedoresHtml = data.por_proveedor.map(p => `
+                <tr>
+                    <td style="text-align: left; font-weight: 600;">${p.proveedor}</td>
+                    <td>${p.viajes}</td>
+                    <td>${p.coches}</td>
+                    <td style="font-family: monospace; font-weight: 700; color: #10b981;">${p.bft.toFixed(1)}</td>
+                </tr>
+            `).join('');
+
+            // Generar tabla de espesores
+            let espesoresHtml = data.por_espesor.map(e => `
+                <tr>
+                    <td>${e.espesor}"</td>
+                    <td style="font-family: monospace;">${e.bft.toFixed(1)}</td>
+                    <td>${e.porcentaje}%</td>
+                </tr>
+            `).join('');
+
+            content.innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px;">
+                    <div style="background: #dbeafe; padding: 16px; border-radius: 12px; text-align: center;">
+                        <div style="font-size: 2rem; font-weight: 700; color: #1d4ed8;">${data.total_coches}</div>
+                        <div style="color: #3b82f6; font-weight: 600;">Total Coches</div>
+                    </div>
+                    <div style="background: #d1fae5; padding: 16px; border-radius: 12px; text-align: center;">
+                        <div style="font-size: 2rem; font-weight: 700; color: #059669; font-family: monospace;">${data.total_bft.toFixed(1)}</div>
+                        <div style="color: #10b981; font-weight: 600;">Total BFT</div>
+                    </div>
+                    <div style="background: #fef3c7; padding: 16px; border-radius: 12px; text-align: center;">
+                        <div style="font-size: 2rem; font-weight: 700; color: #d97706;">${data.por_proveedor.length}</div>
+                        <div style="color: #f59e0b; font-weight: 600;">Proveedores</div>
+                    </div>
+                </div>
+
+                <h4 style="margin-bottom: 12px; color: #374151;"><i class="bi bi-people"></i> Por Proveedor</h4>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                    <thead>
+                        <tr style="background: #3b82f6; color: white;">
+                            <th style="padding: 10px; text-align: left;">Proveedor</th>
+                            <th style="padding: 10px;">Viajes</th>
+                            <th style="padding: 10px;">Coches</th>
+                            <th style="padding: 10px;">BFT</th>
+                        </tr>
+                    </thead>
+                    <tbody>${proveedoresHtml}</tbody>
+                </table>
+
+                <h4 style="margin-bottom: 12px; color: #374151;"><i class="bi bi-layers"></i> Por Espesor</h4>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #10b981; color: white;">
+                            <th style="padding: 10px;">Espesor</th>
+                            <th style="padding: 10px;">BFT</th>
+                            <th style="padding: 10px;">%</th>
+                        </tr>
+                    </thead>
+                    <tbody>${espesoresHtml}</tbody>
+                </table>
+
+                <div style="margin-top: 20px; text-align: right;">
+                    <button class="btn btn-secondary" onclick="imprimirResumenCompras()" style="margin-right: 8px;">
+                        <i class="bi bi-printer"></i> Imprimir
+                    </button>
+                </div>
+            `;
+        } catch (error) {
+            content.innerHTML = `<p style="text-align: center; color: #ef4444;">Error de conexión: ${error.message}</p>`;
+        }
+    }
+
+    function imprimirResumenCompras() {
+        const content = document.getElementById('resumen-compras-content').innerHTML;
+        const fechaInicio = document.getElementById('resumen-fecha-inicio').value;
+        const fechaFin = document.getElementById('resumen-fecha-fin').value;
+
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Resumen de Compras - ${fechaInicio} a ${fechaFin}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 20px; }
+                    h1 { color: #1d4ed8; margin-bottom: 5px; }
+                    h4 { margin-top: 20px; color: #374151; }
+                    table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+                    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+                    th { background: #3b82f6; color: white; }
+                    .stats { display: flex; gap: 20px; margin: 20px 0; }
+                    .stat-box { flex: 1; padding: 15px; border-radius: 8px; text-align: center; }
+                    button { display: none; }
+                </style>
+            </head>
+            <body>
+                <h1>Resumen de Compras</h1>
+                <p>Período: ${fechaInicio} al ${fechaFin}</p>
+                ${content}
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => printWindow.print(), 500);
+    }
+
+    // Cerrar modal al hacer clic fuera
+    document.getElementById('resumen-compras-modal').addEventListener('click', function(e) {
+        if (e.target === this) cerrarResumenCompras();
+    });
+    </script>
 
     <script src="/static/js/recepcion.js"></script>
 </body>

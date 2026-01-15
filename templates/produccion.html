@@ -216,10 +216,6 @@
         <i class="bi bi-archive"></i>
         <span>Stock Secado</span>
     </a>
-    <a href="/etapa/4" class="etapa-nav-btn ingreso-a-taller">
-        <i class="bi bi-tools"></i>
-        <span>Ingreso a Taller</span>
-    </a>
     <a href="/produccion" class="etapa-nav-btn produccion active">
         <i class="bi bi-gear"></i>
         <span>Produccion</span>
@@ -295,7 +291,7 @@
 
 <!-- Lotes Disponibles -->
 <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 16px; color: #6f42c1;">
-    <i class="bi bi-box-seam"></i> Lotes Disponibles de Ingreso a Taller ({{ lotes_disponibles|length }})
+    <i class="bi bi-box-seam"></i> Lotes Disponibles ({{ lotes_disponibles|length }})
 </h3>
 
 {% if lotes_disponibles %}
@@ -338,9 +334,9 @@
 <div class="empty-state">
     <i class="bi bi-inbox"></i>
     <h3>No hay lotes disponibles</h3>
-    <p>Crea lotes desde la vista de Ingreso a Taller para empezar a producir</p>
-    <a href="/etapa/4" class="btn btn-primary" style="margin-top: 16px;">
-        <i class="bi bi-plus"></i> Ir a Ingreso a Taller
+    <p>Crea lotes desde Stock Secado seleccionando coches y haciendo clic en "Crear Lote"</p>
+    <a href="/etapa/3" class="btn btn-primary" style="margin-top: 16px;">
+        <i class="bi bi-plus"></i> Ir a Stock Secado
     </a>
 </div>
 {% endif %}

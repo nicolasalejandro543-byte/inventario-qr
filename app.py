@@ -49,20 +49,32 @@ def ver_etapa(etapa_id):
 
     total_bft = sum(c.total_bft or 0 for c in coches)
 
-    # Si es Secado (orden 2), agrupar por cámara
+    # Si es Secado (orden 2), agrupar por cámara y lote_secado
     coches_por_camara = {}
     if etapa.orden == 2:
         for coche in coches:
             camara = coche.camara or 0  # 0 para coches sin cámara asignada
+            lote_sec = coche.lote_secado or 'Sin Lote'
             if camara not in coches_por_camara:
                 coches_por_camara[camara] = {
                     'coches': [],
                     'total_bft': 0,
-                    'count': 0
+                    'count': 0,
+                    'lotes_secado': {}
                 }
             coches_por_camara[camara]['coches'].append(coche)
             coches_por_camara[camara]['total_bft'] += coche.total_bft or 0
             coches_por_camara[camara]['count'] += 1
+            # Agrupar por lote_secado
+            if lote_sec not in coches_por_camara[camara]['lotes_secado']:
+                coches_por_camara[camara]['lotes_secado'][lote_sec] = {
+                    'coches': [],
+                    'total_bft': 0,
+                    'count': 0
+                }
+            coches_por_camara[camara]['lotes_secado'][lote_sec]['coches'].append(coche)
+            coches_por_camara[camara]['lotes_secado'][lote_sec]['total_bft'] += coche.total_bft or 0
+            coches_por_camara[camara]['lotes_secado'][lote_sec]['count'] += 1
         # Ordenar por número de cámara
         coches_por_camara = dict(sorted(coches_por_camara.items()))
 
@@ -242,9 +254,13 @@ def produccion_lote(lote_id):
         lote.iniciar_proceso()
         db.session.commit()
 
+    # Obtener coches disponibles en Stock Secado (etapa 3) para agregar al lote
+    coches_disponibles = Coche.query.filter_by(etapa_orden=3, lote_id=None).order_by(Coche.codigo_qr).all()
+
     return render_template('produccion_lote.html',
                           lote=lote,
-                          largos_produccion=LARGOS_PRODUCCION)
+                          largos_produccion=LARGOS_PRODUCCION,
+                          coches_disponibles=coches_disponibles)
 
 
 @app.route('/finalizados')
@@ -419,6 +435,81 @@ def obtener_coche_por_qr(codigo_qr):
         return jsonify({'error': 'Coche no encontrado', 'codigo': codigo_qr}), 404
 
     return jsonify(coche.to_dict())
+
+
+@app.route('/api/coches/<int:coche_id>', methods=['PUT'])
+def editar_coche(coche_id):
+    """Edita un coche existente. Solo permitido en Madera Verde."""
+    coche = Coche.query.get_or_404(coche_id)
+    data = request.get_json()
+
+    # Solo permitir edicion en Madera Verde (orden 1)
+    if coche.etapa_actual.orden != 1:
+        return jsonify({'error': 'Solo se pueden editar coches en Madera Verde'}), 400
+
+    # Actualizar campos
+    if 'registrador' in data:
+        coche.registrador = data['registrador']
+    if 'proveedor' in data:
+        coche.proveedor = data['proveedor']
+    if 'numero_viaje' in data:
+        coche.numero_viaje = data['numero_viaje']
+    if 'espesor_1' in data:
+        coche.espesor_1 = data['espesor_1']
+    if 'largo_1' in data:
+        coche.largo_1 = data['largo_1']
+    if 'plantillas_1' in data:
+        coche.plantillas_1 = data['plantillas_1']
+    if 'espesor_2' in data:
+        coche.espesor_2 = data['espesor_2']
+    if 'largo_2' in data:
+        coche.largo_2 = data['largo_2']
+    if 'plantillas_2' in data:
+        coche.plantillas_2 = data['plantillas_2']
+    if 'espesor_3' in data:
+        coche.espesor_3 = data['espesor_3']
+    if 'largo_3' in data:
+        coche.largo_3 = data['largo_3']
+    if 'plantillas_3' in data:
+        coche.plantillas_3 = data['plantillas_3']
+    if 'notas' in data:
+        coche.notas = data['notas']
+
+    # Recalcular BFT
+    coche.calcular_bft()
+    coche.updated_at = datetime.now()
+
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'coche': coche.to_dict(),
+        'mensaje': f'Coche {coche.codigo_qr} actualizado'
+    })
+
+
+@app.route('/api/coches/<int:coche_id>', methods=['DELETE'])
+def eliminar_coche(coche_id):
+    """Elimina un coche. Solo permitido en Madera Verde."""
+    coche = Coche.query.get_or_404(coche_id)
+
+    # Solo permitir eliminacion en Madera Verde (orden 1)
+    if coche.etapa_actual.orden != 1:
+        return jsonify({'error': 'Solo se pueden eliminar coches en Madera Verde'}), 400
+
+    codigo_qr = coche.codigo_qr
+
+    # Eliminar movimientos asociados
+    Movimiento.query.filter_by(coche_id=coche_id).delete()
+
+    # Eliminar el coche
+    db.session.delete(coche)
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'mensaje': f'Coche {codigo_qr} eliminado'
+    })
 
 
 @app.route('/api/coches/<int:coche_id>/mover', methods=['POST'])
@@ -709,6 +800,175 @@ def listar_etapas():
     return jsonify([e.to_dict() for e in etapas])
 
 
+@app.route('/api/secado/camara/<int:camara>/lote/<lote_secado>')
+def obtener_lote_secado(camara, lote_secado):
+    """Obtiene información de un lote de secado para impresión."""
+    etapa_secado = Etapa.query.filter_by(orden=2).first()
+    if not etapa_secado:
+        return jsonify({'error': 'Etapa de secado no encontrada'}), 404
+
+    coches = Coche.query.filter_by(
+        etapa_actual_id=etapa_secado.id,
+        camara=camara,
+        lote_secado=lote_secado
+    ).order_by(Coche.created_at).all()
+
+    if not coches:
+        return jsonify({'error': 'No se encontraron coches para este lote'}), 404
+
+    # Calcular resumen por espesor
+    resumen_espesor = {}
+    total_bft = 0
+
+    for coche in coches:
+        for i in range(1, 4):
+            espesor = getattr(coche, f'espesor_{i}')
+            bft = getattr(coche, f'bft_{i}') or 0
+            if espesor and bft > 0:
+                if espesor not in resumen_espesor:
+                    resumen_espesor[espesor] = 0
+                resumen_espesor[espesor] += bft
+                total_bft += bft
+
+    # Calcular porcentajes
+    resumen_con_porcentaje = []
+    for espesor in sorted(resumen_espesor.keys(), key=lambda x: float(x) if x else 0):
+        vol = resumen_espesor[espesor]
+        porcentaje = (vol / total_bft * 100) if total_bft > 0 else 0
+        resumen_con_porcentaje.append({
+            'espesor': espesor,
+            'volumen': vol,
+            'porcentaje': round(porcentaje, 1)
+        })
+
+    # Obtener fechas
+    fechas = [c.created_at for c in coches if c.created_at]
+    fecha_inicial = min(fechas).strftime('%d/%m/%y') if fechas else ''
+    fecha_final = max(fechas).strftime('%d/%m/%y') if fechas else ''
+
+    return jsonify({
+        'success': True,
+        'camara': camara,
+        'lote_secado': lote_secado,
+        'fecha_inicial': fecha_inicial,
+        'fecha_final': fecha_final,
+        'total_coches': len(coches),
+        'total_bft': total_bft,
+        'resumen_espesor': resumen_con_porcentaje,
+        'coches': [{
+            'id': c.id,
+            'codigo_qr': c.codigo_qr,
+            'fecha_llegada': c.created_at.strftime('%d/%m/%y') if c.created_at else '',
+            'proveedor': c.proveedor or '-',
+            'numero_viaje': c.numero_viaje or '-',
+            'espesor_1': c.espesor_1,
+            'largo_1': c.largo_1,
+            'plantillas_1': c.plantillas_1 or 0,
+            'bft_1': c.bft_1 or 0,
+            'espesor_2': c.espesor_2,
+            'largo_2': c.largo_2,
+            'plantillas_2': c.plantillas_2 or 0,
+            'bft_2': c.bft_2 or 0,
+            'espesor_3': c.espesor_3,
+            'largo_3': c.largo_3,
+            'plantillas_3': c.plantillas_3 or 0,
+            'bft_3': c.bft_3 or 0,
+            'total_bft': c.total_bft or 0
+        } for c in coches]
+    })
+
+
+@app.route('/api/recepcion/resumen-compras', methods=['GET'])
+def resumen_compras():
+    """Obtiene resumen de compras por rango de fechas."""
+    from datetime import datetime, timedelta
+
+    fecha_inicio = request.args.get('fecha_inicio')
+    fecha_fin = request.args.get('fecha_fin')
+
+    # Si no se proporcionan fechas, usar el mes actual
+    if not fecha_inicio:
+        fecha_inicio = datetime.now().replace(day=1).strftime('%Y-%m-%d')
+    if not fecha_fin:
+        fecha_fin = datetime.now().strftime('%Y-%m-%d')
+
+    try:
+        fecha_inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+        fecha_fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d') + timedelta(days=1)
+    except ValueError:
+        return jsonify({'error': 'Formato de fecha invalido. Use YYYY-MM-DD'}), 400
+
+    # Obtener coches en el rango de fechas (Madera Verde = orden 1)
+    etapa_verde = Etapa.query.filter_by(orden=1).first()
+    if not etapa_verde:
+        return jsonify({'error': 'Etapa Madera Verde no encontrada'}), 404
+
+    # Buscar todos los coches creados en ese rango
+    coches = Coche.query.filter(
+        Coche.created_at >= fecha_inicio_dt,
+        Coche.created_at < fecha_fin_dt
+    ).order_by(Coche.created_at).all()
+
+    # Agrupar por proveedor
+    por_proveedor = {}
+    total_bft = 0
+    total_coches = len(coches)
+
+    for coche in coches:
+        prov = coche.proveedor or 'Sin Proveedor'
+        if prov not in por_proveedor:
+            por_proveedor[prov] = {
+                'coches': 0,
+                'bft': 0,
+                'viajes': set()
+            }
+        por_proveedor[prov]['coches'] += 1
+        por_proveedor[prov]['bft'] += coche.total_bft or 0
+        if coche.numero_viaje:
+            por_proveedor[prov]['viajes'].add(coche.numero_viaje)
+        total_bft += coche.total_bft or 0
+
+    # Convertir sets a listas para JSON
+    resumen_proveedores = []
+    for prov, datos in sorted(por_proveedor.items()):
+        resumen_proveedores.append({
+            'proveedor': prov,
+            'coches': datos['coches'],
+            'bft': datos['bft'],
+            'viajes': len(datos['viajes'])
+        })
+
+    # Agrupar por espesor
+    por_espesor = {}
+    for coche in coches:
+        for i in range(1, 4):
+            espesor = getattr(coche, f'espesor_{i}')
+            bft = getattr(coche, f'bft_{i}') or 0
+            if espesor and bft > 0:
+                if espesor not in por_espesor:
+                    por_espesor[espesor] = 0
+                por_espesor[espesor] += bft
+
+    resumen_espesores = []
+    for esp in sorted(por_espesor.keys(), key=lambda x: float(x) if x else 0):
+        porcentaje = (por_espesor[esp] / total_bft * 100) if total_bft > 0 else 0
+        resumen_espesores.append({
+            'espesor': esp,
+            'bft': por_espesor[esp],
+            'porcentaje': round(porcentaje, 1)
+        })
+
+    return jsonify({
+        'success': True,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+        'total_coches': total_coches,
+        'total_bft': total_bft,
+        'por_proveedor': resumen_proveedores,
+        'por_espesor': resumen_espesores
+    })
+
+
 @app.route('/api/dashboard/resumen', methods=['GET'])
 def resumen_dashboard():
     """Obtiene resumen para el dashboard."""
@@ -875,6 +1135,91 @@ def crear_lote():
         'coches_incluidos': codigos_coches,
         'errores': errores if errores else None
     }), 201
+
+
+@app.route('/api/lotes/<int:lote_id>/agregar-coches', methods=['POST'])
+def agregar_coches_lote(lote_id):
+    """Agrega coches a un lote existente (no finalizado)."""
+    lote = Lote.query.get_or_404(lote_id)
+    data = request.get_json()
+
+    if lote.estado == 'finalizado':
+        return jsonify({'error': 'No se pueden agregar coches a un lote finalizado'}), 400
+
+    coche_ids = data.get('coche_ids', [])
+    usuario = data.get('usuario', 'Anonimo')
+
+    if not coche_ids:
+        return jsonify({'error': 'Se requiere al menos un coche'}), 400
+
+    etapa_stock_seco = Etapa.query.filter_by(orden=3).first()
+    etapa_taller = Etapa.query.filter_by(orden=4).first()
+
+    coches_agregados = []
+    errores = []
+
+    for coche_id in coche_ids:
+        coche = Coche.query.get(coche_id)
+        if not coche:
+            errores.append({'coche_id': coche_id, 'error': 'Coche no encontrado'})
+            continue
+        if coche.etapa_actual_id != etapa_stock_seco.id:
+            errores.append({'coche_id': coche_id, 'error': 'El coche no esta en Stock Secado'})
+            continue
+        if coche in lote.coches:
+            errores.append({'coche_id': coche_id, 'error': 'El coche ya esta en el lote'})
+            continue
+
+        lote.coches.append(coche)
+        coche.mover_a_etapa(etapa_taller.id, usuario, f'Agregado al lote {lote.codigo_qr}')
+        coches_agregados.append(coche.codigo_qr)
+
+    lote.calcular_total_bft()
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'lote': lote.to_dict(),
+        'coches_agregados': coches_agregados,
+        'errores': errores if errores else None
+    })
+
+
+@app.route('/api/lotes/<int:lote_id>/quitar-coche/<int:coche_id>', methods=['POST'])
+def quitar_coche_lote(lote_id, coche_id):
+    """Quita un coche del lote y lo devuelve a Stock Secado."""
+    lote = Lote.query.get_or_404(lote_id)
+    coche = Coche.query.get_or_404(coche_id)
+    data = request.get_json() or {}
+
+    if lote.estado == 'finalizado':
+        return jsonify({'error': 'No se pueden quitar coches de un lote finalizado'}), 400
+
+    if coche not in lote.coches:
+        return jsonify({'error': 'El coche no pertenece a este lote'}), 400
+
+    # Verificar que el lote no quede con menos de 2 coches
+    if len(lote.coches) <= 2:
+        return jsonify({'error': 'El lote debe tener al menos 2 coches. No se puede quitar este coche.'}), 400
+
+    usuario = data.get('usuario', 'Anonimo')
+    etapa_stock_seco = Etapa.query.filter_by(orden=3).first()
+
+    # Quitar coche del lote
+    lote.coches.remove(coche)
+
+    # Mover coche a Stock Secado
+    coche.mover_a_etapa(etapa_stock_seco.id, usuario, f'Removido del lote {lote.codigo_qr}')
+
+    # Recalcular totales del lote
+    lote.calcular_total_bft()
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'mensaje': f'Coche {coche.codigo_qr} removido del lote y devuelto a Stock Secado',
+        'lote': lote.to_dict()
+    })
 
 
 @app.route('/api/lotes/<int:lote_id>', methods=['GET'])
@@ -1209,6 +1554,46 @@ def finalizar_lote(lote_id):
         'success': True,
         'lote': lote.to_dict(),
         'mensaje': f'Lote {lote.codigo_qr} finalizado con {lote.desperdicio_porcentaje:.1f}% de desperdicio'
+    })
+
+
+@app.route('/api/lotes/<int:lote_id>/editar-finalizado', methods=['POST'])
+def editar_lote_finalizado(lote_id):
+    """Edita un lote finalizado con verificacion de contraseña."""
+    data = request.json
+    password = data.get('password', '')
+
+    # Verificar contraseña
+    if password != 'admin1208':
+        return jsonify({'error': 'Contraseña incorrecta'}), 403
+
+    lote = Lote.query.get_or_404(lote_id)
+
+    if lote.estado != 'finalizado':
+        return jsonify({'error': 'Este lote no está finalizado'}), 400
+
+    # Actualizar campos editables
+    if 'bft_usado' in data:
+        lote.bft_usado = float(data['bft_usado'])
+        # Recalcular desperdicio
+        lote.desperdicio_bft = lote.total_bft - lote.bft_usado
+        if lote.total_bft > 0:
+            lote.desperdicio_porcentaje = (lote.desperdicio_bft / lote.total_bft) * 100
+        else:
+            lote.desperdicio_porcentaje = 0
+
+    if 'notas' in data:
+        lote.notas = data['notas']
+
+    if 'turno' in data:
+        lote.turno = data['turno']
+
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'lote': lote.to_dict(),
+        'mensaje': f'Lote {lote.codigo_qr} actualizado correctamente'
     })
 
 

@@ -53,6 +53,8 @@
         cursor: pointer;
         accent-color: var(--color-primary);
         z-index: 10;
+        opacity: 0;
+        pointer-events: none;
     }
 
     .coche-card.selected {
@@ -1232,7 +1234,7 @@
                     <input type="checkbox" class="coche-checkbox" data-coche-id="{{ coche.id }}" onclick="event.stopPropagation(); toggleCocheSelection({{ coche.id }})">
                     <div onclick="goToCoche({{ coche.id }})">
                         <div class="coche-header">
-                            <span class="coche-codigo" style="margin-left: 28px;">{{ coche.codigo_qr }}</span>
+                            <span class="coche-codigo">{{ coche.codigo_qr }}</span>
                             <span class="coche-bft">{{ "%.1f"|format(coche.total_bft or 0) }} BFT</span>
                         </div>
                         <div class="coche-details">
@@ -1342,7 +1344,7 @@
                         <input type="checkbox" class="coche-checkbox" data-coche-id="{{ coche.id }}" onclick="event.stopPropagation(); toggleCocheSelection({{ coche.id }})">
                         <div onclick="goToCoche({{ coche.id }})">
                             <div class="coche-header">
-                                <span class="coche-codigo" style="margin-left: 28px;">{{ coche.codigo_qr }}</span>
+                                <span class="coche-codigo">{{ coche.codigo_qr }}</span>
                                 <span class="coche-bft">{{ "%.1f"|format(coche.total_bft or 0) }} BFT</span>
                             </div>
                             <div class="coche-details">
@@ -1380,7 +1382,7 @@
             <input type="checkbox" class="coche-checkbox" data-coche-id="{{ coche.id }}" onclick="event.stopPropagation(); toggleCocheSelection({{ coche.id }})">
             <div onclick="goToCoche({{ coche.id }})">
                 <div class="coche-header">
-                    <span class="coche-codigo" style="margin-left: 28px;">{{ coche.codigo_qr }}</span>
+                    <span class="coche-codigo">{{ coche.codigo_qr }}</span>
                     <span class="coche-bft">{{ "%.1f"|format(coche.total_bft or 0) }} BFT</span>
                 </div>
                 <div class="coche-details">
@@ -1958,8 +1960,8 @@ async function moverCamaraAStockSecado(camaraNum) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                coches_ids: cochesIds,
-                nueva_etapa_id: 3  // Stock Secado es etapa 3
+                coche_ids: cochesIds,
+                etapa_id: 3  // Stock Secado es etapa 3
             })
         });
 

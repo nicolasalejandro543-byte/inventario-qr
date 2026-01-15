@@ -1,0 +1,557 @@
+{% extends "base.html" %}
+
+{% block title %}Contenedores de Embarque{% endblock %}
+
+{% block head %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .page-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .page-title-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #0891b2, #0e7490);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+    }
+
+    .page-title h2 {
+        margin: 0;
+        font-size: 1.5rem;
+    }
+
+    /* Barra de navegacion */
+    .etapas-nav {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+        padding: 8px;
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        overflow-x: auto;
+    }
+
+    .etapa-nav-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        border-radius: var(--radius-md);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+        white-space: nowrap;
+        color: white;
+        flex: 1;
+        justify-content: center;
+        opacity: 0.4;
+    }
+
+    .etapa-nav-btn:hover {
+        opacity: 0.8;
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .etapa-nav-btn.active {
+        opacity: 1;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        transform: scale(1.02);
+    }
+
+    .etapa-nav-btn.madera-verde { background: linear-gradient(135deg, #28a745, #20c997); }
+    .etapa-nav-btn.secado { background: linear-gradient(135deg, #ffc107, #fd7e14); }
+    .etapa-nav-btn.stock-secado { background: linear-gradient(135deg, #17a2b8, #20c997); }
+    .etapa-nav-btn.ingreso-a-taller { background: linear-gradient(135deg, #6f42c1, #e83e8c); }
+    .etapa-nav-btn.produccion { background: linear-gradient(135deg, #e83e8c, #fd7e14); }
+    .etapa-nav-btn.bloques-presentados { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .etapa-nav-btn.bloques-encolados { background: linear-gradient(135deg, #10b981, #059669); }
+    .etapa-nav-btn.contenedores { background: linear-gradient(135deg, #0891b2, #0e7490); }
+    .etapa-nav-btn.finalizados { background: linear-gradient(135deg, #20c997, #28a745); }
+
+    /* Seccion de crear contenedor */
+    .crear-contenedor-card {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        margin-bottom: 24px;
+        overflow: hidden;
+    }
+
+    .crear-contenedor-header {
+        padding: 16px 20px;
+        background: linear-gradient(135deg, #0891b2, #0e7490);
+        color: white;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .crear-contenedor-body {
+        padding: 20px;
+    }
+
+    .form-row {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+    }
+
+    .form-group {
+        flex: 1;
+        min-width: 180px;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 6px;
+        font-size: 0.9rem;
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 10px 14px;
+        border: 2px solid var(--color-gray-light);
+        border-radius: var(--radius-sm);
+        font-family: inherit;
+        font-size: 0.95rem;
+    }
+
+    .form-group input:focus {
+        outline: none;
+        border-color: var(--color-primary);
+    }
+
+    /* Grid de contenedores */
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .section-title.abiertos { color: #0891b2; }
+    .section-title.cerrados { color: #6b7280; }
+
+    .contenedores-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .contenedor-card {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+        transition: all 0.2s;
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .contenedor-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .contenedor-card.abierto .contenedor-header {
+        background: linear-gradient(135deg, #0891b2, #0e7490);
+    }
+
+    .contenedor-card.cerrado .contenedor-header {
+        background: linear-gradient(135deg, #6b7280, #4b5563);
+    }
+
+    .contenedor-card.embarcado .contenedor-header {
+        background: linear-gradient(135deg, #10b981, #059669);
+    }
+
+    .contenedor-header {
+        padding: 16px 20px;
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .contenedor-codigo {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 1.1rem;
+        font-weight: 700;
+    }
+
+    .contenedor-estado {
+        padding: 4px 12px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .contenedor-body {
+        padding: 20px;
+    }
+
+    .contenedor-info {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .contenedor-info-item {
+        background: var(--color-bg);
+        padding: 10px;
+        border-radius: var(--radius-sm);
+    }
+
+    .contenedor-info-label {
+        font-size: 0.7rem;
+        color: var(--color-text-muted);
+        text-transform: uppercase;
+        margin-bottom: 4px;
+    }
+
+    .contenedor-info-value {
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .contenedor-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+
+    .contenedor-stat {
+        text-align: center;
+        padding: 10px;
+        background: #ecfeff;
+        border-radius: var(--radius-sm);
+    }
+
+    .contenedor-stat-label {
+        font-size: 0.7rem;
+        color: var(--color-text-muted);
+    }
+
+    .contenedor-stat-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+        color: #0891b2;
+    }
+
+    /* Empty state */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--color-text-muted);
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    /* Bloques disponibles */
+    .bloques-disponibles {
+        background: #f0fdf4;
+        border: 2px dashed #10b981;
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        margin-bottom: 24px;
+    }
+
+    .bloques-disponibles h4 {
+        color: #10b981;
+        margin-bottom: 12px;
+    }
+
+    @media (max-width: 768px) {
+        .contenedores-grid {
+            grid-template-columns: 1fr;
+        }
+        .form-row {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Barra de navegacion -->
+<div class="etapas-nav no-print">
+    <a href="/etapa/1" class="etapa-nav-btn madera-verde">
+        <i class="bi bi-tree"></i>
+        <span>Madera Verde</span>
+    </a>
+    <a href="/etapa/2" class="etapa-nav-btn secado">
+        <i class="bi bi-sun"></i>
+        <span>Secado</span>
+    </a>
+    <a href="/etapa/3" class="etapa-nav-btn stock-secado">
+        <i class="bi bi-archive"></i>
+        <span>Stock Secado</span>
+    </a>
+    <a href="/etapa/4" class="etapa-nav-btn ingreso-a-taller">
+        <i class="bi bi-tools"></i>
+        <span>Ingreso a Taller</span>
+    </a>
+    <a href="/produccion" class="etapa-nav-btn produccion">
+        <i class="bi bi-gear"></i>
+        <span>Produccion</span>
+    </a>
+    <a href="/finalizados" class="etapa-nav-btn finalizados">
+        <i class="bi bi-check2-circle"></i>
+        <span>Finalizados</span>
+    </a>
+    <a href="/bloques/presentados" class="etapa-nav-btn bloques-presentados">
+        <i class="bi bi-box"></i>
+        <span>Presentados</span>
+    </a>
+    <a href="/bloques/encolados" class="etapa-nav-btn bloques-encolados">
+        <i class="bi bi-check2-square"></i>
+        <span>Encolados</span>
+    </a>
+    <a href="/contenedores" class="etapa-nav-btn contenedores active">
+        <i class="bi bi-truck"></i>
+        <span>Contenedores</span>
+    </a>
+</div>
+
+<!-- Header -->
+<div class="page-header">
+    <div class="page-title">
+        <div class="page-title-icon">
+            <i class="bi bi-truck"></i>
+        </div>
+        <div>
+            <h2>Contenedores de Embarque</h2>
+            <small style="color: var(--color-text-muted);">Gestion de contenedores para exportacion</small>
+        </div>
+    </div>
+    <a href="/" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<!-- Info de bloques disponibles -->
+{% if bloques_disponibles %}
+<div class="bloques-disponibles">
+    <h4><i class="bi bi-check2-square"></i> {{ bloques_disponibles|length }} bloques encolados disponibles para embarque</h4>
+    <p style="margin: 0; font-size: 0.9rem;">Crea un contenedor y agrega bloques encolados para preparar el embarque.</p>
+</div>
+{% endif %}
+
+<!-- Crear nuevo contenedor -->
+<div class="crear-contenedor-card">
+    <div class="crear-contenedor-header">
+        <i class="bi bi-plus-circle"></i> Crear Nuevo Contenedor
+    </div>
+    <div class="crear-contenedor-body">
+        <div class="form-row">
+            <div class="form-group">
+                <label>Cliente</label>
+                <input type="text" id="nuevo-cliente" placeholder="Nombre del cliente">
+            </div>
+            <div class="form-group">
+                <label>Numero de Contenedor</label>
+                <input type="text" id="nuevo-numero" placeholder="Ej: MSKU1234567">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Fecha de Carga</label>
+                <input type="date" id="nuevo-fecha-carga">
+            </div>
+            <div class="form-group">
+                <label>Fecha de Zarpe</label>
+                <input type="date" id="nuevo-fecha-zarpe">
+            </div>
+            <div class="form-group">
+                <label>Tally Sheet #</label>
+                <input type="text" id="nuevo-tally" placeholder="Ej: 001">
+            </div>
+        </div>
+        <button class="btn btn-primary" onclick="crearContenedor()">
+            <i class="bi bi-plus"></i> Crear Contenedor
+        </button>
+    </div>
+</div>
+
+<!-- Contenedores Abiertos -->
+<h3 class="section-title abiertos">
+    <i class="bi bi-box-seam"></i> Contenedores Abiertos ({{ contenedores_abiertos|length }})
+</h3>
+
+{% if contenedores_abiertos %}
+<div class="contenedores-grid">
+    {% for cont in contenedores_abiertos %}
+    <a href="/contenedor/{{ cont.id }}" class="contenedor-card abierto">
+        <div class="contenedor-header">
+            <span class="contenedor-codigo">{{ cont.codigo }}</span>
+            <span class="contenedor-estado">Abierto</span>
+        </div>
+        <div class="contenedor-body">
+            <div class="contenedor-info">
+                <div class="contenedor-info-item">
+                    <div class="contenedor-info-label">Cliente</div>
+                    <div class="contenedor-info-value">{{ cont.cliente or '-' }}</div>
+                </div>
+                <div class="contenedor-info-item">
+                    <div class="contenedor-info-label">N. Contenedor</div>
+                    <div class="contenedor-info-value">{{ cont.numero_contenedor or '-' }}</div>
+                </div>
+                <div class="contenedor-info-item">
+                    <div class="contenedor-info-label">Fecha Carga</div>
+                    <div class="contenedor-info-value">{{ cont.fecha_carga.strftime('%d/%m/%Y') if cont.fecha_carga else '-' }}</div>
+                </div>
+                <div class="contenedor-info-item">
+                    <div class="contenedor-info-label">Fecha Zarpe</div>
+                    <div class="contenedor-info-value">{{ cont.fecha_zarpe.strftime('%d/%m/%Y') if cont.fecha_zarpe else '-' }}</div>
+                </div>
+            </div>
+            <div class="contenedor-stats">
+                <div class="contenedor-stat">
+                    <div class="contenedor-stat-label">Bloques</div>
+                    <div class="contenedor-stat-value">{{ cont.total_bloques }}</div>
+                </div>
+                <div class="contenedor-stat">
+                    <div class="contenedor-stat-label">BFT</div>
+                    <div class="contenedor-stat-value">{{ "%.0f"|format(cont.total_bft) }}</div>
+                </div>
+                <div class="contenedor-stat">
+                    <div class="contenedor-stat-label">m3</div>
+                    <div class="contenedor-stat-value">{{ "%.2f"|format(cont.total_m3) }}</div>
+                </div>
+            </div>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state" style="margin-bottom: 30px;">
+    <i class="bi bi-box-seam"></i>
+    <h3>No hay contenedores abiertos</h3>
+    <p>Crea un nuevo contenedor para comenzar a agregar bloques</p>
+</div>
+{% endif %}
+
+<!-- Contenedores Cerrados/Embarcados -->
+{% if contenedores_cerrados %}
+<h3 class="section-title cerrados">
+    <i class="bi bi-archive"></i> Contenedores Cerrados/Embarcados ({{ contenedores_cerrados|length }})
+</h3>
+<div class="contenedores-grid">
+    {% for cont in contenedores_cerrados %}
+    <a href="/contenedor/{{ cont.id }}" class="contenedor-card {{ cont.estado }}">
+        <div class="contenedor-header">
+            <span class="contenedor-codigo">{{ cont.codigo }}</span>
+            <span class="contenedor-estado">{{ 'Embarcado' if cont.estado == 'embarcado' else 'Cerrado' }}</span>
+        </div>
+        <div class="contenedor-body">
+            <div class="contenedor-info">
+                <div class="contenedor-info-item">
+                    <div class="contenedor-info-label">Cliente</div>
+                    <div class="contenedor-info-value">{{ cont.cliente or '-' }}</div>
+                </div>
+                <div class="contenedor-info-item">
+                    <div class="contenedor-info-label">N. Contenedor</div>
+                    <div class="contenedor-info-value">{{ cont.numero_contenedor or '-' }}</div>
+                </div>
+                <div class="contenedor-info-item">
+                    <div class="contenedor-info-label">Fecha Carga</div>
+                    <div class="contenedor-info-value">{{ cont.fecha_carga.strftime('%d/%m/%Y') if cont.fecha_carga else '-' }}</div>
+                </div>
+                <div class="contenedor-info-item">
+                    <div class="contenedor-info-label">Fecha Zarpe</div>
+                    <div class="contenedor-info-value">{{ cont.fecha_zarpe.strftime('%d/%m/%Y') if cont.fecha_zarpe else '-' }}</div>
+                </div>
+            </div>
+            <div class="contenedor-stats">
+                <div class="contenedor-stat">
+                    <div class="contenedor-stat-label">Bloques</div>
+                    <div class="contenedor-stat-value">{{ cont.total_bloques }}</div>
+                </div>
+                <div class="contenedor-stat">
+                    <div class="contenedor-stat-label">BFT</div>
+                    <div class="contenedor-stat-value">{{ "%.0f"|format(cont.total_bft) }}</div>
+                </div>
+                <div class="contenedor-stat">
+                    <div class="contenedor-stat-label">m3</div>
+                    <div class="contenedor-stat-value">{{ "%.2f"|format(cont.total_m3) }}</div>
+                </div>
+            </div>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function crearContenedor() {
+    const cliente = document.getElementById('nuevo-cliente').value;
+    const numero = document.getElementById('nuevo-numero').value;
+    const fechaCarga = document.getElementById('nuevo-fecha-carga').value;
+    const fechaZarpe = document.getElementById('nuevo-fecha-zarpe').value;
+    const tally = document.getElementById('nuevo-tally').value;
+
+    try {
+        const response = await fetch('/api/contenedores', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                cliente: cliente,
+                numero_contenedor: numero,
+                fecha_carga: fechaCarga,
+                fecha_zarpe: fechaZarpe,
+                tally_sheet: tally
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert(data.mensaje);
+            // Redirigir al detalle del contenedor
+            window.location.href = '/contenedor/' + data.contenedor.id;
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error de conexion: ' + error.message);
+    }
+}
+</script>
+{% endblock %}

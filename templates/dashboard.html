@@ -1,20 +1,66 @@
 {% extends "base.html" %}
 
-{% block title %}Inventario{% endblock %}
+{% block title %}Procesos{% endblock %}
 
 {% block head %}
 <style>
+    /* Barra de navegacion rapida */
+    .etapas-nav {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+        padding: 8px;
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        overflow-x: auto;
+    }
+
+    .etapa-nav-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        border-radius: var(--radius-md);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+        white-space: nowrap;
+        color: white;
+        flex: 1;
+        justify-content: center;
+        opacity: 0.6;
+    }
+
+    .etapa-nav-btn:hover {
+        opacity: 1;
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .etapa-nav-btn.madera-verde { background: linear-gradient(135deg, #28a745, #20c997); }
+    .etapa-nav-btn.secado { background: linear-gradient(135deg, #ffc107, #fd7e14); }
+    .etapa-nav-btn.stock-secado { background: linear-gradient(135deg, #17a2b8, #20c997); }
+    .etapa-nav-btn.ingreso-a-taller { background: linear-gradient(135deg, #6f42c1, #e83e8c); }
+    .etapa-nav-btn.produccion { background: linear-gradient(135deg, #e83e8c, #fd7e14); }
+    .etapa-nav-btn.bloques-presentados { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .etapa-nav-btn.bloques-encolados { background: linear-gradient(135deg, #10b981, #059669); }
+    .etapa-nav-btn.contenedores { background: linear-gradient(135deg, #0891b2, #0e7490); }
+    .etapa-nav-btn.finalizados { background: linear-gradient(135deg, #20c997, #28a745); }
+
+    /* Stats grid */
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 20px;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
         margin-bottom: 30px;
     }
 
     .stat-card {
         background: white;
         border-radius: var(--radius-lg);
-        padding: 24px;
+        padding: 20px;
         box-shadow: var(--shadow-md);
         cursor: pointer;
         transition: all 0.3s ease;
@@ -25,43 +71,52 @@
     }
 
     .stat-card:hover {
-        transform: translateY(-5px);
+        transform: translateY(-4px);
         box-shadow: var(--shadow-lg);
     }
 
     .stat-card.madera-verde { border-left-color: #28a745; }
     .stat-card.secado { border-left-color: #ffc107; }
     .stat-card.stock-secado { border-left-color: #17a2b8; }
-    .stat-card.taller { border-left-color: #6f42c1; }
+    .stat-card.ingreso-a-taller { border-left-color: #6f42c1; }
+    .stat-card.produccion { border-left-color: #e83e8c; }
+    .stat-card.finalizados { border-left-color: #20c997; }
+    .stat-card.bloques-presentados { border-left-color: #f59e0b; }
+    .stat-card.bloques-encolados { border-left-color: #10b981; }
 
     .stat-header {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        margin-bottom: 16px;
+        margin-bottom: 12px;
     }
 
     .stat-title {
-        font-size: 1rem;
+        font-size: 0.9rem;
         font-weight: 600;
         color: var(--color-text-muted);
     }
 
     .stat-icon {
-        width: 48px;
-        height: 48px;
+        width: 44px;
+        height: 44px;
         border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 24px;
+        font-size: 20px;
         color: white;
     }
 
     .stat-icon.madera-verde { background: linear-gradient(135deg, #28a745, #20c997); }
     .stat-icon.secado { background: linear-gradient(135deg, #ffc107, #fd7e14); }
     .stat-icon.stock-secado { background: linear-gradient(135deg, #17a2b8, #20c997); }
-    .stat-icon.taller { background: linear-gradient(135deg, #6f42c1, #e83e8c); }
+    .stat-icon.ingreso-a-taller { background: linear-gradient(135deg, #6f42c1, #e83e8c); }
+    .stat-icon.produccion { background: linear-gradient(135deg, #e83e8c, #fd7e14); }
+    .stat-icon.finalizados { background: linear-gradient(135deg, #20c997, #28a745); }
+    .stat-icon.bloques-presentados { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .stat-icon.bloques-encolados { background: linear-gradient(135deg, #10b981, #059669); }
+    .stat-icon.contenedores { background: linear-gradient(135deg, #0891b2, #0e7490); }
 
     .stat-content {
         display: flex;
@@ -70,7 +125,7 @@
     }
 
     .stat-value {
-        font-size: 2.5rem;
+        font-size: 2.2rem;
         font-weight: 700;
         line-height: 1;
     }
@@ -78,25 +133,30 @@
     .stat-value.madera-verde { color: #28a745; }
     .stat-value.secado { color: #ffc107; }
     .stat-value.stock-secado { color: #17a2b8; }
-    .stat-value.taller { color: #6f42c1; }
+    .stat-value.ingreso-a-taller { color: #6f42c1; }
+    .stat-value.produccion { color: #e83e8c; }
+    .stat-value.finalizados { color: #20c997; }
+    .stat-value.bloques-presentados { color: #f59e0b; }
+    .stat-value.bloques-encolados { color: #10b981; }
+    .stat-value.contenedores { color: #0891b2; }
 
     .stat-bft {
         text-align: right;
     }
 
     .stat-bft-value {
-        font-size: 1.5rem;
+        font-size: 1.3rem;
         font-weight: 700;
         font-family: 'JetBrains Mono', monospace;
     }
 
     .stat-bft-label {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         color: var(--color-text-muted);
     }
 
     .stat-label {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
         color: var(--color-text-muted);
         margin-top: 4px;
     }
@@ -107,10 +167,11 @@
         border-radius: var(--radius-lg);
         box-shadow: var(--shadow-md);
         overflow: hidden;
+        margin-bottom: 30px;
     }
 
     .movimientos-header {
-        padding: 16px 20px;
+        padding: 14px 20px;
         background: linear-gradient(135deg, var(--color-primary), #0284c7);
         color: white;
         font-weight: 600;
@@ -120,14 +181,14 @@
     }
 
     .movimientos-body {
-        max-height: 400px;
+        max-height: 350px;
         overflow-y: auto;
     }
 
     .movimiento-item {
         display: flex;
         align-items: center;
-        padding: 12px 20px;
+        padding: 10px 20px;
         border-bottom: 1px solid var(--color-gray-light);
         transition: background 0.2s;
     }
@@ -141,8 +202,8 @@
     }
 
     .movimiento-time {
-        width: 100px;
-        font-size: 0.8rem;
+        width: 90px;
+        font-size: 0.75rem;
         color: var(--color-text-muted);
         font-family: 'JetBrains Mono', monospace;
     }
@@ -168,9 +229,9 @@
     }
 
     .movimiento-badge {
-        padding: 4px 10px;
-        border-radius: 12px;
-        font-size: 0.75rem;
+        padding: 3px 8px;
+        border-radius: 10px;
+        font-size: 0.7rem;
         font-weight: 600;
         color: white;
     }
@@ -191,83 +252,393 @@
         opacity: 0.5;
     }
 
-    /* Barra de navegación rápida de etapas */
-    .etapas-nav {
-        display: flex;
-        gap: 8px;
-        margin-bottom: 24px;
-        padding: 8px;
-        background: white;
-        border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-sm);
-        overflow-x: auto;
-    }
-
-    .etapa-nav-btn {
+    /* Seccion de produccion */
+    .section-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin-bottom: 16px;
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 12px 20px;
-        border-radius: var(--radius-md);
-        text-decoration: none;
-        font-weight: 600;
-        font-size: 0.9rem;
-        transition: all 0.2s;
-        white-space: nowrap;
-        color: white;
-        flex: 1;
-        justify-content: center;
     }
 
-    .etapa-nav-btn:hover {
-        transform: translateY(-2px);
+    .section-title i {
+        color: var(--color-primary);
+    }
+
+    .lotes-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 16px;
+        margin-bottom: 30px;
+    }
+
+    .lote-card {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+        transition: all 0.2s;
+        cursor: pointer;
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .lote-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .lote-header {
+        padding: 12px 16px;
+        background: linear-gradient(135deg, #e83e8c, #fd7e14);
+        color: white;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .lote-header.finalizado {
+        background: linear-gradient(135deg, #20c997, #28a745);
+    }
+
+    .lote-body {
+        padding: 16px;
+    }
+
+    .lote-stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .lote-stat {
+        text-align: center;
+        padding: 10px;
+        background: var(--color-bg);
+        border-radius: var(--radius-sm);
+    }
+
+    .lote-stat-label {
+        font-size: 0.75rem;
+        color: var(--color-text-muted);
+    }
+
+    .lote-stat-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .lote-stat-value.success { color: var(--color-success); }
+    .lote-stat-value.warning { color: var(--color-warning); }
+    .lote-stat-value.danger { color: var(--color-danger); }
+
+    .desperdicio-badge {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .desperdicio-badge.good {
+        background: rgba(40, 167, 69, 0.2);
+        color: #28a745;
+    }
+
+    .desperdicio-badge.bad {
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+    }
+
+    /* Bloques grid - Formato tarjetas cuadradas */
+    .bloques-section {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+        margin-bottom: 30px;
+    }
+
+    .bloques-header {
+        padding: 14px 20px;
+        background: linear-gradient(135deg, var(--color-warning), #d97706);
+        color: white;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .bloques-header.encolado {
+        background: linear-gradient(135deg, var(--color-success), #059669);
+    }
+
+    .bloques-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .select-all-bloques {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        font-size: 0.85rem;
+    }
+
+    .select-all-bloques input {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+
+    .bloques-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 16px;
+        padding: 20px;
+    }
+
+    .bloque-card {
+        background: white;
+        border: 2px solid var(--color-gray-light);
+        border-radius: var(--radius-lg);
+        padding: 16px;
+        transition: all 0.2s;
+        cursor: pointer;
+        text-decoration: none;
+        color: inherit;
+        position: relative;
+        aspect-ratio: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .bloque-card:hover {
+        border-color: var(--color-primary);
+        box-shadow: var(--shadow-md);
+        transform: translateY(-3px);
+    }
+
+    .bloque-card.selected {
+        border-color: var(--color-primary);
+        background: rgba(14, 165, 233, 0.05);
+        box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
+    }
+
+    .bloque-checkbox {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 22px;
+        height: 22px;
+        cursor: pointer;
+        z-index: 10;
+    }
+
+    .bloque-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+    }
+
+    .bloque-codigo {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 700;
+        color: var(--color-primary);
+        font-size: 0.85rem;
+    }
+
+    .bloque-badge {
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+
+    .badge-presentado { background: var(--color-warning); color: white; }
+    .badge-encolado { background: var(--color-success); color: white; }
+
+    .bloque-details {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        font-size: 0.85rem;
+        flex: 1;
+    }
+
+    .bloque-detail {
+        display: flex;
+        flex-direction: column;
+        background: var(--color-bg);
+        padding: 8px;
+        border-radius: var(--radius-sm);
+        text-align: center;
+    }
+
+    .bloque-detail-label {
+        color: var(--color-text-muted);
+        font-size: 0.7rem;
+        margin-bottom: 2px;
+    }
+
+    .bloque-detail-value {
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Barra de acciones flotante para bloques */
+    .bloques-action-bar {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(135deg, var(--color-primary), #0284c7);
+        padding: 14px 24px;
+        border-radius: 50px;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+        display: none;
+        align-items: center;
+        gap: 16px;
+        z-index: 1000;
+        color: white;
+    }
+
+    .bloques-action-bar.show {
+        display: flex;
+    }
+
+    .bloques-action-count {
+        font-weight: 700;
+        font-size: 0.95rem;
+    }
+
+    .bloques-action-bar .btn {
+        background: white;
+        color: var(--color-primary);
+        border: none;
+        padding: 10px 20px;
+        border-radius: 25px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s;
+    }
+
+    .bloques-action-bar .btn:hover {
+        transform: scale(1.05);
         box-shadow: var(--shadow-md);
     }
 
-    .etapa-nav-btn.madera-verde { background: linear-gradient(135deg, #28a745, #20c997); }
-    .etapa-nav-btn.secado { background: linear-gradient(135deg, #ffc107, #e6a800); color: #333; }
-    .etapa-nav-btn.stock-secado { background: linear-gradient(135deg, #17a2b8, #138496); }
-    .etapa-nav-btn.ingresa-a-taller { background: linear-gradient(135deg, #6f42c1, #5a32a3); }
-
-    .etapa-nav-btn i {
-        font-size: 1.2rem;
+    .bloques-action-bar .btn-cancelar {
+        background: rgba(255,255,255,0.2);
+        color: white;
     }
 
-    .etapa-nav-count {
-        background: rgba(255,255,255,0.3);
-        padding: 2px 8px;
-        border-radius: 10px;
-        font-size: 0.8rem;
+    /* QR Print Container */
+    .qr-print-container {
+        display: none;
+    }
+
+    .qr-print-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        padding: 20px;
+    }
+
+    .qr-print-card {
+        border: 2px solid #000;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        background: white;
+        page-break-inside: avoid;
+    }
+
+    .qr-print-codigo {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 700;
+        font-size: 1.1rem;
+        margin-bottom: 10px;
+    }
+
+    .qr-print-card img {
+        width: 120px;
+        height: 120px;
+        margin: 10px auto;
+    }
+
+    .qr-print-info {
+        border-top: 1px solid #ccc;
+        margin-top: 10px;
+        padding-top: 10px;
+        text-align: left;
+        font-size: 0.85rem;
+    }
+
+    .qr-print-info div {
+        margin-bottom: 4px;
+    }
+
+    .qr-print-info strong {
+        display: inline-block;
+        min-width: 80px;
+    }
+
+    @media print {
+        .no-print { display: none !important; }
+        .stats-grid { grid-template-columns: repeat(3, 1fr); }
+        body * {
+            visibility: hidden;
+        }
+        .qr-print-container, .qr-print-container * {
+            visibility: visible;
+        }
+        .qr-print-container {
+            display: block !important;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+        }
+        .qr-print-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            padding: 10px;
+        }
+        .qr-print-card {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+        @page {
+            margin: 10mm;
+            size: letter;
+        }
     }
 
     @media (max-width: 768px) {
-        .etapas-nav {
-            flex-wrap: nowrap;
-            justify-content: flex-start;
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
         }
-
-        .etapa-nav-btn {
-            padding: 10px 14px;
-            font-size: 0.85rem;
-        }
-
-        .etapa-nav-btn span:not(.etapa-nav-count) {
-            display: none;
+        .lotes-grid {
+            grid-template-columns: 1fr;
         }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<h2 style="margin-bottom: 16px; font-size: 1.5rem; font-weight: 700;">
-    <i class="bi bi-grid-3x3-gap" style="color: var(--color-primary);"></i> Inventario
-</h2>
-
-<!-- Barra de navegación rápida a etapas -->
+<!-- Barra de navegacion rapida -->
 <div class="etapas-nav">
     {% for etapa in etapas %}
-    {% set stats = stats_por_etapa[etapa.id] %}
-    {% set class_name = etapa.nombre|lower|replace(' ', '-')|replace('á', 'a')|replace('é', 'e')|replace('í', 'i')|replace('ó', 'o')|replace('ú', 'u') %}
+    {% set class_name = etapa.nombre|lower|replace(' ', '-') %}
     <a href="/etapa/{{ etapa.id }}" class="etapa-nav-btn {{ class_name }}">
         {% if etapa.orden == 1 %}
         <i class="bi bi-tree"></i>
@@ -279,16 +650,40 @@
         <i class="bi bi-tools"></i>
         {% endif %}
         <span>{{ etapa.nombre }}</span>
-        <span class="etapa-nav-count">{{ stats.total_coches }}</span>
     </a>
     {% endfor %}
+    <a href="/produccion" class="etapa-nav-btn produccion">
+        <i class="bi bi-gear"></i>
+        <span>Produccion</span>
+    </a>
+    <a href="/finalizados" class="etapa-nav-btn finalizados">
+        <i class="bi bi-check2-circle"></i>
+        <span>Finalizados</span>
+    </a>
+    <a href="/bloques/presentados" class="etapa-nav-btn bloques-presentados">
+        <i class="bi bi-box"></i>
+        <span>Presentados</span>
+    </a>
+    <a href="/bloques/encolados" class="etapa-nav-btn bloques-encolados">
+        <i class="bi bi-check2-square"></i>
+        <span>Encolados</span>
+    </a>
+    <a href="/contenedores" class="etapa-nav-btn contenedores">
+        <i class="bi bi-truck"></i>
+        <span>Contenedores</span>
+    </a>
 </div>
 
-<!-- Tarjetas de estadísticas -->
+<h2 class="section-title" style="margin-bottom: 20px;">
+    <i class="bi bi-grid-3x3-gap"></i> Procesos Generales
+</h2>
+
+<!-- Tarjetas de etapas + Produccion + Bloques + Finalizados -->
 <div class="stats-grid">
+    <!-- Etapas del inventario -->
     {% for etapa in etapas %}
     {% set stats = stats_por_etapa[etapa.id] %}
-    {% set class_name = etapa.nombre|lower|replace(' ', '-')|replace('á', 'a')|replace('é', 'e')|replace('í', 'i')|replace('ó', 'o')|replace('ú', 'u') %}
+    {% set class_name = etapa.nombre|lower|replace(' ', '-') %}
     <a href="/etapa/{{ etapa.id }}" class="stat-card {{ class_name }}">
         <div class="stat-header">
             <span class="stat-title">{{ etapa.nombre }}</span>
@@ -316,33 +711,181 @@
         </div>
     </a>
     {% endfor %}
+
+    <!-- Produccion (Lotes en proceso) -->
+    <a href="/produccion" class="stat-card produccion">
+        <div class="stat-header">
+            <span class="stat-title">Produccion</span>
+            <div class="stat-icon produccion">
+                <i class="bi bi-gear"></i>
+            </div>
+        </div>
+        <div class="stat-content">
+            <div>
+                <div class="stat-value produccion">{{ lotes_en_proceso|length }}</div>
+                <div class="stat-label">Lotes en Proceso</div>
+            </div>
+            <div class="stat-bft">
+                <div class="stat-bft-value">{{ "%.1f"|format(lotes_en_proceso|sum(attribute='bft_disponible') if lotes_en_proceso else 0) }}</div>
+                <div class="stat-bft-label">BFT Disponible</div>
+            </div>
+        </div>
+    </a>
+
+    <!-- Lotes Finalizados -->
+    <a href="/finalizados" class="stat-card finalizados">
+        <div class="stat-header">
+            <span class="stat-title">Finalizados</span>
+            <div class="stat-icon finalizados">
+                <i class="bi bi-check2-circle"></i>
+            </div>
+        </div>
+        <div class="stat-content">
+            <div>
+                <div class="stat-value finalizados">{{ lotes_finalizados|length }}</div>
+                <div class="stat-label">Lotes</div>
+            </div>
+            <div class="stat-bft">
+                <div class="stat-bft-value">{{ "%.1f"|format(lotes_finalizados|sum(attribute='bft_usado') if lotes_finalizados else 0) }}</div>
+                <div class="stat-bft-label">BFT Procesado</div>
+            </div>
+        </div>
+    </a>
+
+    <!-- Bloques Presentados -->
+    <a href="/bloques/presentados" class="stat-card bloques-presentados">
+        <div class="stat-header">
+            <span class="stat-title">Bloques Presentados</span>
+            <div class="stat-icon bloques-presentados">
+                <i class="bi bi-box"></i>
+            </div>
+        </div>
+        <div class="stat-content">
+            <div>
+                <div class="stat-value bloques-presentados">{{ bloques_presentados|length if bloques_presentados else 0 }}</div>
+                <div class="stat-label">Bloques</div>
+            </div>
+            <div class="stat-bft">
+                <div class="stat-bft-value">{{ "%.1f"|format(bloques_presentados|sum(attribute='bft') if bloques_presentados else 0) }}</div>
+                <div class="stat-bft-label">BFT Total</div>
+            </div>
+        </div>
+    </a>
+
+    <!-- Bloques Encolados -->
+    <a href="/bloques/encolados" class="stat-card bloques-encolados">
+        <div class="stat-header">
+            <span class="stat-title">Bloques Encolados</span>
+            <div class="stat-icon bloques-encolados">
+                <i class="bi bi-check2-square"></i>
+            </div>
+        </div>
+        <div class="stat-content">
+            <div>
+                <div class="stat-value bloques-encolados">{{ bloques_encolados|length if bloques_encolados else 0 }}</div>
+                <div class="stat-label">Bloques</div>
+            </div>
+            <div class="stat-bft">
+                <div class="stat-bft-value">{{ "%.1f"|format(bloques_encolados|sum(attribute='bft') if bloques_encolados else 0) }}</div>
+                <div class="stat-bft-label">BFT Total</div>
+            </div>
+        </div>
+    </a>
+
+    <!-- Contenedores -->
+    <a href="/contenedores" class="stat-card contenedores">
+        <div class="stat-header">
+            <span class="stat-title">Contenedores</span>
+            <div class="stat-icon contenedores">
+                <i class="bi bi-truck"></i>
+            </div>
+        </div>
+        <div class="stat-content">
+            <div>
+                <div class="stat-value contenedores">{{ contenedores_abiertos|length if contenedores_abiertos else 0 }}</div>
+                <div class="stat-label">Abiertos</div>
+            </div>
+            <div class="stat-bft">
+                <div class="stat-bft-value">{{ contenedores_total if contenedores_total else 0 }}</div>
+                <div class="stat-bft-label">Total</div>
+            </div>
+        </div>
+    </a>
 </div>
 
-<!-- Últimos movimientos -->
+<!-- Lotes en Produccion (si hay) -->
+{% if lotes_en_proceso %}
+<h3 class="section-title">
+    <i class="bi bi-gear"></i> Lotes en Produccion
+</h3>
+<div class="lotes-grid">
+    {% for lote in lotes_en_proceso %}
+    <a href="/produccion/{{ lote.id }}" class="lote-card">
+        <div class="lote-header">
+            <span>{{ lote.codigo_qr }}</span>
+            <span style="font-size: 0.8rem;">{{ lote.cantidad_coches }} coches</span>
+        </div>
+        <div class="lote-body">
+            <div class="lote-stats">
+                <div class="lote-stat">
+                    <div class="lote-stat-label">BFT Total</div>
+                    <div class="lote-stat-value">{{ "%.1f"|format(lote.total_bft) }}</div>
+                </div>
+                <div class="lote-stat">
+                    <div class="lote-stat-label">BFT Usado</div>
+                    <div class="lote-stat-value success">{{ "%.1f"|format(lote.bft_usado or 0) }}</div>
+                </div>
+                <div class="lote-stat">
+                    <div class="lote-stat-label">BFT Disponible</div>
+                    <div class="lote-stat-value warning">{{ "%.1f"|format(lote.bft_disponible) }}</div>
+                </div>
+                <div class="lote-stat">
+                    <div class="lote-stat-label">Desperdicio</div>
+                    {% set desp_pct = ((lote.bft_disponible / lote.total_bft) * 100) if lote.total_bft > 0 else 0 %}
+                    <div class="lote-stat-value {% if desp_pct < 18 %}success{% else %}danger{% endif %}">
+                        {{ "%.1f"|format(desp_pct) }}%
+                    </div>
+                </div>
+            </div>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Ultimas Actividades -->
 <div class="movimientos-card">
     <div class="movimientos-header">
         <i class="bi bi-clock-history"></i>
-        Últimos Movimientos
+        Ultimas Actividades
     </div>
     <div class="movimientos-body">
-        {% if ultimos_movimientos %}
-            {% for mov in ultimos_movimientos %}
+        {% if ultimas_actividades %}
+            {% for act in ultimas_actividades %}
             <div class="movimiento-item">
-                <div class="movimiento-time">{{ mov.timestamp.strftime('%d/%m %H:%M') }}</div>
+                <div class="movimiento-time">{{ act.timestamp.strftime('%d/%m %H:%M') if act.timestamp else 'N/A' }}</div>
                 <div class="movimiento-codigo">
-                    <a href="/coche/{{ mov.coche_id }}">{{ mov.coche.codigo_qr }}</a>
+                    {% if act.tipo == 'coche' %}
+                    <a href="/coche/{{ act.id }}">
+                        <i class="bi bi-truck" style="color: var(--color-primary);"></i> {{ act.codigo }}
+                    </a>
+                    {% elif act.tipo == 'bloque_encolado' or act.tipo == 'bloque_nuevo' %}
+                    <a href="/bloque/{{ act.id }}">
+                        <i class="bi bi-box" style="color: #f59e0b;"></i> {{ act.codigo }}
+                    </a>
+                    {% elif act.tipo == 'lote_finalizado' %}
+                    <a href="/finalizado/{{ act.id }}">
+                        <i class="bi bi-collection" style="color: #e83e8c;"></i> {{ act.codigo }}
+                    </a>
+                    {% endif %}
                 </div>
                 <div class="movimiento-flow">
-                    {% if mov.etapa_origen %}
-                    <span class="movimiento-badge" style="background-color: {{ mov.etapa_origen.color }};">
-                        {{ mov.etapa_origen.nombre }}
+                    <span class="movimiento-badge" style="background-color: {{ act.origen_color }};">
+                        {{ act.origen }}
                     </span>
-                    {% else %}
-                    <span class="movimiento-badge" style="background-color: #6c757d;">Nuevo</span>
-                    {% endif %}
                     <i class="bi bi-arrow-right movimiento-arrow"></i>
-                    <span class="movimiento-badge" style="background-color: {{ mov.etapa_destino.color }};">
-                        {{ mov.etapa_destino.nombre }}
+                    <span class="movimiento-badge" style="background-color: {{ act.destino_color }};">
+                        {{ act.destino }}
                     </span>
                 </div>
             </div>
@@ -350,9 +893,10 @@
         {% else %}
             <div class="empty-state">
                 <i class="bi bi-inbox"></i>
-                <p>No hay movimientos registrados</p>
+                <p>No hay actividades registradas</p>
             </div>
         {% endif %}
     </div>
 </div>
 {% endblock %}
+

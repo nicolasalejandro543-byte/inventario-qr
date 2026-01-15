@@ -382,10 +382,19 @@
                 <p style="color: var(--color-success); text-align: center; padding: 20px;">
                     <i class="bi bi-check-circle"></i> Este coche ya completo el proceso
                 </p>
+                {% elif coche.etapa_actual.orden == 3 %}
+                <!-- Stock Secado: coches deben asignarse a lote de produccion -->
+                <p style="color: var(--color-info); text-align: center; padding: 20px;">
+                    <i class="bi bi-info-circle"></i> Este coche debe ser asignado a un <strong>Lote de Produccion</strong> para continuar al Taller.
+                    <br><br>
+                    <a href="/produccion" class="btn btn-primary" style="margin-top: 10px;">
+                        <i class="bi bi-gear"></i> Ir a Produccion
+                    </a>
+                </p>
                 {% else %}
                     {% for etapa in etapas %}
-                        {% if etapa.orden == siguiente_orden %}
-                        <!-- Boton para mover a la siguiente etapa -->
+                        {% if etapa.orden == siguiente_orden and etapa.orden != 4 %}
+                        <!-- Boton para mover a la siguiente etapa (excepto Taller) -->
                         <div style="margin-bottom: 16px;">
                             {% if etapa.orden == 2 %}
                             <!-- Si va a Secado, mostrar selector de camara y lote -->

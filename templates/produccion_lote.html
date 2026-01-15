@@ -1,0 +1,1081 @@
+{% extends "base.html" %}
+
+{% block title %}{{ lote.codigo_qr }} - Produccion{% endblock %}
+
+{% block head %}
+<style>
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 20px;
+        color: var(--color-text-muted);
+        text-decoration: none;
+    }
+
+    .back-link:hover {
+        color: var(--color-primary);
+    }
+
+    .lote-info {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+
+    .lote-info-header {
+        padding: 16px 24px;
+        background: linear-gradient(135deg, #e83e8c, #fd7e14);
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .lote-codigo {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 1.3rem;
+        font-weight: 700;
+    }
+
+    .lote-info-body {
+        padding: 24px;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+    }
+
+    .stat-item {
+        text-align: center;
+        padding: 16px;
+        background: var(--color-bg);
+        border-radius: var(--radius-md);
+    }
+
+    .stat-label {
+        font-size: 0.8rem;
+        color: var(--color-text-muted);
+        margin-bottom: 4px;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .stat-value.success { color: var(--color-success); }
+    .stat-value.warning { color: var(--color-warning); }
+    .stat-value.danger { color: var(--color-danger); }
+
+    /* Secciones */
+    .section-card {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+
+    .section-header {
+        padding: 14px 20px;
+        color: white;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .section-header.plantillas { background: linear-gradient(135deg, var(--color-primary), var(--color-section)); }
+    .section-header.bloques { background: linear-gradient(135deg, var(--color-warning), #d97706); }
+    .section-header.desperdicio { background: linear-gradient(135deg, #6b7280, #4b5563); }
+
+    .section-body {
+        padding: 20px;
+    }
+
+    .form-row {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+    }
+
+    .form-group {
+        flex: 1;
+        min-width: 120px;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 6px;
+        font-size: 0.9rem;
+    }
+
+    .form-group input,
+    .form-group select {
+        width: 100%;
+        padding: 10px 14px;
+        border: 2px solid var(--color-gray-light);
+        border-radius: var(--radius-sm);
+        font-family: inherit;
+        font-size: 0.95rem;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: var(--color-primary);
+    }
+
+    /* BFT Preview automatico */
+    .bft-preview {
+        background: linear-gradient(135deg, var(--color-success), #059669);
+        color: white;
+        padding: 12px 20px;
+        border-radius: var(--radius-md);
+        margin-bottom: 16px;
+        display: none;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .bft-preview.active {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .bft-preview-value {
+        font-size: 1.4rem;
+        font-weight: 700;
+    }
+
+    /* Plantillas y bloques lista */
+    .items-list {
+        margin-top: 16px;
+    }
+
+    .item-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        background: var(--color-bg);
+        border-radius: var(--radius-sm);
+        margin-bottom: 8px;
+    }
+
+    .item-row.saved {
+        background: #d1fae5;
+        border-left: 4px solid var(--color-success);
+    }
+
+    .item-info {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+    }
+
+    .btn-remove {
+        background: var(--color-danger);
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+    }
+
+    /* Calculo preview */
+    .calc-preview {
+        background: linear-gradient(135deg, var(--color-primary), var(--color-section));
+        color: white;
+        padding: 16px 20px;
+        border-radius: var(--radius-md);
+        margin-top: 16px;
+    }
+
+    .calc-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0;
+    }
+
+    .calc-value {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 700;
+    }
+
+    /* Desperdicio barra */
+    .desperdicio-container {
+        margin-top: 16px;
+    }
+
+    .desperdicio-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .desperdicio-value {
+        font-size: 2rem;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .desperdicio-value.good { color: #28a745; }
+    .desperdicio-value.bad { color: #ef4444; }
+
+    .progress-container {
+        background: #e5e7eb;
+        border-radius: 10px;
+        height: 28px;
+        overflow: hidden;
+        margin-bottom: 16px;
+    }
+
+    .progress-bar {
+        height: 100%;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        padding-right: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: white;
+        transition: all 0.5s ease;
+    }
+
+    .progress-bar.good { background: linear-gradient(135deg, #28a745, #20c997); }
+    .progress-bar.bad { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+    .desperdicio-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 12px;
+    }
+
+    .detail-item {
+        background: var(--color-bg);
+        padding: 12px;
+        border-radius: var(--radius-sm);
+        text-align: center;
+    }
+
+    .detail-label {
+        font-size: 0.75rem;
+        color: var(--color-text-muted);
+    }
+
+    .detail-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* QR Print Section */
+    .qr-print-container {
+        display: none;
+    }
+
+    .qr-print-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        padding: 20px;
+    }
+
+    .qr-print-card {
+        border: 2px solid #000;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        background: white;
+        page-break-inside: avoid;
+    }
+
+    .qr-print-codigo {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 700;
+        font-size: 1.1rem;
+        margin-bottom: 10px;
+    }
+
+    .qr-print-card img {
+        width: 120px;
+        height: 120px;
+        margin: 10px auto;
+    }
+
+    .qr-print-info {
+        border-top: 1px solid #ccc;
+        margin-top: 10px;
+        padding-top: 10px;
+        text-align: left;
+        font-size: 0.85rem;
+    }
+
+    .qr-print-info div {
+        margin-bottom: 4px;
+    }
+
+    .qr-print-info strong {
+        display: inline-block;
+        min-width: 80px;
+    }
+
+    .actions-bar {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 20px;
+    }
+
+    /* Vista previa QR en pantalla */
+    .qr-preview-section {
+        display: none;
+    }
+
+    .qr-preview-section.active {
+        display: block;
+    }
+
+    .qr-preview-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 16px;
+        margin-top: 16px;
+    }
+
+    .qr-preview-card {
+        background: white;
+        border: 2px solid var(--color-gray-light);
+        border-radius: var(--radius-md);
+        padding: 16px;
+        text-align: center;
+    }
+
+    .qr-preview-card img {
+        max-width: 120px;
+        margin: 8px auto;
+    }
+
+    /* Resumen guardados */
+    .saved-summary {
+        background: #d1fae5;
+        border: 2px solid var(--color-success);
+        border-radius: var(--radius-md);
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .saved-summary h4 {
+        color: var(--color-success);
+        margin-bottom: 8px;
+    }
+
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        .qr-print-container, .qr-print-container * {
+            visibility: visible;
+        }
+        .qr-print-container {
+            display: block !important;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+        }
+        .qr-print-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            padding: 10px;
+        }
+        .qr-print-card {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+        @page {
+            margin: 10mm;
+            size: letter;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .form-row { flex-direction: column; }
+        .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<a href="/produccion" class="back-link no-print">
+    <i class="bi bi-arrow-left"></i> Volver a Produccion
+</a>
+
+<!-- Info del Lote -->
+<div class="lote-info no-print">
+    <div class="lote-info-header">
+        <span class="lote-codigo">{{ lote.codigo_qr }}</span>
+        <span style="background: rgba(255,255,255,0.2); padding: 6px 14px; border-radius: 20px;">En Proceso</span>
+    </div>
+    <div class="lote-info-body">
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-label">Coches</div>
+                <div class="stat-value">{{ lote.cantidad_coches }}</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">BFT Total</div>
+                <div class="stat-value" id="lote-bft-total">{{ "%.1f"|format(lote.total_bft) }}</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">BFT Usado</div>
+                <div class="stat-value success" id="lote-bft-usado">{{ "%.1f"|format(lote.bft_usado or 0) }}</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">BFT Disponible</div>
+                <div class="stat-value warning" id="lote-bft-disponible">{{ "%.1f"|format(lote.bft_disponible) }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Agregar Plantillas -->
+<div class="section-card no-print">
+    <div class="section-header plantillas">
+        <i class="bi bi-calculator"></i> Agregar Plantillas Presentadas
+    </div>
+    <div class="section-body">
+        <div class="form-row">
+            <div class="form-group">
+                <label>Largo (pulgadas)</label>
+                <select id="plantilla-largo" onchange="calcularPlantillaBFT()">
+                    <option value="">Seleccionar...</option>
+                    {% for largo in largos_produccion %}
+                    <option value="{{ largo }}">{{ largo }}"</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Ancho (fijo)</label>
+                <input type="text" value="24 pulgadas" disabled>
+            </div>
+            <div class="form-group">
+                <label>Alto (pulgadas)</label>
+                <input type="number" id="plantilla-alto" step="0.1" placeholder="Ej: 12.5" oninput="calcularPlantillaBFT()">
+            </div>
+        </div>
+
+        <!-- BFT Preview automatico -->
+        <div class="bft-preview" id="plantilla-bft-preview">
+            <span>BFT Calculado:</span>
+            <span class="bft-preview-value" id="plantilla-bft-value">0</span>
+        </div>
+
+        <button class="btn btn-primary" onclick="agregarPlantilla()">
+            <i class="bi bi-plus"></i> Agregar Plantilla
+        </button>
+
+        <div class="items-list" id="plantillas-lista"></div>
+    </div>
+</div>
+
+<!-- Crear Bloques -->
+<div class="section-card no-print">
+    <div class="section-header bloques">
+        <i class="bi bi-box"></i> Crear Bloque Presentado
+    </div>
+    <div class="section-body">
+        <div class="form-row">
+            <div class="form-group">
+                <label>Fecha</label>
+                <input type="date" id="bloque-fecha">
+            </div>
+            <div class="form-group">
+                <label>Turno</label>
+                <select id="bloque-turno">
+                    <option value="Diurno">Diurno</option>
+                    <option value="Nocturno">Nocturno</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Calidad</label>
+                <select id="bloque-calidad">
+                    <option value="Estandar">Estandar</option>
+                    <option value="Liviano">Liviano</option>
+                </select>
+            </div>
+            <div class="form-group" style="display: flex; align-items: center; gap: 10px; padding-top: 24px;">
+                <input type="checkbox" id="bloque-empatado" style="width: 20px; height: 20px; cursor: pointer;">
+                <label for="bloque-empatado" style="margin: 0; cursor: pointer; font-weight: 600;">Bloque Empatado</label>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Secuencia</label>
+                <input type="text" id="bloque-secuencia" placeholder="Ej: 001">
+            </div>
+            <div class="form-group">
+                <label>Largo (pulgadas)</label>
+                <select id="bloque-largo" onchange="calcularBloque()">
+                    <option value="">Seleccionar...</option>
+                    {% for largo in largos_produccion %}
+                    <option value="{{ largo }}">{{ largo }}"</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Peso (kg)</label>
+                <input type="number" id="bloque-peso" step="0.1" placeholder="Ej: 150.5" oninput="calcularBloque()">
+            </div>
+        </div>
+
+        <div class="calc-preview" id="bloque-calc" style="display: none;">
+            <div class="calc-row">
+                <span>BFT (Largo x 8):</span>
+                <span class="calc-value" id="bloque-bft-result">0</span>
+            </div>
+            <div class="calc-row">
+                <span>Densidad:</span>
+                <span class="calc-value" id="bloque-densidad-result">0</span>
+            </div>
+        </div>
+
+        <button class="btn btn-warning" onclick="agregarBloque()">
+            <i class="bi bi-plus"></i> Agregar Bloque
+        </button>
+
+        <div class="items-list" id="bloques-lista"></div>
+    </div>
+</div>
+
+<!-- Desperdicio y Acciones -->
+<div class="section-card no-print">
+    <div class="section-header desperdicio">
+        <i class="bi bi-graph-down"></i> Desperdicio del Proceso
+    </div>
+    <div class="section-body">
+        <div class="desperdicio-container">
+            <div class="desperdicio-header">
+                <span style="font-weight: 600;">Desperdicio Actual</span>
+                <span class="desperdicio-value" id="desperdicio-porcentaje">0%</span>
+            </div>
+
+            <div class="progress-container">
+                <div class="progress-bar" id="desperdicio-bar" style="width: 0%;"></div>
+            </div>
+
+            <div class="desperdicio-details">
+                <div class="detail-item">
+                    <div class="detail-label">BFT Lote</div>
+                    <div class="detail-value" id="det-lote-bft">{{ "%.1f"|format(lote.total_bft) }}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">BFT Plantillas Presentadas</div>
+                    <div class="detail-value" style="color: var(--color-success);" id="det-plantillas-bft">0</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">BFT Bloques</div>
+                    <div class="detail-value" style="color: var(--color-warning);" id="det-bloques-bft">0</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">BFT Desperdicio</div>
+                    <div class="detail-value" id="det-desperdicio-bft">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="actions-bar">
+            <button class="btn btn-success" onclick="guardarTodo()" id="btn-guardar">
+                <i class="bi bi-save"></i> Guardar Todo
+            </button>
+            <button class="btn btn-danger" onclick="finalizarLote()">
+                <i class="bi bi-check-circle"></i> Finalizar Lote
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Vista previa QRs en pantalla -->
+<div class="section-card qr-preview-section no-print" id="qr-preview-section">
+    <div class="section-header" style="background: linear-gradient(135deg, var(--color-success), #059669);">
+        <i class="bi bi-qr-code"></i> QRs de Bloques Creados
+    </div>
+    <div class="section-body">
+        <div class="qr-preview-grid" id="qr-preview-grid"></div>
+        <div class="actions-bar">
+            <button class="btn btn-primary" onclick="imprimirQRs()">
+                <i class="bi bi-printer"></i> Imprimir QRs
+            </button>
+            <button class="btn btn-secondary" onclick="ocultarQRs()">
+                <i class="bi bi-x"></i> Cerrar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Contenedor para impresion (oculto en pantalla) -->
+<div class="qr-print-container" id="qr-print-container">
+    <div class="qr-print-grid" id="qr-print-grid"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Datos del lote
+    let LOTE = {
+        id: {{ lote.id }},
+        codigo: '{{ lote.codigo_qr }}',
+        bftTotal: {{ lote.total_bft }},
+        bftUsado: {{ lote.bft_usado or 0 }},
+        bftDisponible: {{ lote.bft_disponible }}
+    };
+
+    const UMBRAL_DESPERDICIO = 18;
+
+    // Listas de items pendientes (no guardados aun)
+    let plantillasPendientes = [];
+    let bloquesPendientes = [];
+
+    // Listas de items ya guardados en esta sesion
+    let plantillasGuardadas = [];
+    let bloquesGuardados = [];
+
+    // Inicializar fecha
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('bloque-fecha').value = new Date().toISOString().split('T')[0];
+        calcularDesperdicio();
+    });
+
+    // ==================== PLANTILLAS ====================
+    function calcularPlantillaBFT() {
+        const largo = parseFloat(document.getElementById('plantilla-largo').value) || 0;
+        const alto = parseFloat(document.getElementById('plantilla-alto').value) || 0;
+        const preview = document.getElementById('plantilla-bft-preview');
+        const valueEl = document.getElementById('plantilla-bft-value');
+
+        if (largo > 0 && alto > 0) {
+            const ancho = 24;
+            const altoReducido = alto * 0.90;
+            const bft = (largo * ancho * altoReducido) / 144;
+            valueEl.textContent = bft.toFixed(2);
+            preview.classList.add('active');
+        } else {
+            preview.classList.remove('active');
+        }
+    }
+
+    function agregarPlantilla() {
+        const largo = document.getElementById('plantilla-largo').value;
+        const alto = document.getElementById('plantilla-alto').value;
+
+        if (!largo || !alto) {
+            alert('Por favor complete largo y alto');
+            return;
+        }
+
+        const ancho = 24;
+        const altoReducido = parseFloat(alto) * 0.90;
+        const bft = (parseFloat(largo) * ancho * altoReducido) / 144;
+
+        plantillasPendientes.push({
+            largo, alto,
+            bft: parseFloat(bft.toFixed(2)),
+            guardada: false
+        });
+
+        document.getElementById('plantilla-largo').value = '';
+        document.getElementById('plantilla-alto').value = '';
+        document.getElementById('plantilla-bft-preview').classList.remove('active');
+
+        actualizarListaPlantillas();
+        calcularDesperdicio();
+    }
+
+    function removerPlantilla(index, esGuardada) {
+        if (esGuardada) {
+            // No se pueden remover las guardadas
+            alert('Esta plantilla ya fue guardada y no se puede eliminar');
+            return;
+        }
+        plantillasPendientes.splice(index, 1);
+        actualizarListaPlantillas();
+        calcularDesperdicio();
+    }
+
+    function actualizarListaPlantillas() {
+        const lista = document.getElementById('plantillas-lista');
+        let html = '';
+
+        // Mostrar guardadas primero
+        plantillasGuardadas.forEach((p, i) => {
+            html += `
+                <div class="item-row saved">
+                    <div class="item-info">
+                        <span><i class="bi bi-check-circle" style="color: var(--color-success);"></i></span>
+                        <span><strong>${p.largo}"</strong> x 24" x <strong>${p.alto}"</strong></span>
+                        <span>BFT: <strong style="color: var(--color-success);">${p.bft.toFixed(2)}</strong></span>
+                        <span style="color: var(--color-success); font-size: 0.8rem;">Guardada</span>
+                    </div>
+                </div>
+            `;
+        });
+
+        // Mostrar pendientes
+        plantillasPendientes.forEach((p, i) => {
+            html += `
+                <div class="item-row">
+                    <div class="item-info">
+                        <span><strong>${p.largo}"</strong> x 24" x <strong>${p.alto}"</strong></span>
+                        <span>BFT: <strong style="color: var(--color-success);">${p.bft.toFixed(2)}</strong></span>
+                    </div>
+                    <button class="btn-remove" onclick="removerPlantilla(${i}, false)">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            `;
+        });
+
+        if (html === '') {
+            html = '<p style="color: var(--color-text-muted); text-align: center; padding: 20px;">No hay plantillas agregadas</p>';
+        }
+
+        lista.innerHTML = html;
+    }
+
+    // ==================== BLOQUES ====================
+    function calcularBloque() {
+        const largo = parseFloat(document.getElementById('bloque-largo').value) || 0;
+        const peso = parseFloat(document.getElementById('bloque-peso').value) || 0;
+
+        if (largo > 0 && peso > 0) {
+            const bft = largo * 8;
+            const volumen = (((largo + 0.75) * 25.25 * 49.75 * Math.pow(2.54, 3)) / 1000000);
+            const densidad = peso / volumen;
+
+            document.getElementById('bloque-bft-result').textContent = bft.toFixed(0);
+            document.getElementById('bloque-densidad-result').textContent = densidad.toFixed(4);
+            document.getElementById('bloque-calc').style.display = 'block';
+        } else {
+            document.getElementById('bloque-calc').style.display = 'none';
+        }
+    }
+
+    function agregarBloque() {
+        const largo = document.getElementById('bloque-largo').value;
+        const peso = document.getElementById('bloque-peso').value;
+
+        if (!largo) { alert('Seleccione el largo'); return; }
+        if (!peso) { alert('Ingrese el peso'); return; }
+
+        const bft = parseInt(largo) * 8;
+        const volumen = (((parseFloat(largo) + 0.75) * 25.25 * 49.75 * Math.pow(2.54, 3)) / 1000000);
+        const densidad = parseFloat(peso) / volumen;
+
+        bloquesPendientes.push({
+            fecha: document.getElementById('bloque-fecha').value,
+            turno: document.getElementById('bloque-turno').value,
+            calidad: document.getElementById('bloque-calidad').value,
+            empatado: document.getElementById('bloque-empatado').checked,
+            secuencia: document.getElementById('bloque-secuencia').value,
+            largo: parseInt(largo),
+            peso: parseFloat(peso),
+            bft: bft,
+            densidad: densidad.toFixed(4),
+            guardado: false
+        });
+
+        document.getElementById('bloque-secuencia').value = '';
+        document.getElementById('bloque-largo').value = '';
+        document.getElementById('bloque-peso').value = '';
+        document.getElementById('bloque-calc').style.display = 'none';
+
+        actualizarListaBloques();
+        calcularDesperdicio();
+    }
+
+    function removerBloque(index, esGuardado) {
+        if (esGuardado) {
+            alert('Este bloque ya fue guardado y no se puede eliminar');
+            return;
+        }
+        bloquesPendientes.splice(index, 1);
+        actualizarListaBloques();
+        calcularDesperdicio();
+    }
+
+    function actualizarListaBloques() {
+        const lista = document.getElementById('bloques-lista');
+        let html = '';
+
+        // Mostrar guardados primero
+        bloquesGuardados.forEach((b, i) => {
+            html += `
+                <div class="item-row saved">
+                    <div class="item-info">
+                        <span><i class="bi bi-check-circle" style="color: var(--color-success);"></i></span>
+                        ${b.secuencia ? `<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 10px; font-weight: 600; font-size: 0.8rem;">${b.secuencia}</span>` : ''}
+                        ${b.empatado ? `<span style="background: #dbeafe; color: #1d4ed8; padding: 2px 8px; border-radius: 10px; font-weight: 600; font-size: 0.75rem;">EMP</span>` : ''}
+                        <span><strong>${b.largo}"</strong> - ${b.peso}kg</span>
+                        <span>BFT: <strong>${b.bft}</strong></span>
+                        <span>${b.turno}</span>
+                        <span style="color: var(--color-success); font-size: 0.8rem;">Guardado</span>
+                    </div>
+                </div>
+            `;
+        });
+
+        // Mostrar pendientes
+        bloquesPendientes.forEach((b, i) => {
+            html += `
+                <div class="item-row">
+                    <div class="item-info">
+                        ${b.secuencia ? `<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 10px; font-weight: 600; font-size: 0.8rem;">${b.secuencia}</span>` : ''}
+                        ${b.empatado ? `<span style="background: #dbeafe; color: #1d4ed8; padding: 2px 8px; border-radius: 10px; font-weight: 600; font-size: 0.75rem;">EMP</span>` : ''}
+                        <span><strong>${b.largo}"</strong> - ${b.peso}kg</span>
+                        <span>BFT: <strong>${b.bft}</strong></span>
+                        <span>${b.turno}</span>
+                    </div>
+                    <button class="btn-remove" onclick="removerBloque(${i}, false)">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            `;
+        });
+
+        if (html === '') {
+            html = '<p style="color: var(--color-text-muted); text-align: center; padding: 20px;">No hay bloques agregados</p>';
+        }
+
+        lista.innerHTML = html;
+    }
+
+    // ==================== DESPERDICIO ====================
+    function calcularDesperdicio() {
+        // LOTE.bftUsado ya contiene todo lo guardado en el servidor
+        // Solo necesitamos sumar los items PENDIENTES (no guardados aun)
+        const plantillasPendientesBft = plantillasPendientes.reduce((sum, p) => sum + p.bft, 0);
+        const bloquesPendientesBft = bloquesPendientes.reduce((sum, b) => sum + b.bft, 0);
+
+        // Total pendiente (para mostrar en la UI)
+        const bftPendiente = plantillasPendientesBft + bloquesPendientesBft;
+
+        // BFT total usado = lo del servidor + lo pendiente local
+        const bftTotalUsado = LOTE.bftUsado + bftPendiente;
+        const desperdicioBft = LOTE.bftTotal - bftTotalUsado;
+        const desperdicioPct = LOTE.bftTotal > 0 ? (desperdicioBft / LOTE.bftTotal) * 100 : 0;
+
+        // Para mostrar en detalle: calcular BFT de guardados en esta sesion + pendientes
+        const plantillasGuardadasBft = plantillasGuardadas.reduce((sum, p) => sum + p.bft, 0);
+        const bloquesGuardadosBft = bloquesGuardados.reduce((sum, b) => sum + b.bft, 0);
+        const totalPlantillasDisplay = plantillasGuardadasBft + plantillasPendientesBft;
+        const totalBloquesDisplay = bloquesGuardadosBft + bloquesPendientesBft;
+
+        // Actualizar displays
+        document.getElementById('lote-bft-usado').textContent = bftTotalUsado.toFixed(1);
+        document.getElementById('lote-bft-disponible').textContent = (LOTE.bftTotal - bftTotalUsado).toFixed(1);
+
+        document.getElementById('det-plantillas-bft').textContent = totalPlantillasDisplay.toFixed(1);
+        document.getElementById('det-bloques-bft').textContent = totalBloquesDisplay.toFixed(1);
+        document.getElementById('det-desperdicio-bft').textContent = desperdicioBft.toFixed(1);
+
+        const porcentajeEl = document.getElementById('desperdicio-porcentaje');
+        const barEl = document.getElementById('desperdicio-bar');
+        const detDesperdicioEl = document.getElementById('det-desperdicio-bft');
+
+        porcentajeEl.textContent = desperdicioPct.toFixed(1) + '%';
+        barEl.style.width = Math.min(Math.abs(desperdicioPct), 100) + '%';
+        barEl.textContent = desperdicioPct.toFixed(1) + '%';
+
+        const isGood = desperdicioPct < UMBRAL_DESPERDICIO && desperdicioPct >= 0;
+        porcentajeEl.className = 'desperdicio-value ' + (isGood ? 'good' : 'bad');
+        barEl.className = 'progress-bar ' + (isGood ? 'good' : 'bad');
+        detDesperdicioEl.style.color = isGood ? '#28a745' : '#ef4444';
+    }
+
+    // ==================== GUARDAR TODO ====================
+    async function guardarTodo() {
+        if (plantillasPendientes.length === 0 && bloquesPendientes.length === 0) {
+            alert('No hay nada pendiente por guardar');
+            return;
+        }
+
+        const btn = document.getElementById('btn-guardar');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Guardando...';
+
+        let errores = [];
+        let bloquesNuevos = [];
+        let ultimoBftUsadoServidor = LOTE.bftUsado;
+
+        // Guardar plantillas
+        // El servidor actualiza lote.bft_usado, la respuesta nos da el valor actualizado
+        for (const p of plantillasPendientes) {
+            try {
+                const response = await fetch('/api/proceso', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        lote_id: LOTE.id,
+                        largo: p.largo,
+                        alto: p.alto,
+                        usuario: 'Usuario'
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    // Actualizar con el valor del servidor
+                    ultimoBftUsadoServidor = data.lote_bft_usado;
+                    plantillasGuardadas.push(p);
+                } else {
+                    errores.push('Plantilla: ' + (data.error || 'Error desconocido'));
+                }
+            } catch (error) {
+                errores.push('Plantilla: ' + error.message);
+            }
+        }
+
+        // Guardar bloques (ahora también actualizan lote.bft_usado en el backend)
+        for (const b of bloquesPendientes) {
+            try {
+                const response = await fetch('/api/bloques', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ...b,
+                        lote_id: LOTE.id  // Asociar bloque al lote
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    // Actualizar con el valor del servidor si viene
+                    if (data.lote_bft_usado !== undefined) {
+                        ultimoBftUsadoServidor = data.lote_bft_usado;
+                    }
+                    b.id = data.bloque.id;
+                    b.codigo_qr = data.bloque.codigo_qr;
+                    bloquesGuardados.push(b);
+                    bloquesNuevos.push(data.bloque);
+                } else {
+                    errores.push('Bloque: ' + (data.error || 'Error desconocido'));
+                }
+            } catch (error) {
+                errores.push('Bloque: ' + error.message);
+            }
+        }
+
+        // Limpiar pendientes (ya estan en guardados)
+        plantillasPendientes = [];
+        bloquesPendientes = [];
+
+        // Actualizar LOTE.bftUsado con el valor del servidor (NO sumar localmente)
+        LOTE.bftUsado = ultimoBftUsadoServidor;
+
+        // Actualizar listas
+        actualizarListaPlantillas();
+        actualizarListaBloques();
+        calcularDesperdicio();
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-save"></i> Guardar Todo';
+
+        if (errores.length > 0) {
+            alert('Algunos items no se pudieron guardar:\n' + errores.join('\n'));
+        } else {
+            // Mostrar QRs si hay bloques nuevos
+            if (bloquesNuevos.length > 0) {
+                mostrarQRs(bloquesNuevos);
+            }
+            alert('Guardado exitosamente');
+        }
+    }
+
+    // ==================== QRs ====================
+    function mostrarQRs(bloques) {
+        // Vista previa en pantalla
+        const previewGrid = document.getElementById('qr-preview-grid');
+        previewGrid.innerHTML = bloques.map(b => `
+            <div class="qr-preview-card">
+                <div style="font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--color-primary);">${b.codigo_qr}</div>
+                <img src="/api/bloques/${b.id}/qr" alt="QR">
+                <div style="font-size: 0.85rem; color: var(--color-text-muted);">
+                    ${b.largo}" | ${b.peso}kg | BFT: ${b.bft}
+                </div>
+            </div>
+        `).join('');
+
+        // Grid para impresion
+        const printGrid = document.getElementById('qr-print-grid');
+        printGrid.innerHTML = bloques.map(b => `
+            <div class="qr-print-card">
+                <div class="qr-print-codigo">${b.codigo_qr}</div>
+                <img src="/api/bloques/${b.id}/qr" alt="QR">
+                <div class="qr-print-info">
+                    <div><strong>Largo:</strong> ${b.largo}"</div>
+                    <div><strong>Peso:</strong> ${b.peso} kg</div>
+                    <div><strong>BFT:</strong> ${b.bft}</div>
+                    <div><strong>Turno:</strong> ${b.turno}</div>
+                </div>
+            </div>
+        `).join('');
+
+        document.getElementById('qr-preview-section').classList.add('active');
+    }
+
+    function imprimirQRs() {
+        window.print();
+    }
+
+    function ocultarQRs() {
+        document.getElementById('qr-preview-section').classList.remove('active');
+    }
+
+    // ==================== FINALIZAR LOTE ====================
+    async function finalizarLote() {
+        // Primero guardar cualquier cosa pendiente
+        if (plantillasPendientes.length > 0 || bloquesPendientes.length > 0) {
+            if (!confirm('Hay items pendientes por guardar. Se guardaran automaticamente antes de finalizar. Continuar?')) {
+                return;
+            }
+            await guardarTodo();
+        }
+
+        if (!confirm('Finalizar este lote? Ya no podra agregar mas plantillas o bloques.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/lotes/${LOTE.id}/finalizar`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                // Mostrar QRs de todos los bloques guardados antes de ir a finalizados
+                if (bloquesGuardados.length > 0) {
+                    mostrarQRs(bloquesGuardados);
+                    alert(data.mensaje + '\n\nPuede imprimir los QRs de los bloques ahora.');
+                } else {
+                    alert(data.mensaje);
+                    window.location.href = '/finalizados';
+                }
+            } else {
+                alert('Error: ' + data.error);
+            }
+        } catch (error) {
+            alert('Error de conexion');
+        }
+    }
+</script>
+{% endblock %}

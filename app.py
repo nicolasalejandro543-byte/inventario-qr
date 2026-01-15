@@ -1,7 +1,8 @@
 import os
-from flask import Flask, render_template, request, jsonify, send_file
-from models import db, Etapa, Coche, Movimiento, Lote, init_etapas, ESPESORES, LARGOS
-from qr_service import generar_codigo_unico, generar_codigo_lote, generar_imagen_qr
+from datetime import datetime
+from flask import Flask, render_template, request, jsonify, send_file, redirect
+from models import db, Etapa, Coche, Movimiento, Lote, Bloque, ProcesoLote, Contenedor, contenedor_bloques, init_etapas, ESPESORES, LARGOS, LARGOS_PRODUCCION, LARGOS_CONTENEDOR
+from qr_service import generar_codigo_unico, generar_codigo_lote, generar_codigo_bloque, generar_codigo_contenedor, generar_imagen_qr
 from config import get_config
 import io
 
@@ -25,6 +26,27 @@ def ver_etapa(etapa_id):
     """Ver coches de una etapa específica."""
     etapa = Etapa.query.get_or_404(etapa_id)
     coches = Coche.query.filter_by(etapa_actual_id=etapa_id).order_by(Coche.created_at.desc()).all()
+
+    # Si es Ingreso a Taller (orden 4), filtrar coches que estan en lotes en_proceso o finalizado
+    lotes = []
+    if etapa.orden == 4:
+        # Solo mostrar lotes disponibles (no en_proceso ni finalizado)
+        lotes = Lote.query.filter(
+            (Lote.estado == 'disponible') | (Lote.estado == None)
+        ).order_by(Lote.created_at.desc()).all()
+
+        # Obtener IDs de coches que estan en lotes en_proceso o finalizado
+        lotes_en_uso = Lote.query.filter(
+            Lote.estado.in_(['en_proceso', 'finalizado'])
+        ).all()
+        coches_en_uso_ids = set()
+        for lote in lotes_en_uso:
+            for coche in lote.coches:
+                coches_en_uso_ids.add(coche.id)
+
+        # Filtrar coches que NO estan en lotes en uso
+        coches = [c for c in coches if c.id not in coches_en_uso_ids]
+
     total_bft = sum(c.total_bft or 0 for c in coches)
 
     # Si es Secado (orden 2), agrupar por cámara
@@ -43,11 +65,6 @@ def ver_etapa(etapa_id):
             coches_por_camara[camara]['count'] += 1
         # Ordenar por número de cámara
         coches_por_camara = dict(sorted(coches_por_camara.items()))
-
-    # Si es Ingreso a Taller (orden 4), obtener lotes
-    lotes = []
-    if etapa.orden == 4:
-        lotes = Lote.query.order_by(Lote.created_at.desc()).all()
 
     return render_template('etapa.html',
                           etapa=etapa,
@@ -72,13 +89,27 @@ def recepcion_madera():
 
 @app.route('/')
 def dashboard():
-    """Dashboard principal - Resumen."""
+    """Dashboard principal - Resumen con Inventario y Produccion."""
     etapas = Etapa.query.order_by(Etapa.orden).all()
+
+    # Obtener IDs de coches que estan en lotes en_proceso o finalizado (para filtrar en Ingreso a Taller)
+    lotes_en_uso = Lote.query.filter(
+        Lote.estado.in_(['en_proceso', 'finalizado'])
+    ).all()
+    coches_en_lotes_usados_ids = set()
+    for lote in lotes_en_uso:
+        for coche in lote.coches:
+            coches_en_lotes_usados_ids.add(coche.id)
 
     # Obtener estadísticas por etapa
     stats_por_etapa = {}
     for etapa in etapas:
         coches = Coche.query.filter_by(etapa_actual_id=etapa.id).all()
+
+        # Si es Ingreso a Taller (orden 4), filtrar coches que estan en lotes en uso
+        if etapa.orden == 4:
+            coches = [c for c in coches if c.id not in coches_en_lotes_usados_ids]
+
         total_coches = len(coches)
         total_bft = sum(c.total_bft or 0 for c in coches)
         stats_por_etapa[etapa.id] = {
@@ -87,13 +118,92 @@ def dashboard():
             'coches': coches
         }
 
-    # Últimos movimientos
-    ultimos_movimientos = Movimiento.query.order_by(Movimiento.timestamp.desc()).limit(10).all()
+    # Crear lista unificada de actividades recientes
+    actividades = []
+
+    # 1. Movimientos de coches
+    movimientos_coches = Movimiento.query.order_by(Movimiento.timestamp.desc()).limit(15).all()
+    for mov in movimientos_coches:
+        actividades.append({
+            'tipo': 'coche',
+            'timestamp': mov.timestamp,
+            'codigo': mov.coche.codigo_qr if mov.coche else 'N/A',
+            'id': mov.coche_id,
+            'origen': mov.etapa_origen.nombre if mov.etapa_origen else 'Nuevo',
+            'origen_color': mov.etapa_origen.color if mov.etapa_origen else '#6c757d',
+            'destino': mov.etapa_destino.nombre if mov.etapa_destino else '',
+            'destino_color': mov.etapa_destino.color if mov.etapa_destino else '#6c757d'
+        })
+
+    # 2. Bloques encolados recientemente
+    bloques_encolados_recientes = Bloque.query.filter(Bloque.fecha_encolado.isnot(None)).order_by(Bloque.fecha_encolado.desc()).limit(10).all()
+    for bloque in bloques_encolados_recientes:
+        actividades.append({
+            'tipo': 'bloque_encolado',
+            'timestamp': bloque.fecha_encolado,
+            'codigo': bloque.codigo_qr,
+            'id': bloque.id,
+            'origen': 'Presentado',
+            'origen_color': '#f59e0b',
+            'destino': 'Encolado',
+            'destino_color': '#10b981'
+        })
+
+    # 3. Bloques creados recientemente
+    bloques_nuevos = Bloque.query.order_by(Bloque.created_at.desc()).limit(10).all()
+    for bloque in bloques_nuevos:
+        actividades.append({
+            'tipo': 'bloque_nuevo',
+            'timestamp': bloque.created_at,
+            'codigo': bloque.codigo_qr,
+            'id': bloque.id,
+            'origen': 'Nuevo',
+            'origen_color': '#6c757d',
+            'destino': 'Presentado',
+            'destino_color': '#f59e0b'
+        })
+
+    # 4. Lotes finalizados
+    lotes_finalizados_recientes = Lote.query.filter(Lote.fecha_finalizado.isnot(None)).order_by(Lote.fecha_finalizado.desc()).limit(10).all()
+    for lote in lotes_finalizados_recientes:
+        actividades.append({
+            'tipo': 'lote_finalizado',
+            'timestamp': lote.fecha_finalizado,
+            'codigo': lote.codigo_qr,
+            'id': lote.id,
+            'origen': 'En Proceso',
+            'origen_color': '#e83e8c',
+            'destino': 'Finalizado',
+            'destino_color': '#20c997'
+        })
+
+    # Ordenar todas las actividades por timestamp descendente y tomar las primeras 15
+    actividades.sort(key=lambda x: x['timestamp'] if x['timestamp'] else datetime.min, reverse=True)
+    ultimas_actividades = actividades[:15]
+
+    # Lotes por estado
+    lotes_en_proceso = Lote.query.filter_by(estado='en_proceso').order_by(Lote.fecha_inicio_proceso.desc()).all()
+    lotes_finalizados = Lote.query.filter_by(estado='finalizado').order_by(Lote.fecha_finalizado.desc()).all()
+
+    # Bloques
+    bloques_presentados = Bloque.query.filter_by(estado='presentado').order_by(Bloque.created_at.desc()).all()
+    bloques_encolados = Bloque.query.filter_by(estado='encolado').order_by(Bloque.fecha_encolado.desc()).all()
+
+    # Contenedores
+    contenedores_abiertos = Contenedor.query.filter_by(estado='abierto').all()
+    contenedores_total = Contenedor.query.count()
 
     return render_template('dashboard.html',
                           etapas=etapas,
                           stats_por_etapa=stats_por_etapa,
-                          ultimos_movimientos=ultimos_movimientos)
+                          ultimas_actividades=ultimas_actividades,
+                          lotes_en_proceso=lotes_en_proceso,
+                          lotes_finalizados=lotes_finalizados,
+                          bloques_presentados=bloques_presentados,
+                          bloques_encolados=bloques_encolados,
+                          contenedores_abiertos=contenedores_abiertos,
+                          contenedores_total=contenedores_total,
+                          largos_produccion=LARGOS_PRODUCCION)
 
 
 @app.route('/nuevo')
@@ -103,6 +213,113 @@ def nuevo_coche_form():
     espesores = ESPESORES
     largos = LARGOS
     return render_template('nuevo_coche.html', etapas=etapas, espesores=espesores, largos=largos)
+
+
+@app.route('/produccion')
+def produccion():
+    """Vista de producción - seleccionar lote disponible para procesar."""
+    # Lotes disponibles en Ingreso a Taller (estado disponible o sin estado)
+    lotes_disponibles = Lote.query.filter(
+        (Lote.estado == 'disponible') | (Lote.estado == None)
+    ).order_by(Lote.created_at.desc()).all()
+
+    # Lotes en proceso
+    lotes_en_proceso = Lote.query.filter_by(estado='en_proceso').order_by(Lote.fecha_inicio_proceso.desc()).all()
+
+    return render_template('produccion.html',
+                          lotes_disponibles=lotes_disponibles,
+                          lotes_en_proceso=lotes_en_proceso,
+                          largos_produccion=LARGOS_PRODUCCION)
+
+
+@app.route('/produccion/<int:lote_id>')
+def produccion_lote(lote_id):
+    """Vista de trabajo de un lote en producción."""
+    lote = Lote.query.get_or_404(lote_id)
+
+    # Si el lote aún está disponible, iniciarlo
+    if lote.estado == 'disponible' or lote.estado is None:
+        lote.iniciar_proceso()
+        db.session.commit()
+
+    return render_template('produccion_lote.html',
+                          lote=lote,
+                          largos_produccion=LARGOS_PRODUCCION)
+
+
+@app.route('/finalizados')
+def lotes_finalizados():
+    """Vista de lotes finalizados."""
+    lotes = Lote.query.filter_by(estado='finalizado').order_by(Lote.fecha_finalizado.desc()).all()
+    return render_template('finalizados.html', lotes=lotes)
+
+
+@app.route('/finalizado/<int:lote_id>')
+def detalle_lote_finalizado(lote_id):
+    """Vista de detalle de un lote finalizado."""
+    lote = Lote.query.get_or_404(lote_id)
+    if lote.estado != 'finalizado':
+        return redirect('/finalizados')
+    return render_template('detalle_lote_finalizado.html', lote=lote, now=datetime.now())
+
+
+@app.route('/bloques/presentados')
+def bloques_presentados():
+    """Vista de bloques presentados con filtros."""
+    bloques = Bloque.query.filter_by(estado='presentado').order_by(Bloque.created_at.desc()).all()
+
+    # Obtener valores únicos para filtros
+    secuencias_raw = list(set(b.secuencia for b in bloques if b.secuencia))
+    # Ordenar secuencias de mayor a menor (intentar orden numerico, sino alfabetico inverso)
+    try:
+        secuencias = sorted(secuencias_raw, key=lambda x: int(x) if x.isdigit() else x, reverse=True)
+    except:
+        secuencias = sorted(secuencias_raw, reverse=True)
+    turnos = list(set(b.turno for b in bloques if b.turno))
+    calidades = list(set(b.calidad for b in bloques if b.calidad))
+    # Usar todos los largos de produccion, ordenados de mayor a menor
+    largos = sorted(LARGOS_PRODUCCION, reverse=True)
+
+    return render_template('bloques_presentados.html',
+                          bloques=bloques,
+                          secuencias=secuencias,
+                          turnos=turnos,
+                          calidades=calidades,
+                          largos=largos,
+                          largos_produccion=LARGOS_PRODUCCION)
+
+
+@app.route('/bloques/encolados')
+def bloques_encolados():
+    """Vista de bloques encolados con filtros."""
+    bloques = Bloque.query.filter_by(estado='encolado').order_by(Bloque.fecha_encolado.desc()).all()
+
+    # Obtener valores únicos para filtros
+    secuencias_raw = list(set(b.secuencia for b in bloques if b.secuencia))
+    # Ordenar secuencias de mayor a menor (intentar orden numerico, sino alfabetico inverso)
+    try:
+        secuencias = sorted(secuencias_raw, key=lambda x: int(x) if x.isdigit() else x, reverse=True)
+    except:
+        secuencias = sorted(secuencias_raw, reverse=True)
+    turnos = list(set(b.turno for b in bloques if b.turno))
+    calidades = list(set(b.calidad for b in bloques if b.calidad))
+    # Usar todos los largos de produccion, ordenados de mayor a menor
+    largos = sorted(LARGOS_PRODUCCION, reverse=True)
+
+    return render_template('bloques_encolados.html',
+                          bloques=bloques,
+                          secuencias=secuencias,
+                          turnos=turnos,
+                          calidades=calidades,
+                          largos=largos,
+                          largos_produccion=LARGOS_PRODUCCION)
+
+
+@app.route('/bloque/<int:bloque_id>')
+def detalle_bloque(bloque_id):
+    """Página de detalle de un bloque."""
+    bloque = Bloque.query.get_or_404(bloque_id)
+    return render_template('detalle_bloque.html', bloque=bloque, largos_produccion=LARGOS_PRODUCCION)
 
 
 @app.route('/coche/<int:coche_id>')
@@ -230,6 +447,10 @@ def mover_coche(coche_id):
     if coche.etapa_actual_id == nueva_etapa_id:
         return jsonify({'error': 'El coche ya esta en esa etapa'}), 400
 
+    # Ingreso a Taller (orden 4) solo acepta lotes, no coches individuales
+    if nueva_etapa.orden == 4:
+        return jsonify({'error': 'Ingreso a Taller solo acepta lotes de produccion, no coches individuales'}), 400
+
     # Si va a Secado (orden 2), requiere camara y lote_secado
     if nueva_etapa.orden == 2:
         if not camara:
@@ -273,6 +494,10 @@ def mover_coches_multiple():
     nueva_etapa = Etapa.query.get(nueva_etapa_id)
     if not nueva_etapa:
         return jsonify({'error': 'Etapa no valida'}), 400
+
+    # Ingreso a Taller (orden 4) solo acepta lotes, no coches individuales
+    if nueva_etapa.orden == 4:
+        return jsonify({'error': 'Ingreso a Taller solo acepta lotes de produccion, no coches individuales'}), 400
 
     # Procesar cada coche
     resultados = {
@@ -489,9 +714,23 @@ def resumen_dashboard():
     """Obtiene resumen para el dashboard."""
     etapas = Etapa.query.order_by(Etapa.orden).all()
 
+    # Obtener IDs de coches que estan en lotes en_proceso o finalizado
+    lotes_en_uso = Lote.query.filter(
+        Lote.estado.in_(['en_proceso', 'finalizado'])
+    ).all()
+    coches_en_lotes_usados_ids = set()
+    for lote in lotes_en_uso:
+        for coche in lote.coches:
+            coches_en_lotes_usados_ids.add(coche.id)
+
     resumen = []
     for etapa in etapas:
         coches = Coche.query.filter_by(etapa_actual_id=etapa.id).all()
+
+        # Si es Ingreso a Taller (orden 4), filtrar coches en lotes en uso
+        if etapa.orden == 4:
+            coches = [c for c in coches if c.id not in coches_en_lotes_usados_ids]
+
         total_bft = sum(c.total_bft or 0 for c in coches)
         resumen.append({
             'etapa': etapa.to_dict(),
@@ -504,7 +743,7 @@ def resumen_dashboard():
 
 @app.route('/api/scan', methods=['POST'])
 def escanear_qr():
-    """Procesa un escaneo QR desde móvil. Busca tanto coches como lotes."""
+    """Procesa un escaneo QR desde móvil. Busca coches, lotes y bloques."""
     data = request.get_json()
     codigo_qr = data.get('codigo_qr', '').strip()
 
@@ -528,6 +767,15 @@ def escanear_qr():
         return jsonify({
             'tipo': 'lote',
             'lote': lote.to_dict(),
+            'etapas': [e.to_dict() for e in etapas]
+        })
+
+    # Si no es lote, buscar en bloques
+    bloque = Bloque.query.filter_by(codigo_qr=codigo_qr).first()
+    if bloque:
+        return jsonify({
+            'tipo': 'bloque',
+            'bloque': bloque.to_dict(),
             'etapas': [e.to_dict() for e in etapas]
         })
 
@@ -555,6 +803,10 @@ def crear_lote():
 
     if not coche_ids:
         return jsonify({'error': 'Se requiere al menos un coche para crear el lote'}), 400
+
+    # Validar que el lote tenga mas de 1 coche
+    if len(coche_ids) < 2:
+        return jsonify({'error': 'Un lote debe tener al menos 2 coches. No se pueden crear lotes con un solo coche.'}), 400
 
     # Verificar que la etapa Stock Seco existe
     etapa_stock_seco = Etapa.query.filter_by(orden=3).first()
@@ -656,6 +908,612 @@ def obtener_qr_lote(lote_id):
         as_attachment=False,
         download_name=f'{lote.codigo_qr}.png'
     )
+
+
+# ==================== API PRODUCCION - BLOQUES ====================
+
+@app.route('/api/bloques', methods=['GET'])
+def listar_bloques():
+    """Lista todos los bloques."""
+    estado = request.args.get('estado')
+    if estado:
+        bloques = Bloque.query.filter_by(estado=estado).order_by(Bloque.created_at.desc()).all()
+    else:
+        bloques = Bloque.query.order_by(Bloque.created_at.desc()).all()
+    return jsonify([b.to_dict() for b in bloques])
+
+
+@app.route('/api/bloques', methods=['POST'])
+def crear_bloque():
+    """Crea un nuevo bloque presentado con código QR."""
+    data = request.get_json()
+
+    # Validar campos requeridos
+    largo = data.get('largo')
+    peso = data.get('peso')
+    lote_id = data.get('lote_id')
+
+    if not largo:
+        return jsonify({'error': 'Se requiere el largo del bloque'}), 400
+    if not peso:
+        return jsonify({'error': 'Se requiere el peso del bloque'}), 400
+
+    # Generar código QR único
+    codigo_qr = generar_codigo_bloque()
+
+    # Parsear fecha si viene
+    fecha = data.get('fecha')
+    if fecha:
+        try:
+            fecha = datetime.strptime(fecha, '%Y-%m-%d').date()
+        except ValueError:
+            fecha = datetime.now().date()
+    else:
+        fecha = datetime.now().date()
+
+    bloque = Bloque(
+        codigo_qr=codigo_qr,
+        lote_id=lote_id,
+        fecha=fecha,
+        turno=data.get('turno', 'Diurno'),
+        calidad=data.get('calidad', 'Estándar'),
+        secuencia=data.get('secuencia', ''),
+        largo=int(largo),
+        peso=float(peso),
+        empatado=data.get('empatado', False),
+        estado='presentado',
+        notas=data.get('notas', '')
+    )
+
+    # Calcular BFT y densidad
+    bloque.calcular_bft()
+    bloque.calcular_densidad_presentado()
+
+    db.session.add(bloque)
+
+    # Si hay lote_id, sumar BFT al lote
+    lote_bft_usado = None
+    if lote_id:
+        lote = Lote.query.get(lote_id)
+        if lote:
+            lote.usar_bft(bloque.bft)
+            lote_bft_usado = lote.bft_usado
+
+    db.session.commit()
+
+    response = {
+        'success': True,
+        'bloque': bloque.to_dict(),
+        'mensaje': f'Bloque {codigo_qr} creado exitosamente'
+    }
+
+    if lote_bft_usado is not None:
+        response['lote_bft_usado'] = lote_bft_usado
+
+    return jsonify(response), 201
+
+
+@app.route('/api/bloques/<int:bloque_id>', methods=['GET'])
+def obtener_bloque(bloque_id):
+    """Obtiene un bloque por su ID."""
+    bloque = Bloque.query.get_or_404(bloque_id)
+    return jsonify(bloque.to_dict())
+
+
+@app.route('/api/bloques/<int:bloque_id>/qr', methods=['GET'])
+def obtener_qr_bloque(bloque_id):
+    """Devuelve la imagen QR de un bloque."""
+    bloque = Bloque.query.get_or_404(bloque_id)
+
+    qr_bytes = generar_imagen_qr(bloque.codigo_qr)
+
+    return send_file(
+        io.BytesIO(qr_bytes),
+        mimetype='image/png',
+        as_attachment=False,
+        download_name=f'{bloque.codigo_qr}.png'
+    )
+
+
+@app.route('/api/bloques/<int:bloque_id>/encolar', methods=['POST'])
+def encolar_bloque(bloque_id):
+    """Mueve un bloque de presentado a encolado, actualizando el peso."""
+    bloque = Bloque.query.get_or_404(bloque_id)
+    data = request.get_json()
+
+    if bloque.estado != 'presentado':
+        return jsonify({'error': 'El bloque ya está encolado'}), 400
+
+    nuevo_peso = data.get('peso')
+    if not nuevo_peso:
+        return jsonify({'error': 'Se requiere el nuevo peso para encolar'}), 400
+
+    # Encolar el bloque
+    bloque.encolar(float(nuevo_peso))
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'bloque': bloque.to_dict(),
+        'mensaje': f'Bloque {bloque.codigo_qr} encolado exitosamente'
+    })
+
+
+@app.route('/api/bloques/encolar-multiple', methods=['POST'])
+def encolar_bloques_multiple():
+    """Encola múltiples bloques a la vez."""
+    data = request.get_json()
+
+    bloques_data = data.get('bloques', [])  # Lista de {bloque_id, peso}
+
+    if not bloques_data:
+        return jsonify({'error': 'Se requiere al menos un bloque'}), 400
+
+    resultados = {
+        'exitos': [],
+        'errores': []
+    }
+
+    for item in bloques_data:
+        bloque_id = item.get('bloque_id')
+        nuevo_peso = item.get('peso')
+
+        bloque = Bloque.query.get(bloque_id)
+        if not bloque:
+            resultados['errores'].append({
+                'bloque_id': bloque_id,
+                'error': 'Bloque no encontrado'
+            })
+            continue
+
+        if bloque.estado != 'presentado':
+            resultados['errores'].append({
+                'bloque_id': bloque_id,
+                'codigo_qr': bloque.codigo_qr,
+                'error': 'El bloque ya está encolado'
+            })
+            continue
+
+        if not nuevo_peso:
+            resultados['errores'].append({
+                'bloque_id': bloque_id,
+                'codigo_qr': bloque.codigo_qr,
+                'error': 'Se requiere el peso'
+            })
+            continue
+
+        bloque.encolar(float(nuevo_peso))
+        resultados['exitos'].append({
+            'bloque_id': bloque_id,
+            'codigo_qr': bloque.codigo_qr
+        })
+
+    db.session.commit()
+
+    return jsonify({
+        'success': len(resultados['exitos']) > 0,
+        'total_encolados': len(resultados['exitos']),
+        'total_errores': len(resultados['errores']),
+        'resultados': resultados,
+        'mensaje': f'{len(resultados["exitos"])} bloques encolados'
+    })
+
+
+# ==================== API PRODUCCION - PROCESO ====================
+
+@app.route('/api/proceso', methods=['GET'])
+def listar_procesos():
+    """Lista todos los procesos de lotes."""
+    procesos = ProcesoLote.query.order_by(ProcesoLote.created_at.desc()).all()
+    return jsonify([p.to_dict() for p in procesos])
+
+
+@app.route('/api/proceso', methods=['POST'])
+def crear_proceso():
+    """Crea un nuevo proceso de lote (cálculo de madera plantillada)."""
+    data = request.get_json()
+
+    lote_id = data.get('lote_id')
+    largo = data.get('largo')
+    alto = data.get('alto')
+    usuario = data.get('usuario', 'Anónimo')
+
+    if not lote_id:
+        return jsonify({'error': 'Se requiere el ID del lote'}), 400
+    if not largo:
+        return jsonify({'error': 'Se requiere el largo'}), 400
+    if not alto:
+        return jsonify({'error': 'Se requiere el alto'}), 400
+
+    # Verificar que el lote existe
+    lote = Lote.query.get(lote_id)
+    if not lote:
+        return jsonify({'error': 'Lote no encontrado'}), 404
+
+    proceso = ProcesoLote(
+        lote_id=lote_id,
+        largo=int(largo),
+        ancho=24,  # Fijo
+        alto=float(alto),
+        procesado_por=usuario,
+        notas=data.get('notas', '')
+    )
+
+    # Calcular BFT
+    bft_plantilla = proceso.calcular_bft()
+
+    # Registrar BFT usado en el lote
+    lote.usar_bft(bft_plantilla)
+
+    db.session.add(proceso)
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'proceso': proceso.to_dict(),
+        'bft_usado': bft_plantilla,
+        'lote_bft_usado': lote.bft_usado,
+        'lote_bft_disponible': lote.bft_disponible,
+        'mensaje': f'Proceso creado para lote {lote.codigo_qr}'
+    }), 201
+
+
+@app.route('/api/proceso/<int:proceso_id>', methods=['GET'])
+def obtener_proceso(proceso_id):
+    """Obtiene un proceso por su ID."""
+    proceso = ProcesoLote.query.get_or_404(proceso_id)
+    return jsonify(proceso.to_dict())
+
+
+@app.route('/api/lotes-taller', methods=['GET'])
+def listar_lotes_taller():
+    """Lista lotes disponibles en Ingreso a Taller."""
+    lotes = Lote.query.order_by(Lote.created_at.desc()).all()
+    return jsonify([l.to_dict() for l in lotes])
+
+
+@app.route('/api/lotes/<int:lote_id>/iniciar', methods=['POST'])
+def iniciar_lote(lote_id):
+    """Inicia el proceso de un lote (lo mueve a producción)."""
+    lote = Lote.query.get_or_404(lote_id)
+
+    if lote.estado == 'en_proceso':
+        return jsonify({'error': 'El lote ya está en proceso'}), 400
+    if lote.estado == 'finalizado':
+        return jsonify({'error': 'El lote ya está finalizado'}), 400
+
+    lote.iniciar_proceso()
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'lote': lote.to_dict(),
+        'mensaje': f'Lote {lote.codigo_qr} iniciado en producción'
+    })
+
+
+@app.route('/api/lotes/<int:lote_id>/finalizar', methods=['POST'])
+def finalizar_lote(lote_id):
+    """Finaliza el proceso de un lote."""
+    lote = Lote.query.get_or_404(lote_id)
+
+    if lote.estado == 'finalizado':
+        return jsonify({'error': 'El lote ya está finalizado'}), 400
+    if lote.estado != 'en_proceso':
+        return jsonify({'error': 'El lote no está en proceso'}), 400
+
+    lote.finalizar()
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'lote': lote.to_dict(),
+        'mensaje': f'Lote {lote.codigo_qr} finalizado con {lote.desperdicio_porcentaje:.1f}% de desperdicio'
+    })
+
+
+# ==================== CONTENEDORES (EMBARQUE) ====================
+
+@app.route('/contenedores')
+def ver_contenedores():
+    """Vista principal de contenedores de embarque."""
+    contenedores_abiertos = Contenedor.query.filter_by(estado='abierto').order_by(Contenedor.created_at.desc()).all()
+    contenedores_cerrados = Contenedor.query.filter(Contenedor.estado.in_(['cerrado', 'embarcado'])).order_by(Contenedor.created_at.desc()).all()
+
+    # Obtener bloques encolados disponibles (no asignados a ningún contenedor)
+    bloques_encolados = Bloque.query.filter_by(estado='encolado').all()
+    bloques_disponibles = [b for b in bloques_encolados if len(b.contenedores) == 0]
+
+    return render_template('contenedores.html',
+                           contenedores_abiertos=contenedores_abiertos,
+                           contenedores_cerrados=contenedores_cerrados,
+                           bloques_disponibles=bloques_disponibles,
+                           largos_contenedor=LARGOS_CONTENEDOR)
+
+
+@app.route('/contenedor/<int:contenedor_id>')
+def ver_contenedor(contenedor_id):
+    """Vista detalle de un contenedor."""
+    contenedor = Contenedor.query.get_or_404(contenedor_id)
+
+    # Obtener bloques encolados disponibles
+    bloques_encolados = Bloque.query.filter_by(estado='encolado').all()
+    bloques_disponibles = [b for b in bloques_encolados if len(b.contenedores) == 0]
+
+    return render_template('detalle_contenedor.html',
+                           contenedor=contenedor,
+                           bloques_disponibles=bloques_disponibles,
+                           largos_contenedor=LARGOS_CONTENEDOR)
+
+
+@app.route('/api/contenedores', methods=['GET'])
+def listar_contenedores():
+    """Lista todos los contenedores."""
+    contenedores = Contenedor.query.order_by(Contenedor.created_at.desc()).all()
+    return jsonify([c.to_dict() for c in contenedores])
+
+
+@app.route('/api/contenedores', methods=['POST'])
+def crear_contenedor():
+    """Crea un nuevo contenedor de embarque."""
+    data = request.get_json()
+
+    # Obtener el siguiente número secuencial
+    ultimo = Contenedor.query.order_by(Contenedor.id.desc()).first()
+    siguiente_num = (ultimo.id + 1) if ultimo else 1
+
+    codigo = generar_codigo_contenedor(siguiente_num)
+
+    # Parsear fechas si vienen
+    fecha_carga = None
+    fecha_zarpe = None
+    if data.get('fecha_carga'):
+        try:
+            fecha_carga = datetime.strptime(data['fecha_carga'], '%Y-%m-%d').date()
+        except:
+            pass
+    if data.get('fecha_zarpe'):
+        try:
+            fecha_zarpe = datetime.strptime(data['fecha_zarpe'], '%Y-%m-%d').date()
+        except:
+            pass
+
+    contenedor = Contenedor(
+        codigo=codigo,
+        cliente=data.get('cliente', ''),
+        numero_contenedor=data.get('numero_contenedor', ''),
+        fecha_carga=fecha_carga,
+        fecha_zarpe=fecha_zarpe,
+        tally_sheet=data.get('tally_sheet', ''),
+        creado_por=data.get('creado_por', 'Anonimo'),
+        notas=data.get('notas', '')
+    )
+
+    db.session.add(contenedor)
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'contenedor': contenedor.to_dict(),
+        'mensaje': f'Contenedor {codigo} creado exitosamente'
+    })
+
+
+@app.route('/api/contenedores/<int:contenedor_id>', methods=['GET'])
+def obtener_contenedor(contenedor_id):
+    """Obtiene un contenedor por ID."""
+    contenedor = Contenedor.query.get_or_404(contenedor_id)
+    return jsonify(contenedor.to_dict())
+
+
+@app.route('/api/contenedores/<int:contenedor_id>', methods=['PUT'])
+def actualizar_contenedor(contenedor_id):
+    """Actualiza información de un contenedor."""
+    contenedor = Contenedor.query.get_or_404(contenedor_id)
+    data = request.get_json()
+
+    if contenedor.estado != 'abierto':
+        return jsonify({'error': 'Solo se pueden editar contenedores abiertos'}), 400
+
+    if 'cliente' in data:
+        contenedor.cliente = data['cliente']
+    if 'numero_contenedor' in data:
+        contenedor.numero_contenedor = data['numero_contenedor']
+    if 'tally_sheet' in data:
+        contenedor.tally_sheet = data['tally_sheet']
+    if 'seguro_1' in data:
+        contenedor.seguro_1 = data['seguro_1']
+    if 'seguro_2' in data:
+        contenedor.seguro_2 = data['seguro_2']
+    if 'seguro_3' in data:
+        contenedor.seguro_3 = data['seguro_3']
+    if 'notas' in data:
+        contenedor.notas = data['notas']
+
+    # Parsear fechas
+    if 'fecha_carga' in data and data['fecha_carga']:
+        try:
+            contenedor.fecha_carga = datetime.strptime(data['fecha_carga'], '%Y-%m-%d').date()
+        except:
+            pass
+    if 'fecha_zarpe' in data and data['fecha_zarpe']:
+        try:
+            contenedor.fecha_zarpe = datetime.strptime(data['fecha_zarpe'], '%Y-%m-%d').date()
+        except:
+            pass
+
+    contenedor.updated_at = datetime.now()
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'contenedor': contenedor.to_dict(),
+        'mensaje': 'Contenedor actualizado'
+    })
+
+
+@app.route('/api/contenedores/<int:contenedor_id>/agregar-bloque', methods=['POST'])
+def agregar_bloque_contenedor(contenedor_id):
+    """Agrega un bloque encolado al contenedor."""
+    contenedor = Contenedor.query.get_or_404(contenedor_id)
+    data = request.get_json()
+
+    if contenedor.estado != 'abierto':
+        return jsonify({'error': 'El contenedor no está abierto'}), 400
+
+    bloque_id = data.get('bloque_id')
+    if not bloque_id:
+        return jsonify({'error': 'Se requiere bloque_id'}), 400
+
+    bloque = Bloque.query.get(bloque_id)
+    if not bloque:
+        return jsonify({'error': 'Bloque no encontrado'}), 404
+
+    if bloque.estado != 'encolado':
+        return jsonify({'error': 'Solo se pueden agregar bloques encolados'}), 400
+
+    if bloque in contenedor.bloques:
+        return jsonify({'error': 'El bloque ya está en este contenedor'}), 400
+
+    # Verificar que el bloque no esté en otro contenedor
+    if len(bloque.contenedores) > 0:
+        return jsonify({'error': 'El bloque ya está asignado a otro contenedor'}), 400
+
+    contenedor.bloques.append(bloque)
+    contenedor.calcular_totales()
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'contenedor': contenedor.to_dict(),
+        'mensaje': f'Bloque {bloque.codigo_qr} agregado al contenedor'
+    })
+
+
+@app.route('/api/contenedores/<int:contenedor_id>/agregar-bloques', methods=['POST'])
+def agregar_bloques_contenedor(contenedor_id):
+    """Agrega múltiples bloques encolados al contenedor."""
+    contenedor = Contenedor.query.get_or_404(contenedor_id)
+    data = request.get_json()
+
+    if contenedor.estado != 'abierto':
+        return jsonify({'error': 'El contenedor no está abierto'}), 400
+
+    bloque_ids = data.get('bloque_ids', [])
+    if not bloque_ids:
+        return jsonify({'error': 'Se requiere al menos un bloque_id'}), 400
+
+    agregados = 0
+    errores = []
+
+    for bloque_id in bloque_ids:
+        bloque = Bloque.query.get(bloque_id)
+        if not bloque:
+            errores.append(f'Bloque {bloque_id} no encontrado')
+            continue
+        if bloque.estado != 'encolado':
+            errores.append(f'Bloque {bloque.codigo_qr} no está encolado')
+            continue
+        if bloque in contenedor.bloques:
+            continue
+        if len(bloque.contenedores) > 0:
+            errores.append(f'Bloque {bloque.codigo_qr} ya asignado a otro contenedor')
+            continue
+
+        contenedor.bloques.append(bloque)
+        agregados += 1
+
+    contenedor.calcular_totales()
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'contenedor': contenedor.to_dict(),
+        'agregados': agregados,
+        'errores': errores,
+        'mensaje': f'{agregados} bloques agregados al contenedor'
+    })
+
+
+@app.route('/api/contenedores/<int:contenedor_id>/remover-bloque', methods=['POST'])
+def remover_bloque_contenedor(contenedor_id):
+    """Remueve un bloque del contenedor."""
+    contenedor = Contenedor.query.get_or_404(contenedor_id)
+    data = request.get_json()
+
+    if contenedor.estado != 'abierto':
+        return jsonify({'error': 'El contenedor no está abierto'}), 400
+
+    bloque_id = data.get('bloque_id')
+    if not bloque_id:
+        return jsonify({'error': 'Se requiere bloque_id'}), 400
+
+    bloque = Bloque.query.get(bloque_id)
+    if not bloque:
+        return jsonify({'error': 'Bloque no encontrado'}), 404
+
+    if bloque not in contenedor.bloques:
+        return jsonify({'error': 'El bloque no está en este contenedor'}), 400
+
+    contenedor.bloques.remove(bloque)
+    contenedor.calcular_totales()
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'contenedor': contenedor.to_dict(),
+        'mensaje': f'Bloque {bloque.codigo_qr} removido del contenedor'
+    })
+
+
+@app.route('/api/contenedores/<int:contenedor_id>/cerrar', methods=['POST'])
+def cerrar_contenedor(contenedor_id):
+    """Cierra un contenedor (no se pueden agregar más bloques)."""
+    contenedor = Contenedor.query.get_or_404(contenedor_id)
+
+    if contenedor.estado != 'abierto':
+        return jsonify({'error': 'El contenedor no está abierto'}), 400
+
+    if len(contenedor.bloques) == 0:
+        return jsonify({'error': 'El contenedor no tiene bloques'}), 400
+
+    contenedor.cerrar()
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'contenedor': contenedor.to_dict(),
+        'mensaje': f'Contenedor {contenedor.codigo} cerrado con {contenedor.total_bloques} bloques'
+    })
+
+
+@app.route('/api/contenedores/<int:contenedor_id>/embarcar', methods=['POST'])
+def embarcar_contenedor(contenedor_id):
+    """Marca un contenedor como embarcado."""
+    contenedor = Contenedor.query.get_or_404(contenedor_id)
+
+    if contenedor.estado == 'abierto':
+        return jsonify({'error': 'Primero debe cerrar el contenedor'}), 400
+
+    if contenedor.estado == 'embarcado':
+        return jsonify({'error': 'El contenedor ya está embarcado'}), 400
+
+    contenedor.embarcar()
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'contenedor': contenedor.to_dict(),
+        'mensaje': f'Contenedor {contenedor.codigo} marcado como embarcado'
+    })
+
+
+@app.route('/api/bloques-encolados-disponibles', methods=['GET'])
+def listar_bloques_encolados_disponibles():
+    """Lista bloques encolados que no están asignados a ningún contenedor."""
+    bloques_encolados = Bloque.query.filter_by(estado='encolado').all()
+    bloques_disponibles = [b.to_dict() for b in bloques_encolados if len(b.contenedores) == 0]
+    return jsonify(bloques_disponibles)
 
 
 if __name__ == '__main__':

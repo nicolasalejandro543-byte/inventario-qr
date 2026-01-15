@@ -1,0 +1,444 @@
+{% extends "base.html" %}
+
+{% block title %}Lotes Finalizados{% endblock %}
+
+{% block head %}
+<style>
+    /* Barra de navegacion rapida */
+    .etapas-nav {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+        padding: 8px;
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        overflow-x: auto;
+    }
+
+    .etapa-nav-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        border-radius: var(--radius-md);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+        white-space: nowrap;
+        color: white;
+        flex: 1;
+        justify-content: center;
+        opacity: 0.4;
+    }
+
+    .etapa-nav-btn:hover {
+        opacity: 0.8;
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .etapa-nav-btn.active {
+        opacity: 1;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        transform: scale(1.02);
+    }
+
+    .etapa-nav-btn.madera-verde { background: linear-gradient(135deg, #28a745, #20c997); }
+    .etapa-nav-btn.secado { background: linear-gradient(135deg, #ffc107, #fd7e14); }
+    .etapa-nav-btn.stock-secado { background: linear-gradient(135deg, #17a2b8, #20c997); }
+    .etapa-nav-btn.ingreso-a-taller { background: linear-gradient(135deg, #6f42c1, #e83e8c); }
+    .etapa-nav-btn.produccion { background: linear-gradient(135deg, #e83e8c, #fd7e14); }
+    .etapa-nav-btn.bloques-presentados { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .etapa-nav-btn.bloques-encolados { background: linear-gradient(135deg, #10b981, #059669); }
+    .etapa-nav-btn.contenedores { background: linear-gradient(135deg, #0891b2, #0e7490); }
+    .etapa-nav-btn.finalizados { background: linear-gradient(135deg, #20c997, #28a745); }
+
+    .section-title {
+        font-size: 1.4rem;
+        font-weight: 700;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .section-title i {
+        color: #20c997;
+    }
+
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 20px;
+        color: var(--color-text-muted);
+        text-decoration: none;
+    }
+
+    .back-link:hover {
+        color: var(--color-primary);
+    }
+
+    .lotes-table {
+        width: 100%;
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+    }
+
+    .lotes-table table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .lotes-table th {
+        background: linear-gradient(135deg, #20c997, #28a745);
+        color: white;
+        padding: 14px 16px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .lotes-table td {
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--color-gray-light);
+    }
+
+    .lotes-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .lotes-table tr:hover {
+        background: var(--color-bg-light);
+    }
+
+    .lotes-table tbody tr {
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .lotes-table tbody tr:hover {
+        background: rgba(32, 201, 151, 0.1);
+        transform: scale(1.01);
+    }
+
+    .codigo-lote {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+        color: var(--color-primary);
+    }
+
+    .codigo-lote:hover {
+        text-decoration: underline;
+    }
+
+    .valor-mono {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+    }
+
+    .desperdicio-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    .desperdicio-badge.good {
+        background: rgba(40, 167, 69, 0.15);
+        color: #28a745;
+    }
+
+    .desperdicio-badge.bad {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--color-text-muted);
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    .summary-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 30px;
+    }
+
+    .summary-card {
+        background: white;
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        box-shadow: var(--shadow-md);
+        text-align: center;
+    }
+
+    .summary-value {
+        font-size: 2rem;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+        color: #20c997;
+    }
+
+    .summary-label {
+        font-size: 0.85rem;
+        color: var(--color-text-muted);
+        margin-top: 4px;
+    }
+
+    /* Print styles - Vertical A4 - Optimizado para una sola pagina */
+    @page {
+        size: A4 portrait;
+        margin: 5mm;
+    }
+
+    @media print {
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        html, body {
+            background: white !important;
+            font-size: 8px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .app-container {
+            max-width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        .app-header, .etapas-nav, .back-link, .no-print {
+            display: none !important;
+        }
+
+        .section-title {
+            font-size: 0.9rem !important;
+            margin-bottom: 5px !important;
+            margin-top: 0 !important;
+        }
+
+        .summary-cards {
+            grid-template-columns: repeat(4, 1fr) !important;
+            gap: 4px !important;
+            margin-bottom: 6px !important;
+        }
+
+        .summary-card {
+            padding: 4px 6px !important;
+            box-shadow: none !important;
+            border: 1px solid #ddd !important;
+            border-radius: 3px !important;
+        }
+
+        .summary-value {
+            font-size: 0.85rem !important;
+        }
+
+        .summary-label {
+            font-size: 0.55rem !important;
+            margin-top: 1px !important;
+        }
+
+        .lotes-table {
+            box-shadow: none !important;
+            border: 1px solid #ddd !important;
+        }
+
+        .lotes-table th {
+            background: #20c997 !important;
+            padding: 2px 4px !important;
+            font-size: 0.6rem !important;
+        }
+
+        .lotes-table td {
+            padding: 2px 4px !important;
+            font-size: 0.6rem !important;
+            line-height: 1.1 !important;
+        }
+
+        .lotes-table tr {
+            page-break-inside: avoid !important;
+        }
+
+        .codigo-lote {
+            font-size: 0.6rem !important;
+        }
+
+        .desperdicio-badge {
+            padding: 1px 3px !important;
+            font-size: 0.55rem !important;
+            gap: 2px !important;
+        }
+
+        .desperdicio-badge i {
+            font-size: 0.5rem !important;
+        }
+
+        .valor-mono {
+            font-size: 0.6rem !important;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .lotes-table {
+            overflow-x: auto;
+        }
+
+        .lotes-table table {
+            min-width: 700px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Barra de navegacion rapida -->
+<div class="etapas-nav">
+    <a href="/etapa/1" class="etapa-nav-btn madera-verde">
+        <i class="bi bi-tree"></i>
+        <span>Madera Verde</span>
+    </a>
+    <a href="/etapa/2" class="etapa-nav-btn secado">
+        <i class="bi bi-sun"></i>
+        <span>Secado</span>
+    </a>
+    <a href="/etapa/3" class="etapa-nav-btn stock-secado">
+        <i class="bi bi-archive"></i>
+        <span>Stock Secado</span>
+    </a>
+    <a href="/etapa/4" class="etapa-nav-btn ingreso-a-taller">
+        <i class="bi bi-tools"></i>
+        <span>Ingreso a Taller</span>
+    </a>
+    <a href="/produccion" class="etapa-nav-btn produccion">
+        <i class="bi bi-gear"></i>
+        <span>Produccion</span>
+    </a>
+    <a href="/finalizados" class="etapa-nav-btn finalizados active">
+        <i class="bi bi-check2-circle"></i>
+        <span>Finalizados</span>
+    </a>
+    <a href="/bloques/presentados" class="etapa-nav-btn bloques-presentados">
+        <i class="bi bi-box"></i>
+        <span>Presentados</span>
+    </a>
+    <a href="/bloques/encolados" class="etapa-nav-btn bloques-encolados">
+        <i class="bi bi-check2-square"></i>
+        <span>Encolados</span>
+    </a>
+    <a href="/contenedores" class="etapa-nav-btn contenedores">
+        <i class="bi bi-truck"></i>
+        <span>Contenedores</span>
+    </a>
+</div>
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2 class="section-title" style="margin-bottom: 0;">
+        <i class="bi bi-check2-circle"></i> Lotes Finalizados
+    </h2>
+    <div style="display: flex; gap: 12px;">
+        <button class="btn btn-secondary no-print" onclick="window.print()" style="display: flex; align-items: center; gap: 8px;">
+            <i class="bi bi-printer"></i> Imprimir Reporte
+        </button>
+        <a href="/" class="btn btn-secondary no-print">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+</div>
+
+{% if lotes %}
+<!-- Resumen -->
+<div class="summary-cards">
+    <div class="summary-card">
+        <div class="summary-value">{{ lotes|length }}</div>
+        <div class="summary-label">Lotes Finalizados</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-value">{{ "%.1f"|format(lotes|sum(attribute='total_bft')) }}</div>
+        <div class="summary-label">BFT Total Procesado</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-value">{{ "%.1f"|format(lotes|sum(attribute='bft_usado')) }}</div>
+        <div class="summary-label">BFT Utilizado</div>
+    </div>
+    <div class="summary-card">
+        {% set total_desp = lotes|sum(attribute='desperdicio_bft') %}
+        {% set total_bft = lotes|sum(attribute='total_bft') %}
+        {% set prom_desp = (total_desp / total_bft * 100) if total_bft > 0 else 0 %}
+        <div class="summary-value" style="color: {% if prom_desp < 18 %}#28a745{% else %}#ef4444{% endif %};">
+            {{ "%.1f"|format(prom_desp) }}%
+        </div>
+        <div class="summary-label">Desperdicio Promedio</div>
+    </div>
+</div>
+
+<!-- Tabla de lotes -->
+<div class="lotes-table">
+    <table>
+        <thead>
+            <tr>
+                <th>Codigo Lote</th>
+                <th>Coches</th>
+                <th>BFT Total</th>
+                <th>BFT Usado</th>
+                <th>Desperdicio</th>
+                <th>Fecha Finalizado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for lote in lotes %}
+            <tr onclick="window.location='/finalizado/{{ lote.id }}'">
+                <td class="codigo-lote">{{ lote.codigo_qr }}</td>
+                <td>{{ lote.cantidad_coches }}</td>
+                <td class="valor-mono">{{ "%.1f"|format(lote.total_bft) }}</td>
+                <td class="valor-mono" style="color: var(--color-success);">{{ "%.1f"|format(lote.bft_usado or 0) }}</td>
+                <td>
+                    {% set desp_pct = lote.desperdicio_porcentaje or 0 %}
+                    <span class="desperdicio-badge {% if desp_pct < 18 %}good{% else %}bad{% endif %}">
+                        {% if desp_pct < 18 %}
+                        <i class="bi bi-check-circle"></i>
+                        {% else %}
+                        <i class="bi bi-exclamation-circle"></i>
+                        {% endif %}
+                        {{ "%.1f"|format(desp_pct) }}% ({{ "%.1f"|format(lote.desperdicio_bft or 0) }} BFT)
+                    </span>
+                </td>
+                <td>{{ lote.fecha_finalizado.strftime('%d/%m/%Y %H:%M') if lote.fecha_finalizado else '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <i class="bi bi-inbox"></i>
+    <h3>No hay lotes finalizados</h3>
+    <p>Los lotes apareceran aqui cuando finalices su proceso de produccion</p>
+    <a href="/produccion" class="btn btn-primary" style="margin-top: 16px;">
+        <i class="bi bi-gear"></i> Ir a Produccion
+    </a>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,857 @@
+{% extends "base.html" %}
+
+{% block title %}{{ contenedor.codigo }} - Contenedor{% endblock %}
+
+{% block head %}
+<style>
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 20px;
+        color: var(--color-text-muted);
+        text-decoration: none;
+    }
+
+    .back-link:hover {
+        color: var(--color-primary);
+    }
+
+    /* Header del contenedor */
+    .contenedor-header-card {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+
+    .contenedor-header-top {
+        padding: 20px 24px;
+        background: linear-gradient(135deg, #0891b2, #0e7490);
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .contenedor-header-top.cerrado {
+        background: linear-gradient(135deg, #6b7280, #4b5563);
+    }
+
+    .contenedor-header-top.embarcado {
+        background: linear-gradient(135deg, #10b981, #059669);
+    }
+
+    .contenedor-codigo {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    .contenedor-estado-badge {
+        padding: 6px 16px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 20px;
+        font-weight: 600;
+    }
+
+    .contenedor-header-body {
+        padding: 24px;
+    }
+
+    .contenedor-info-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+
+    .info-item {
+        background: var(--color-bg);
+        padding: 16px;
+        border-radius: var(--radius-md);
+    }
+
+    .info-item label {
+        display: block;
+        font-size: 0.75rem;
+        color: var(--color-text-muted);
+        text-transform: uppercase;
+        margin-bottom: 6px;
+    }
+
+    .info-item input {
+        width: 100%;
+        padding: 8px 12px;
+        border: 2px solid transparent;
+        border-radius: var(--radius-sm);
+        font-family: inherit;
+        font-size: 0.95rem;
+        font-weight: 600;
+        background: white;
+    }
+
+    .info-item input:focus {
+        outline: none;
+        border-color: var(--color-primary);
+    }
+
+    .info-item input:disabled {
+        background: var(--color-bg-light);
+        color: var(--color-text);
+    }
+
+    /* Tabla de Tally Sheet */
+    .tally-sheet-card {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+
+    .tally-sheet-header {
+        padding: 16px 24px;
+        background: linear-gradient(135deg, #134e4a, #0f766e);
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .tally-sheet-header h3 {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .tally-sheet-body {
+        padding: 0;
+        overflow-x: auto;
+    }
+
+    .tally-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+    }
+
+    .tally-table th {
+        background: #f0fdfa;
+        padding: 12px 16px;
+        text-align: center;
+        font-weight: 600;
+        color: #134e4a;
+        border-bottom: 2px solid #99f6e4;
+        white-space: nowrap;
+    }
+
+    .tally-table td {
+        padding: 10px 16px;
+        text-align: center;
+        border-bottom: 1px solid var(--color-gray-light);
+    }
+
+    .tally-table tr:hover {
+        background: #f0fdfa;
+    }
+
+    .tally-table .qty-cell {
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+        color: #0891b2;
+    }
+
+    .tally-table .bft-cell {
+        font-weight: 600;
+        color: #10b981;
+    }
+
+    .tally-table .total-row {
+        background: #134e4a;
+        color: white;
+        font-weight: 700;
+    }
+
+    .tally-table .total-row td {
+        border-bottom: none;
+        padding: 14px 16px;
+    }
+
+    /* Seguros */
+    .seguros-section {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+
+    .seguros-header {
+        padding: 14px 20px;
+        background: linear-gradient(135deg, #7c3aed, #6d28d9);
+        color: white;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .seguros-body {
+        padding: 20px;
+    }
+
+    .seguros-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+    }
+
+    .seguro-input {
+        background: #faf5ff;
+        border: 2px dashed #c4b5fd;
+        border-radius: var(--radius-md);
+        padding: 16px;
+        text-align: center;
+    }
+
+    .seguro-input label {
+        display: block;
+        font-weight: 600;
+        color: #7c3aed;
+        margin-bottom: 8px;
+    }
+
+    .seguro-input input {
+        width: 100%;
+        padding: 10px;
+        border: 2px solid #c4b5fd;
+        border-radius: var(--radius-sm);
+        text-align: center;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 1rem;
+    }
+
+    .seguro-input input:focus {
+        outline: none;
+        border-color: #7c3aed;
+    }
+
+    /* Bloques disponibles */
+    .bloques-section {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+
+    .bloques-header {
+        padding: 14px 20px;
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .bloques-body {
+        padding: 20px;
+    }
+
+    .bloques-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 12px;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .bloque-item {
+        background: var(--color-bg);
+        border: 2px solid transparent;
+        border-radius: var(--radius-md);
+        padding: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .bloque-item:hover {
+        border-color: #10b981;
+        background: #f0fdf4;
+    }
+
+    .bloque-item.selected {
+        border-color: var(--color-primary);
+        background: #f0f7ff;
+    }
+
+    .bloque-item.in-container {
+        border-color: #0891b2;
+        background: #ecfeff;
+    }
+
+    .bloque-item .codigo {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--color-primary);
+    }
+
+    .bloque-item .info {
+        font-size: 0.75rem;
+        color: var(--color-text-muted);
+        margin-top: 4px;
+    }
+
+    /* Lista de bloques en contenedor */
+    .bloques-en-contenedor {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 2px solid var(--color-gray-light);
+    }
+
+    .bloques-en-contenedor h4 {
+        margin-bottom: 12px;
+        color: #0891b2;
+    }
+
+    /* Acciones */
+    .acciones-bar {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 20px;
+    }
+
+    /* Print styles - Horizontal A4 */
+    @page {
+        size: A4 landscape;
+        margin: 10mm;
+    }
+
+    @media print {
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        body {
+            background: white !important;
+            font-size: 11px !important;
+        }
+
+        .app-container {
+            max-width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        .app-header, .no-print, .back-link, .contenedor-header-card,
+        .seguros-section, .bloques-section, .acciones-bar {
+            display: none !important;
+        }
+
+        .tally-sheet-card {
+            box-shadow: none !important;
+            border: none !important;
+            margin: 0 !important;
+            page-break-inside: avoid;
+        }
+
+        .tally-sheet-header {
+            background: #134e4a !important;
+            padding: 10px 15px !important;
+        }
+
+        .tally-sheet-header h3 {
+            font-size: 14px !important;
+            margin: 0 !important;
+        }
+
+        .tally-sheet-body {
+            padding: 0 !important;
+        }
+
+        .tally-table {
+            font-size: 10px !important;
+            width: 100% !important;
+        }
+
+        .tally-table th, .tally-table td {
+            padding: 4px 6px !important;
+        }
+
+        .tally-table th {
+            background: #f0fdfa !important;
+            font-size: 9px !important;
+        }
+
+        .tally-table .total-row {
+            background: #134e4a !important;
+            color: white !important;
+        }
+
+        .tally-table .total-row td {
+            padding: 6px !important;
+        }
+
+        /* Print header info */
+        .print-header {
+            display: block !important;
+            margin-bottom: 15px;
+        }
+
+        /* Print seguros */
+        .print-seguros {
+            display: flex !important;
+            margin-top: 15px;
+            gap: 20px;
+        }
+
+        .print-seguro-box {
+            flex: 1;
+            border: 2px solid #333;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .print-seguro-box label {
+            font-weight: bold;
+            font-size: 10px;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .print-seguro-box span {
+            font-family: monospace;
+            font-size: 12px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .contenedor-info-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .seguros-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<a href="/contenedores" class="back-link no-print">
+    <i class="bi bi-arrow-left"></i> Volver a Contenedores
+</a>
+
+<!-- Header del contenedor -->
+<div class="contenedor-header-card">
+    <div class="contenedor-header-top {{ contenedor.estado }}">
+        <span class="contenedor-codigo">{{ contenedor.codigo }}</span>
+        <span class="contenedor-estado-badge">
+            {% if contenedor.estado == 'abierto' %}
+                <i class="bi bi-unlock"></i> Abierto
+            {% elif contenedor.estado == 'cerrado' %}
+                <i class="bi bi-lock"></i> Cerrado
+            {% else %}
+                <i class="bi bi-ship"></i> Embarcado
+            {% endif %}
+        </span>
+    </div>
+    <div class="contenedor-header-body">
+        <div class="contenedor-info-grid">
+            <div class="info-item">
+                <label>Cliente</label>
+                <input type="text" id="info-cliente" value="{{ contenedor.cliente or '' }}"
+                       {% if contenedor.estado != 'abierto' %}disabled{% endif %}>
+            </div>
+            <div class="info-item">
+                <label>Numero de Contenedor</label>
+                <input type="text" id="info-numero" value="{{ contenedor.numero_contenedor or '' }}"
+                       {% if contenedor.estado != 'abierto' %}disabled{% endif %}>
+            </div>
+            <div class="info-item">
+                <label>Fecha de Carga</label>
+                <input type="date" id="info-fecha-carga"
+                       value="{{ contenedor.fecha_carga.strftime('%Y-%m-%d') if contenedor.fecha_carga else '' }}"
+                       {% if contenedor.estado != 'abierto' %}disabled{% endif %}>
+            </div>
+            <div class="info-item">
+                <label>Fecha de Zarpe</label>
+                <input type="date" id="info-fecha-zarpe"
+                       value="{{ contenedor.fecha_zarpe.strftime('%Y-%m-%d') if contenedor.fecha_zarpe else '' }}"
+                       {% if contenedor.estado != 'abierto' %}disabled{% endif %}>
+            </div>
+        </div>
+
+        {% if contenedor.estado == 'abierto' %}
+        <button class="btn btn-primary no-print" onclick="guardarInfo()">
+            <i class="bi bi-save"></i> Guardar Cambios
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Tally Sheet -->
+<div class="tally-sheet-card">
+    <!-- Print Header (solo visible al imprimir) -->
+    <div class="print-header" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div style="font-size: 28px; font-weight: bold; color: #134e4a;">SC</div>
+                <div>
+                    <div style="font-weight: bold; font-size: 14px;">SKY-COMPOSITES ECUADOR S.A.S.</div>
+                    <div style="font-size: 9px;">e-mail: adm.skycomposites@gmail.com</div>
+                    <div style="font-size: 9px;">Dir: San Carlos, Km 3 Via a Ventanas</div>
+                    <div style="font-size: 9px;">Quevedo - Los Rios - Ecuador</div>
+                </div>
+            </div>
+            <div style="text-align: right; font-size: 11px;">
+                <strong>{{ contenedor.codigo }}</strong><br>
+                <span style="font-size: 14px;">TALLY SHEET # <strong>{{ contenedor.tally_sheet or '---' }}</strong></span>
+            </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 10px; margin-bottom: 10px;">
+            <div><strong>DATE OF LOADING / FECHA DE CARGA:</strong> {{ contenedor.fecha_carga.strftime('%d/%m/%Y') if contenedor.fecha_carga else '' }}</div>
+            <div><strong>CLIENTE:</strong> {{ contenedor.cliente or '' }}</div>
+            <div><strong>SAILING DATE / FECHA DE ZARPE:</strong> {{ contenedor.fecha_zarpe.strftime('%d/%m/%Y') if contenedor.fecha_zarpe else '' }}</div>
+            <div><strong>N. OF CONTAINER / N. DE CONTENEDOR:</strong> {{ contenedor.numero_contenedor or '' }}</div>
+        </div>
+    </div>
+
+    <div class="tally-sheet-header">
+        <h3>
+            <i class="bi bi-table no-print"></i> TALLY SHEET #
+            <input type="text" id="info-tally" value="{{ contenedor.tally_sheet or '' }}"
+                   placeholder="000"
+                   style="width: 80px; padding: 4px 8px; border: none; border-radius: 4px;
+                          font-family: 'JetBrains Mono', monospace; font-weight: bold; font-size: 1rem;
+                          background: rgba(255,255,255,0.9); color: #134e4a; text-align: center;"
+                   {% if contenedor.estado != 'abierto' %}disabled{% endif %}>
+        </h3>
+        <button class="btn btn-light no-print" onclick="window.print()">
+            <i class="bi bi-printer"></i> Imprimir
+        </button>
+    </div>
+    <div class="tally-sheet-body">
+        <table class="tally-table">
+            <thead>
+                <tr>
+                    <th rowspan="2">Item Description<br><small>Descripcion del Item</small></th>
+                    <th rowspan="2">Qty of Blocks<br><small>Cant. de Bloques</small></th>
+                    <th colspan="3">Dimensions of the Block / Dimensiones del Bloque</th>
+                    <th colspan="2">Volume of the Block<br><small>Volumen del Bloque</small></th>
+                </tr>
+                <tr>
+                    <th>Length<br><small>Largo</small></th>
+                    <th>Width<br><small>Ancho</small></th>
+                    <th>Height<br><small>Altura</small></th>
+                    <th>BFT</th>
+                    <th>m3</th>
+                </tr>
+            </thead>
+            <tbody id="tally-body">
+                {% set conteo = contenedor.obtener_conteo_por_largo() %}
+                {% set total_qty = 0 %}
+                {% set total_bft = 0 %}
+                {% set total_m3 = 0 %}
+
+                {% for largo in largos_contenedor %}
+                {% set info = conteo[largo] %}
+                <tr>
+                    <td style="text-align: left;">
+                        {% if loop.first %}
+                        <strong>BALSA WOOD GLUED BLOCKS</strong><br>
+                        <small>BLOQUES ENCOLADOS DE MADERA DE BALSA</small>
+                        {% endif %}
+                    </td>
+                    <td class="qty-cell">{{ info.cantidad }}</td>
+                    <td>{{ largo }}"</td>
+                    <td>24"</td>
+                    <td>48"</td>
+                    <td class="bft-cell">{{ info.total_bft }}</td>
+                    <td>{{ "%.4f"|format(info.total_m3) }}</td>
+                </tr>
+                {% set total_qty = total_qty + info.cantidad %}
+                {% set total_bft = total_bft + info.total_bft %}
+                {% set total_m3 = total_m3 + info.total_m3 %}
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="total-row">
+                    <td style="text-align: left;"><strong>TOTAL</strong></td>
+                    <td>{{ contenedor.total_bloques }}</td>
+                    <td colspan="3"></td>
+                    <td>{{ "%.0f"|format(contenedor.total_bft) }}</td>
+                    <td>{{ "%.4f"|format(contenedor.total_m3) }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <!-- Print Seguros (solo visible al imprimir) -->
+    <div class="print-seguros" style="display: none;">
+        <div class="print-seguro-box">
+            <label>SEGURO 1</label>
+            <span>{{ contenedor.seguro_1 or '-' }}</span>
+        </div>
+        <div class="print-seguro-box">
+            <label>SEGURO 2</label>
+            <span>{{ contenedor.seguro_2 or '-' }}</span>
+        </div>
+        <div class="print-seguro-box">
+            <label>SEGURO 3</label>
+            <span>{{ contenedor.seguro_3 or '-' }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- Seguros -->
+<div class="seguros-section">
+    <div class="seguros-header">
+        <i class="bi bi-shield-lock"></i> Codigos de Seguros
+    </div>
+    <div class="seguros-body">
+        <div class="seguros-grid">
+            <div class="seguro-input">
+                <label>Seguro 1</label>
+                <input type="text" id="seguro-1" value="{{ contenedor.seguro_1 or '' }}"
+                       placeholder="Codigo..."
+                       {% if contenedor.estado != 'abierto' %}disabled{% endif %}>
+            </div>
+            <div class="seguro-input">
+                <label>Seguro 2</label>
+                <input type="text" id="seguro-2" value="{{ contenedor.seguro_2 or '' }}"
+                       placeholder="Codigo..."
+                       {% if contenedor.estado != 'abierto' %}disabled{% endif %}>
+            </div>
+            <div class="seguro-input">
+                <label>Seguro 3</label>
+                <input type="text" id="seguro-3" value="{{ contenedor.seguro_3 or '' }}"
+                       placeholder="Codigo..."
+                       {% if contenedor.estado != 'abierto' %}disabled{% endif %}>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if contenedor.estado == 'abierto' %}
+<!-- Agregar Bloques -->
+<div class="bloques-section no-print">
+    <div class="bloques-header">
+        <i class="bi bi-plus-circle"></i> Agregar Bloques Encolados
+    </div>
+    <div class="bloques-body">
+        {% if bloques_disponibles %}
+        <p style="margin-bottom: 16px; color: var(--color-text-muted);">
+            Selecciona los bloques que deseas agregar al contenedor:
+        </p>
+        <div class="bloques-grid">
+            {% for bloque in bloques_disponibles %}
+            <div class="bloque-item" data-bloque-id="{{ bloque.id }}" onclick="toggleBloque(this)">
+                <div class="codigo">{{ bloque.codigo_qr }}</div>
+                <div class="info">{{ bloque.largo }}" | {{ bloque.bft }} BFT</div>
+            </div>
+            {% endfor %}
+        </div>
+        <div style="margin-top: 16px;">
+            <button class="btn btn-success" onclick="agregarBloquesSeleccionados()">
+                <i class="bi bi-plus"></i> Agregar Seleccionados
+            </button>
+        </div>
+        {% else %}
+        <p style="color: var(--color-text-muted); text-align: center; padding: 20px;">
+            No hay bloques encolados disponibles para agregar.
+        </p>
+        {% endif %}
+
+        <!-- Bloques ya en el contenedor -->
+        {% if contenedor.bloques %}
+        <div class="bloques-en-contenedor">
+            <h4><i class="bi bi-box-seam"></i> Bloques en este Contenedor ({{ contenedor.bloques|length }})</h4>
+            <div class="bloques-grid">
+                {% for bloque in contenedor.bloques %}
+                <div class="bloque-item in-container" data-bloque-id="{{ bloque.id }}">
+                    <div class="codigo">{{ bloque.codigo_qr }}</div>
+                    <div class="info">{{ bloque.largo }}" | {{ bloque.bft }} BFT</div>
+                    <button class="btn btn-danger btn-sm" style="margin-top: 8px; width: 100%;"
+                            onclick="removerBloque({{ bloque.id }})">
+                        <i class="bi bi-x"></i> Quitar
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Acciones -->
+<div class="acciones-bar no-print">
+    {% if contenedor.estado == 'abierto' %}
+    <button class="btn btn-warning" onclick="cerrarContenedor()">
+        <i class="bi bi-lock"></i> Cerrar Contenedor
+    </button>
+    {% elif contenedor.estado == 'cerrado' %}
+    <button class="btn btn-success" onclick="embarcarContenedor()">
+        <i class="bi bi-ship"></i> Marcar como Embarcado
+    </button>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const CONTENEDOR_ID = {{ contenedor.id }};
+let selectedBloques = new Set();
+
+function toggleBloque(element) {
+    const bloqueId = element.dataset.bloqueId;
+
+    if (selectedBloques.has(bloqueId)) {
+        selectedBloques.delete(bloqueId);
+        element.classList.remove('selected');
+    } else {
+        selectedBloques.add(bloqueId);
+        element.classList.add('selected');
+    }
+}
+
+async function agregarBloquesSeleccionados() {
+    if (selectedBloques.size === 0) {
+        alert('Selecciona al menos un bloque');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/contenedores/${CONTENEDOR_ID}/agregar-bloques`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                bloque_ids: Array.from(selectedBloques).map(id => parseInt(id))
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert(data.mensaje);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error de conexion: ' + error.message);
+    }
+}
+
+async function removerBloque(bloqueId) {
+    if (!confirm('Quitar este bloque del contenedor?')) return;
+
+    try {
+        const response = await fetch(`/api/contenedores/${CONTENEDOR_ID}/remover-bloque`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bloque_id: bloqueId })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error de conexion: ' + error.message);
+    }
+}
+
+async function guardarInfo() {
+    const cliente = document.getElementById('info-cliente').value;
+    const numero = document.getElementById('info-numero').value;
+    const fechaCarga = document.getElementById('info-fecha-carga').value;
+    const fechaZarpe = document.getElementById('info-fecha-zarpe').value;
+    const tallySheet = document.getElementById('info-tally').value;
+    const seguro1 = document.getElementById('seguro-1').value;
+    const seguro2 = document.getElementById('seguro-2').value;
+    const seguro3 = document.getElementById('seguro-3').value;
+
+    try {
+        const response = await fetch(`/api/contenedores/${CONTENEDOR_ID}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                cliente: cliente,
+                numero_contenedor: numero,
+                fecha_carga: fechaCarga,
+                fecha_zarpe: fechaZarpe,
+                tally_sheet: tallySheet,
+                seguro_1: seguro1,
+                seguro_2: seguro2,
+                seguro_3: seguro3
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert('Informacion guardada');
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error de conexion: ' + error.message);
+    }
+}
+
+async function cerrarContenedor() {
+    if (!confirm('Cerrar el contenedor? Ya no podras agregar mas bloques.')) return;
+
+    try {
+        const response = await fetch(`/api/contenedores/${CONTENEDOR_ID}/cerrar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert(data.mensaje);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error de conexion: ' + error.message);
+    }
+}
+
+async function embarcarContenedor() {
+    if (!confirm('Marcar el contenedor como embarcado?')) return;
+
+    try {
+        const response = await fetch(`/api/contenedores/${CONTENEDOR_ID}/embarcar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert(data.mensaje);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error de conexion: ' + error.message);
+    }
+}
+</script>
+{% endblock %}

@@ -922,9 +922,14 @@
     }
 
     .etapa-nav-btn.madera-verde { background: linear-gradient(135deg, #28a745, #20c997); }
-    .etapa-nav-btn.secado { background: linear-gradient(135deg, #ffc107, #e6a800); color: #333; }
-    .etapa-nav-btn.stock-secado { background: linear-gradient(135deg, #17a2b8, #138496); }
-    .etapa-nav-btn.ingresa-a-taller { background: linear-gradient(135deg, #6f42c1, #5a32a3); }
+    .etapa-nav-btn.secado { background: linear-gradient(135deg, #ffc107, #fd7e14); }
+    .etapa-nav-btn.stock-secado { background: linear-gradient(135deg, #17a2b8, #20c997); }
+    .etapa-nav-btn.ingreso-a-taller { background: linear-gradient(135deg, #6f42c1, #e83e8c); }
+    .etapa-nav-btn.produccion { background: linear-gradient(135deg, #e83e8c, #fd7e14); }
+    .etapa-nav-btn.bloques-presentados { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .etapa-nav-btn.bloques-encolados { background: linear-gradient(135deg, #10b981, #059669); }
+    .etapa-nav-btn.contenedores { background: linear-gradient(135deg, #0891b2, #0e7490); }
+    .etapa-nav-btn.finalizados { background: linear-gradient(135deg, #20c997, #28a745); }
 
     .etapa-nav-btn i {
         font-size: 1.1rem;
@@ -963,9 +968,29 @@
         <i class="bi bi-archive"></i>
         <span>Stock Secado</span>
     </a>
-    <a href="/etapa/4" class="etapa-nav-btn ingresa-a-taller {% if etapa.orden == 4 %}active{% endif %}">
+    <a href="/etapa/4" class="etapa-nav-btn ingreso-a-taller {% if etapa.orden == 4 %}active{% endif %}">
         <i class="bi bi-tools"></i>
-        <span>Ingresa a Taller</span>
+        <span>Ingreso a Taller</span>
+    </a>
+    <a href="/produccion" class="etapa-nav-btn produccion">
+        <i class="bi bi-gear"></i>
+        <span>Produccion</span>
+    </a>
+    <a href="/finalizados" class="etapa-nav-btn finalizados">
+        <i class="bi bi-check2-circle"></i>
+        <span>Finalizados</span>
+    </a>
+    <a href="/bloques/presentados" class="etapa-nav-btn bloques-presentados">
+        <i class="bi bi-box"></i>
+        <span>Presentados</span>
+    </a>
+    <a href="/bloques/encolados" class="etapa-nav-btn bloques-encolados">
+        <i class="bi bi-check2-square"></i>
+        <span>Encolados</span>
+    </a>
+    <a href="/contenedores" class="etapa-nav-btn contenedores">
+        <i class="bi bi-truck"></i>
+        <span>Contenedores</span>
     </a>
 </div>
 
@@ -1356,9 +1381,12 @@
         </button>
         {% endif %}
         {% if etapa.orden == 3 %}
-        <button class="btn btn-crear-lote" onclick="openCrearLoteModal()">
+        <button class="btn btn-crear-lote" id="btn-crear-lote-flotante" onclick="openCrearLoteModal()" style="display: none;">
             <i class="bi bi-box-seam"></i> Crear Lote
         </button>
+        <span id="lote-warning" class="btn" style="background: #6b7280; cursor: not-allowed; display: none;">
+            <i class="bi bi-exclamation-triangle"></i> Min. 2 coches
+        </span>
         {% endif %}
         <button class="btn btn-cancelar" onclick="clearSelection()">
             <i class="bi bi-x-lg"></i> Cancelar
@@ -1702,7 +1730,7 @@ const etapas = [
     { id: 1, orden: 1, nombre: 'Madera Verde', color: '#28a745', icono: 'bi-tree' },
     { id: 2, orden: 2, nombre: 'Secado', color: '#ffc107', icono: 'bi-sun' },
     { id: 3, orden: 3, nombre: 'Stock Secado', color: '#17a2b8', icono: 'bi-archive' },
-    { id: 4, orden: 4, nombre: 'Ingresa a Taller', color: '#6f42c1', icono: 'bi-tools' }
+    { id: 4, orden: 4, nombre: 'Ingreso a Taller', color: '#6f42c1', icono: 'bi-tools' }
 ];
 
 // Set para almacenar IDs de coches seleccionados
@@ -1824,6 +1852,22 @@ function updateSelectionUI() {
     if (allCheckboxes.length > 0) {
         selectAllCheckbox.checked = selectedCoches.size === allCheckboxes.length;
     }
+
+    // Mostrar/ocultar boton de crear lote segun cantidad de coches (min 2)
+    const btnCrearLote = document.getElementById('btn-crear-lote-flotante');
+    const loteWarning = document.getElementById('lote-warning');
+    if (btnCrearLote && loteWarning) {
+        if (count >= 2) {
+            btnCrearLote.style.display = 'inline-flex';
+            loteWarning.style.display = 'none';
+        } else if (count > 0) {
+            btnCrearLote.style.display = 'none';
+            loteWarning.style.display = 'inline-flex';
+        } else {
+            btnCrearLote.style.display = 'none';
+            loteWarning.style.display = 'none';
+        }
+    }
 }
 
 function openMoverModal() {
@@ -1837,13 +1881,17 @@ function openMoverModal() {
     resultMessage.textContent = '';
     selectedEtapaId = null;
 
-    // Generar opciones de etapas (todas disponibles excepto la actual)
+    // Generar opciones de etapas (todas disponibles excepto la actual y Taller)
     let html = '';
     etapas.forEach(etapa => {
-        const isDisabled = etapa.id === etapaActual.id;
+        // Ingreso a Taller (orden 4) solo acepta lotes, no coches individuales
+        const isTaller = etapa.orden === 4;
+        const isDisabled = etapa.id === etapaActual.id || isTaller;
         const disabledClass = isDisabled ? 'disabled' : '';
         let disabledText = '';
-        if (isDisabled) {
+        if (isTaller) {
+            disabledText = '(Solo acepta lotes)';
+        } else if (etapa.id === etapaActual.id) {
             disabledText = '(Etapa actual)';
         } else if (etapa.orden === etapaActual.orden + 1) {
             disabledText = '(Siguiente etapa)';
@@ -2089,6 +2137,12 @@ function calcularTotalBftSeleccionados() {
 }
 
 function openCrearLoteModal() {
+    // Validar que haya al menos 2 coches seleccionados
+    if (selectedCoches.size < 2) {
+        alert('Debe seleccionar al menos 2 coches para crear un lote.');
+        return;
+    }
+
     const modal = document.getElementById('crear-lote-modal');
     const modalCount = document.getElementById('lote-modal-count');
     const resumenCoches = document.getElementById('lote-resumen-coches');

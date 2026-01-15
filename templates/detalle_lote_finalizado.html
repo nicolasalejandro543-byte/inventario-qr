@@ -1,0 +1,631 @@
+{% extends "base.html" %}
+
+{% block title %}{{ lote.codigo_qr }} - Lote Finalizado{% endblock %}
+
+{% block head %}
+<style>
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 20px;
+        color: var(--color-text-muted);
+        text-decoration: none;
+    }
+
+    .back-link:hover {
+        color: var(--color-primary);
+    }
+
+    .lote-detail-card {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+
+    .lote-detail-header {
+        padding: 20px 24px;
+        background: linear-gradient(135deg, #20c997, #28a745);
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .lote-codigo {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    .lote-estado {
+        background: rgba(255,255,255,0.2);
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 600;
+    }
+
+    .lote-detail-body {
+        padding: 24px;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .stat-item {
+        background: var(--color-bg);
+        padding: 20px;
+        border-radius: var(--radius-md);
+        text-align: center;
+    }
+
+    .stat-label {
+        font-size: 0.85rem;
+        color: var(--color-text-muted);
+        margin-bottom: 8px;
+    }
+
+    .stat-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .stat-value.success { color: var(--color-success); }
+    .stat-value.warning { color: var(--color-warning); }
+    .stat-value.danger { color: var(--color-danger); }
+
+    .desperdicio-section {
+        background: var(--color-bg);
+        padding: 20px;
+        border-radius: var(--radius-md);
+        margin-bottom: 24px;
+    }
+
+    .desperdicio-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .desperdicio-title {
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .desperdicio-value {
+        font-size: 2rem;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .desperdicio-value.good { color: #28a745; }
+    .desperdicio-value.bad { color: #ef4444; }
+
+    .progress-container {
+        background: #e5e7eb;
+        border-radius: 10px;
+        height: 32px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .progress-bar {
+        height: 100%;
+        border-radius: 10px;
+        min-width: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .progress-bar.good { background: linear-gradient(135deg, #28a745, #20c997); }
+    .progress-bar.bad { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+    .progress-bar-text {
+        color: white;
+        font-weight: 700;
+        font-size: 0.9rem;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .coches-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .coche-card {
+        background: var(--color-bg);
+        border-radius: var(--radius-md);
+        padding: 16px;
+        border-left: 4px solid var(--color-primary);
+    }
+
+    .coche-codigo {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+        color: var(--color-primary);
+        margin-bottom: 8px;
+    }
+
+    .coche-bft {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--color-success);
+    }
+
+    .bloques-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 16px;
+    }
+
+    .bloque-card {
+        background: var(--color-bg);
+        border-radius: var(--radius-md);
+        padding: 16px;
+        border-left: 4px solid var(--color-warning);
+    }
+
+    .bloque-codigo {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+        color: var(--color-warning);
+        font-size: 0.9rem;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .bloque-emp-badge {
+        background: #dbeafe;
+        color: #1d4ed8;
+        padding: 2px 6px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.65rem;
+        letter-spacing: 0.5px;
+    }
+
+    .bloque-details {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        font-size: 0.85rem;
+    }
+
+    .bloque-detail-label {
+        color: var(--color-text-muted);
+        font-size: 0.75rem;
+    }
+
+    .bloque-detail-value {
+        font-weight: 600;
+    }
+
+    .actions-bar {
+        display: flex;
+        gap: 12px;
+        margin-top: 24px;
+        padding-top: 24px;
+        border-top: 2px solid var(--color-gray-light);
+    }
+
+    /* Estilos para impresion - Optimizado para una sola pagina A4 */
+    .print-container {
+        display: none;
+    }
+
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        .print-container, .print-container * {
+            visibility: visible;
+        }
+        .print-container {
+            display: block !important;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            padding: 10px;
+            font-size: 10px;
+        }
+        .no-print {
+            display: none !important;
+        }
+        @page {
+            margin: 10mm;
+            size: A4 portrait;
+        }
+    }
+
+    .print-header {
+        text-align: center;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #333;
+    }
+
+    .print-title {
+        font-size: 18px;
+        font-weight: 700;
+        margin-bottom: 4px;
+    }
+
+    .print-subtitle {
+        font-size: 14px;
+        font-family: 'JetBrains Mono', monospace;
+        color: #666;
+    }
+
+    .print-section {
+        margin-bottom: 12px;
+    }
+
+    .print-section-title {
+        font-size: 12px;
+        font-weight: 600;
+        margin-bottom: 6px;
+        padding-bottom: 4px;
+        border-bottom: 1px solid #ccc;
+    }
+
+    .print-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+
+    .print-stat {
+        text-align: center;
+        padding: 8px 10px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+    }
+
+    .print-stat-label {
+        font-size: 10px;
+        color: #666;
+        margin-bottom: 2px;
+    }
+
+    .print-stat-value {
+        font-size: 16px;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .print-coches-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 10px;
+        font-size: 10px;
+    }
+
+    .print-coches-table th,
+    .print-coches-table td {
+        border: 1px solid #ccc;
+        padding: 5px 8px;
+        text-align: left;
+    }
+
+    .print-coches-table th {
+        background: #f0f0f0;
+        font-weight: 600;
+        font-size: 10px;
+    }
+
+    .print-footer {
+        margin-top: 15px;
+        padding-top: 10px;
+        border-top: 1px solid #ccc;
+        text-align: center;
+        font-size: 10px;
+        color: #666;
+    }
+
+    .print-footer p {
+        margin: 3px 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<a href="/finalizados" class="back-link no-print">
+    <i class="bi bi-arrow-left"></i> Volver a Finalizados
+</a>
+
+<div class="lote-detail-card no-print">
+    <div class="lote-detail-header">
+        <div>
+            <div class="lote-codigo">{{ lote.codigo_qr }}</div>
+            <div style="font-size: 0.9rem; opacity: 0.9; margin-top: 4px;">
+                Finalizado: {{ lote.fecha_finalizado.strftime('%d/%m/%Y %H:%M') if lote.fecha_finalizado else 'N/A' }}
+            </div>
+        </div>
+        <span class="lote-estado">
+            <i class="bi bi-check-circle"></i> Finalizado
+        </span>
+    </div>
+
+    <div class="lote-detail-body">
+        <!-- Estadisticas principales -->
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-label">Coches Procesados</div>
+                <div class="stat-value">{{ lote.cantidad_coches }}</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">BFT Total del Lote</div>
+                <div class="stat-value">{{ "%.1f"|format(lote.total_bft) }}</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">BFT Utilizado</div>
+                <div class="stat-value success">{{ "%.1f"|format(lote.bft_usado or 0) }}</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Turno</div>
+                <div class="stat-value" style="font-size: 1.2rem;">{{ lote.turno }}</div>
+            </div>
+        </div>
+
+        <!-- Desperdicio -->
+        <div class="desperdicio-section">
+            <div class="desperdicio-header">
+                <span class="desperdicio-title">Desperdicio Final</span>
+                {% set desp_pct = lote.desperdicio_porcentaje or 0 %}
+                <span class="desperdicio-value {% if desp_pct < 18 %}good{% else %}bad{% endif %}">
+                    {{ "%.1f"|format(desp_pct) }}%
+                </span>
+            </div>
+            <div class="progress-container">
+                <div class="progress-bar {% if desp_pct < 18 %}good{% else %}bad{% endif %}"
+                     style="width: {{ [desp_pct + 5, 100]|min }}%;">
+                    <span class="progress-bar-text">{{ "%.1f"|format(lote.desperdicio_bft or 0) }} BFT</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Coches incluidos -->
+        <h3 class="section-title">
+            <i class="bi bi-truck"></i> Coches Incluidos ({{ lote.coches|length }})
+        </h3>
+        <div class="coches-grid">
+            {% for coche in lote.coches %}
+            <div class="coche-card">
+                <div class="coche-codigo">{{ coche.codigo_qr }}</div>
+                <div class="coche-bft">{{ "%.1f"|format(coche.total_bft or 0) }} BFT</div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Plantillas Presentadas -->
+        {% if lote.procesos %}
+        <h3 class="section-title">
+            <i class="bi bi-calculator"></i> Plantillas Presentadas ({{ lote.procesos|length }})
+        </h3>
+        <div class="bloques-grid" style="margin-bottom: 24px;">
+            {% for proceso in lote.procesos %}
+            <div class="bloque-card" style="border-left-color: var(--color-primary);">
+                <div class="bloque-codigo" style="color: var(--color-primary);">{{ proceso.largo }}" x 24" x {{ proceso.alto }}"</div>
+                <div class="bloque-details">
+                    <div>
+                        <div class="bloque-detail-label">BFT</div>
+                        <div class="bloque-detail-value" style="color: var(--color-success);">{{ "%.2f"|format(proceso.bft_calculado or 0) }}</div>
+                    </div>
+                    <div>
+                        <div class="bloque-detail-label">Fecha</div>
+                        <div class="bloque-detail-value">{{ proceso.created_at.strftime('%d/%m') if proceso.created_at else '-' }}</div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Bloques producidos -->
+        {% if lote.bloques %}
+        <h3 class="section-title">
+            <i class="bi bi-box"></i> Bloques Producidos ({{ lote.bloques|length }})
+        </h3>
+        <div class="bloques-grid">
+            {% for bloque in lote.bloques %}
+            <div class="bloque-card">
+                <div class="bloque-codigo">
+                    <span>{{ bloque.codigo_qr }}</span>
+                    {% if bloque.empatado %}
+                    <span class="bloque-emp-badge">EMP</span>
+                    {% endif %}
+                </div>
+                <div class="bloque-details">
+                    <div>
+                        <div class="bloque-detail-label">Largo</div>
+                        <div class="bloque-detail-value">{{ bloque.largo }}"</div>
+                    </div>
+                    <div>
+                        <div class="bloque-detail-label">BFT</div>
+                        <div class="bloque-detail-value">{{ bloque.bft|int }}</div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Acciones -->
+        <div class="actions-bar">
+            <button class="btn btn-primary" onclick="imprimirReporte()">
+                <i class="bi bi-printer"></i> Imprimir Reporte
+            </button>
+            <a href="/finalizados" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Volver
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Contenedor para impresion -->
+<div class="print-container" id="print-container">
+    <div class="print-header">
+        <div class="print-title">REPORTE DE LOTE FINALIZADO</div>
+        <div class="print-subtitle">{{ lote.codigo_qr }}</div>
+    </div>
+
+    <div class="print-section">
+        <div class="print-section-title">Informacion General</div>
+        <div class="print-stats-grid">
+            <div class="print-stat">
+                <div class="print-stat-label">Coches</div>
+                <div class="print-stat-value">{{ lote.cantidad_coches }}</div>
+            </div>
+            <div class="print-stat">
+                <div class="print-stat-label">BFT Total</div>
+                <div class="print-stat-value">{{ "%.1f"|format(lote.total_bft) }}</div>
+            </div>
+            <div class="print-stat">
+                <div class="print-stat-label">BFT Usado</div>
+                <div class="print-stat-value">{{ "%.1f"|format(lote.bft_usado or 0) }}</div>
+            </div>
+            <div class="print-stat">
+                <div class="print-stat-label">Desperdicio</div>
+                <div class="print-stat-value">{{ "%.1f"|format(lote.desperdicio_porcentaje or 0) }}%</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="print-section">
+        <div class="print-section-title">Detalles</div>
+        <table class="print-coches-table">
+            <tr>
+                <th>Turno</th>
+                <td>{{ lote.turno }}</td>
+                <th>Fecha Inicio</th>
+                <td>{{ lote.fecha_inicio_proceso.strftime('%d/%m/%Y %H:%M') if lote.fecha_inicio_proceso else 'N/A' }}</td>
+            </tr>
+            <tr>
+                <th>Creado por</th>
+                <td>{{ lote.creado_por or 'N/A' }}</td>
+                <th>Fecha Finalizado</th>
+                <td>{{ lote.fecha_finalizado.strftime('%d/%m/%Y %H:%M') if lote.fecha_finalizado else 'N/A' }}</td>
+            </tr>
+            <tr>
+                <th>BFT Desperdicio</th>
+                <td>{{ "%.1f"|format(lote.desperdicio_bft or 0) }}</td>
+                <th>Notas</th>
+                <td>{{ lote.notas or '-' }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="print-section">
+        <div class="print-section-title">Coches Incluidos ({{ lote.coches|length }})</div>
+        <table class="print-coches-table">
+            <thead>
+                <tr>
+                    <th>Codigo</th>
+                    <th>Proveedor</th>
+                    <th>BFT</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for coche in lote.coches %}
+                <tr>
+                    <td>{{ coche.codigo_qr }}</td>
+                    <td>{{ coche.proveedor or '-' }}</td>
+                    <td>{{ "%.1f"|format(coche.total_bft or 0) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if lote.procesos %}
+    <div class="print-section">
+        <div class="print-section-title">Plantillas Presentadas ({{ lote.procesos|length }})</div>
+        <table class="print-coches-table">
+            <thead>
+                <tr>
+                    <th>Largo</th>
+                    <th>Ancho</th>
+                    <th>Alto</th>
+                    <th>BFT</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for proceso in lote.procesos %}
+                <tr>
+                    <td>{{ proceso.largo }}"</td>
+                    <td>24"</td>
+                    <td>{{ proceso.alto }}"</td>
+                    <td>{{ "%.2f"|format(proceso.bft_calculado or 0) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if lote.bloques %}
+    <div class="print-section">
+        <div class="print-section-title">Bloques Producidos ({{ lote.bloques|length }})</div>
+        <table class="print-coches-table">
+            <thead>
+                <tr>
+                    <th>Codigo</th>
+                    <th>Largo</th>
+                    <th>BFT</th>
+                    <th>EMP</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for bloque in lote.bloques %}
+                <tr>
+                    <td>{{ bloque.codigo_qr }}</td>
+                    <td>{{ bloque.largo }}"</td>
+                    <td>{{ bloque.bft|int }}</td>
+                    <td>{% if bloque.empatado %}EMP{% endif %}</td>
+                    <td>{{ bloque.estado }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <div class="print-footer">
+        <p>Sky Composite - Sistema de Inventario QR</p>
+        <p>Impreso el {{ now.strftime('%d/%m/%Y %H:%M') }}</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function imprimirReporte() {
+    window.print();
+}
+</script>
+{% endblock %}

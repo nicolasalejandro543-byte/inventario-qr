@@ -18,6 +18,20 @@ def generar_codigo_lote():
     return f"LOT-{timestamp}-{unique_id}"
 
 
+def generar_codigo_bloque():
+    """Genera un código único para el QR de bloques de producción."""
+    timestamp = datetime.now().strftime('%Y%m%d')
+    unique_id = uuid.uuid4().hex[:6].upper()
+    return f"BLQ-{timestamp}-{unique_id}"
+
+
+def generar_codigo_contenedor(numero_secuencial: int):
+    """Genera un código único para contenedores de embarque.
+    Formato: SC-B-000-XX donde XX es el número secuencial.
+    """
+    return f"SC-B-000-{numero_secuencial:02d}"
+
+
 def generar_imagen_qr(codigo: str, size: int = 10) -> bytes:
     """Genera la imagen QR como bytes PNG."""
     qr = qrcode.QRCode(

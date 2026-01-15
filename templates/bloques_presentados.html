@@ -1,0 +1,961 @@
+{% extends "base.html" %}
+
+{% block title %}Bloques Presentados{% endblock %}
+
+{% block head %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .page-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .page-title-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+    }
+
+    .page-title h2 {
+        margin: 0;
+        font-size: 1.5rem;
+    }
+
+    .page-stats {
+        display: flex;
+        gap: 20px;
+    }
+
+    .page-stat {
+        text-align: center;
+    }
+
+    .page-stat-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+        color: #f59e0b;
+    }
+
+    .page-stat-label {
+        font-size: 0.8rem;
+        color: var(--color-text-muted);
+    }
+
+    /* Barra de navegacion */
+    .etapas-nav {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+        padding: 8px;
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        overflow-x: auto;
+    }
+
+    .etapa-nav-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        border-radius: var(--radius-md);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+        white-space: nowrap;
+        color: white;
+        flex: 1;
+        justify-content: center;
+        opacity: 0.4;
+    }
+
+    .etapa-nav-btn:hover {
+        opacity: 0.8;
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .etapa-nav-btn.active {
+        opacity: 1;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        transform: scale(1.02);
+    }
+
+    .etapa-nav-btn.madera-verde { background: linear-gradient(135deg, #28a745, #20c997); }
+    .etapa-nav-btn.secado { background: linear-gradient(135deg, #ffc107, #fd7e14); }
+    .etapa-nav-btn.stock-secado { background: linear-gradient(135deg, #17a2b8, #20c997); }
+    .etapa-nav-btn.ingreso-a-taller { background: linear-gradient(135deg, #6f42c1, #e83e8c); }
+    .etapa-nav-btn.produccion { background: linear-gradient(135deg, #e83e8c, #fd7e14); }
+    .etapa-nav-btn.bloques-presentados { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .etapa-nav-btn.bloques-encolados { background: linear-gradient(135deg, #10b981, #059669); }
+    .etapa-nav-btn.contenedores { background: linear-gradient(135deg, #0891b2, #0e7490); }
+    .etapa-nav-btn.finalizados { background: linear-gradient(135deg, #20c997, #28a745); }
+
+    /* Filtros */
+    .filters-bar {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 20px;
+        padding: 16px;
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .filter-group label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--color-text-muted);
+        text-transform: uppercase;
+    }
+
+    .filter-group select {
+        padding: 8px 12px;
+        border: 1px solid var(--color-gray-light);
+        border-radius: var(--radius-sm);
+        font-size: 0.9rem;
+        min-width: 120px;
+    }
+
+    .filter-group select:focus {
+        outline: none;
+        border-color: var(--color-primary);
+    }
+
+    .filter-reset {
+        margin-left: auto;
+        padding: 8px 16px;
+        background: var(--color-bg-light);
+        border: none;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .filter-reset:hover {
+        background: var(--color-gray-light);
+    }
+
+    /* Controles de seleccion */
+    .selection-controls {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: white;
+        padding: 12px 20px;
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-sm);
+        margin-bottom: 16px;
+    }
+
+    .selection-controls label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        font-weight: 500;
+    }
+
+    .selection-controls input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: var(--color-primary);
+    }
+
+    /* Grid de bloques */
+    .bloques-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 16px;
+    }
+
+    .bloque-card {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+        transition: all 0.2s;
+        cursor: pointer;
+        text-decoration: none;
+        color: inherit;
+        position: relative;
+        border: 2px solid transparent;
+    }
+
+    .bloque-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-lg);
+        border-color: #f59e0b;
+    }
+
+    .bloque-card.selected {
+        border-color: var(--color-primary) !important;
+        background: #f0f7ff !important;
+        box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
+    }
+
+    .bloque-checkbox {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        width: 22px;
+        height: 22px;
+        cursor: pointer;
+        accent-color: var(--color-primary);
+        z-index: 10;
+    }
+
+    .bloque-header {
+        padding: 12px 16px;
+        padding-left: 44px;
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .bloque-codigo {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.95rem;
+    }
+
+    .bloque-body {
+        padding: 16px;
+    }
+
+    .bloque-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+    }
+
+    .bloque-stat {
+        text-align: center;
+        padding: 10px 8px;
+        background: var(--color-bg);
+        border-radius: var(--radius-sm);
+    }
+
+    .bloque-stat-label {
+        font-size: 0.7rem;
+        color: var(--color-text-muted);
+        text-transform: uppercase;
+        margin-bottom: 4px;
+    }
+
+    .bloque-stat-value {
+        font-size: 1rem;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .bloque-stat-value.bft { color: #f59e0b; }
+    .bloque-stat-value.peso { color: var(--color-primary); }
+
+    .bloque-footer {
+        padding: 10px 16px;
+        background: var(--color-bg-light);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.8rem;
+        color: var(--color-text-muted);
+    }
+
+    .bloque-secuencia {
+        background: #fef3c7;
+        color: #92400e;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.75rem;
+    }
+
+    .bloque-emp-badge {
+        background: #dbeafe;
+        color: #1d4ed8;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 0.7rem;
+        letter-spacing: 0.5px;
+    }
+
+    /* Barra flotante */
+    .floating-actions {
+        position: fixed;
+        bottom: -100px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(135deg, var(--color-primary), #0284c7);
+        color: white;
+        padding: 16px 28px;
+        border-radius: var(--radius-lg);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        z-index: 1000;
+        transition: bottom 0.3s ease;
+    }
+
+    .floating-actions.visible {
+        bottom: 24px;
+    }
+
+    .floating-actions .selected-count {
+        font-size: 1.1rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .floating-actions .selected-count span {
+        background: rgba(255,255,255,0.2);
+        padding: 4px 12px;
+        border-radius: 20px;
+    }
+
+    .floating-actions .btn {
+        padding: 10px 20px;
+    }
+
+    .floating-actions .btn-imprimir {
+        background: var(--color-success);
+    }
+
+    .floating-actions .btn-encolar {
+        background: #10b981;
+    }
+
+    .floating-actions .btn-cancelar {
+        background: rgba(255,255,255,0.2);
+    }
+
+    /* Empty state */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--color-text-muted);
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    /* QR Print Container */
+    .qr-print-container {
+        display: none;
+    }
+
+    @media print {
+        .no-print { display: none !important; }
+        body * { visibility: hidden; }
+        .qr-print-container, .qr-print-container * { visibility: visible; }
+        .qr-print-container {
+            display: block !important;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+        }
+    }
+
+    /* Modal styles */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 2000;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .modal-overlay.show {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        width: 90%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow: hidden;
+    }
+
+    .modal-header {
+        padding: 20px 24px;
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .modal-body {
+        padding: 24px;
+        max-height: 60vh;
+        overflow-y: auto;
+    }
+
+    .modal-footer {
+        padding: 16px 24px;
+        background: var(--color-bg-light);
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        border-top: 1px solid var(--color-gray-light);
+    }
+
+    @media (max-width: 768px) {
+        .bloques-grid {
+            grid-template-columns: 1fr;
+        }
+        .filters-bar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .filter-group select {
+            width: 100%;
+        }
+        .filter-reset {
+            margin-left: 0;
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Barra de navegacion -->
+<div class="etapas-nav no-print">
+    <a href="/etapa/1" class="etapa-nav-btn madera-verde">
+        <i class="bi bi-tree"></i>
+        <span>Madera Verde</span>
+    </a>
+    <a href="/etapa/2" class="etapa-nav-btn secado">
+        <i class="bi bi-sun"></i>
+        <span>Secado</span>
+    </a>
+    <a href="/etapa/3" class="etapa-nav-btn stock-secado">
+        <i class="bi bi-archive"></i>
+        <span>Stock Secado</span>
+    </a>
+    <a href="/etapa/4" class="etapa-nav-btn ingreso-a-taller">
+        <i class="bi bi-tools"></i>
+        <span>Ingreso a Taller</span>
+    </a>
+    <a href="/produccion" class="etapa-nav-btn produccion">
+        <i class="bi bi-gear"></i>
+        <span>Produccion</span>
+    </a>
+    <a href="/finalizados" class="etapa-nav-btn finalizados">
+        <i class="bi bi-check2-circle"></i>
+        <span>Finalizados</span>
+    </a>
+    <a href="/bloques/presentados" class="etapa-nav-btn bloques-presentados active">
+        <i class="bi bi-box"></i>
+        <span>Presentados</span>
+    </a>
+    <a href="/bloques/encolados" class="etapa-nav-btn bloques-encolados">
+        <i class="bi bi-check2-square"></i>
+        <span>Encolados</span>
+    </a>
+    <a href="/contenedores" class="etapa-nav-btn contenedores">
+        <i class="bi bi-truck"></i>
+        <span>Contenedores</span>
+    </a>
+</div>
+
+<!-- Header -->
+<div class="page-header">
+    <div class="page-title">
+        <div class="page-title-icon">
+            <i class="bi bi-box"></i>
+        </div>
+        <div>
+            <h2>Bloques Presentados</h2>
+            <small style="color: var(--color-text-muted);">{{ bloques|length }} bloques en total</small>
+        </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 20px;">
+        <div class="page-stats">
+            <div class="page-stat">
+                <div class="page-stat-value">{{ bloques|length }}</div>
+                <div class="page-stat-label">Bloques</div>
+            </div>
+            <div class="page-stat">
+                <div class="page-stat-value">{{ "%.0f"|format(bloques|sum(attribute='bft') if bloques else 0) }}</div>
+                <div class="page-stat-label">BFT Total</div>
+            </div>
+        </div>
+        <a href="/" class="btn btn-secondary no-print">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="filters-bar no-print">
+    <div class="filter-group">
+        <label>Secuencia</label>
+        <select id="filter-secuencia" onchange="aplicarFiltros()">
+            <option value="">Todas</option>
+            {% for sec in secuencias %}
+            <option value="{{ sec }}">{{ sec }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Turno</label>
+        <select id="filter-turno" onchange="aplicarFiltros()">
+            <option value="">Todos</option>
+            {% for turno in turnos %}
+            <option value="{{ turno }}">{{ turno }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Calidad</label>
+        <select id="filter-calidad" onchange="aplicarFiltros()">
+            <option value="">Todas</option>
+            {% for cal in calidades %}
+            <option value="{{ cal }}">{{ cal }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Largo</label>
+        <select id="filter-largo" onchange="aplicarFiltros()">
+            <option value="">Todos</option>
+            {% for largo in largos %}
+            <option value="{{ largo }}">{{ largo }}"</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button class="filter-reset" onclick="resetFiltros()">
+        <i class="bi bi-x-circle"></i> Limpiar
+    </button>
+</div>
+
+<!-- Controles de seleccion -->
+<div class="selection-controls no-print">
+    <label>
+        <input type="checkbox" id="select-all" onchange="toggleSelectAll()">
+        Seleccionar todos
+    </label>
+    <span id="selection-info" style="margin-left: auto; color: var(--color-text-muted);"></span>
+</div>
+
+{% if bloques %}
+<!-- Grid de bloques -->
+<div class="bloques-grid" id="bloques-grid">
+    {% for bloque in bloques %}
+    <div class="bloque-card"
+         data-bloque-id="{{ bloque.id }}"
+         data-codigo="{{ bloque.codigo_qr }}"
+         data-secuencia="{{ bloque.secuencia or '' }}"
+         data-turno="{{ bloque.turno or '' }}"
+         data-calidad="{{ bloque.calidad or '' }}"
+         data-largo="{{ bloque.largo or '' }}"
+         data-peso="{{ bloque.peso or 0 }}"
+         data-bft="{{ bloque.bft or 0 }}"
+         onclick="toggleSelection(this)">
+        <input type="checkbox" class="bloque-checkbox" onclick="event.stopPropagation(); toggleSelection(this.parentElement)">
+        <div class="bloque-header">
+            <span class="bloque-codigo">{{ bloque.codigo_qr }}</span>
+            {% if bloque.empatado %}
+            <span class="bloque-emp-badge">EMP</span>
+            {% endif %}
+        </div>
+        <div class="bloque-body">
+            <div class="bloque-stats">
+                <div class="bloque-stat">
+                    <div class="bloque-stat-label">Largo</div>
+                    <div class="bloque-stat-value">{{ bloque.largo }}"</div>
+                </div>
+                <div class="bloque-stat">
+                    <div class="bloque-stat-label">Peso</div>
+                    <div class="bloque-stat-value peso">{{ bloque.peso }} kg</div>
+                </div>
+                <div class="bloque-stat">
+                    <div class="bloque-stat-label">BFT</div>
+                    <div class="bloque-stat-value bft">{{ bloque.bft|int }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="bloque-footer">
+            <span>{{ bloque.fecha.strftime('%d/%m/%Y') if bloque.fecha else 'N/A' }} - {{ bloque.turno }}</span>
+            {% if bloque.secuencia %}
+            <span class="bloque-secuencia">{{ bloque.secuencia }}</span>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <i class="bi bi-box"></i>
+    <h3>No hay bloques presentados</h3>
+    <p>Los bloques apareceran aqui cuando los crees desde Produccion</p>
+    <a href="/produccion" class="btn btn-primary" style="margin-top: 16px;">
+        <i class="bi bi-gear"></i> Ir a Produccion
+    </a>
+</div>
+{% endif %}
+
+<!-- Barra flotante -->
+<div class="floating-actions no-print" id="floating-actions">
+    <div class="selected-count">
+        <i class="bi bi-check2-square"></i>
+        <span id="selected-count-text">0</span> seleccionados
+    </div>
+    <button class="btn btn-imprimir" onclick="imprimirSeleccionados()">
+        <i class="bi bi-printer"></i> Imprimir QRs
+    </button>
+    <button class="btn btn-encolar" onclick="openEncolarModal()">
+        <i class="bi bi-arrow-right-circle"></i> Encolar
+    </button>
+    <button class="btn btn-cancelar" onclick="clearSelection()">
+        <i class="bi bi-x-lg"></i> Cancelar
+    </button>
+</div>
+
+<!-- Modal para encolar -->
+<div class="modal-overlay" id="encolar-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="bi bi-arrow-right-circle"></i> Encolar Bloques</h3>
+        </div>
+        <div class="modal-body">
+            <p style="margin-bottom: 16px;">Se van a encolar <strong id="encolar-count">0</strong> bloques.</p>
+            <p style="color: var(--color-text-muted); font-size: 0.9rem;">
+                Ingrese el nuevo peso para cada bloque:
+            </p>
+            <div id="encolar-bloques-list" style="max-height: 300px; overflow-y: auto; margin-top: 16px;"></div>
+            <div id="encolar-result" style="margin-top: 16px;"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeEncolarModal()">Cancelar</button>
+            <button class="btn btn-success" onclick="ejecutarEncolar()">
+                <i class="bi bi-check"></i> Confirmar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Contenedor para impresion -->
+<div class="qr-print-container" id="qr-print-container">
+    <div class="qr-print-grid" id="qr-print-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; padding: 20px;"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedBloques = new Set();
+
+function toggleSelection(card) {
+    const bloqueId = card.dataset.bloqueId;
+    const checkbox = card.querySelector('.bloque-checkbox');
+
+    if (selectedBloques.has(bloqueId)) {
+        selectedBloques.delete(bloqueId);
+        card.classList.remove('selected');
+        checkbox.checked = false;
+    } else {
+        selectedBloques.add(bloqueId);
+        card.classList.add('selected');
+        checkbox.checked = true;
+    }
+
+    updateFloatingBar();
+}
+
+function toggleSelectAll() {
+    const selectAllCheckbox = document.getElementById('select-all');
+    const visibleCards = document.querySelectorAll('.bloque-card:not([style*="display: none"])');
+
+    visibleCards.forEach(card => {
+        const bloqueId = card.dataset.bloqueId;
+        const checkbox = card.querySelector('.bloque-checkbox');
+
+        if (selectAllCheckbox.checked) {
+            selectedBloques.add(bloqueId);
+            card.classList.add('selected');
+            checkbox.checked = true;
+        } else {
+            selectedBloques.delete(bloqueId);
+            card.classList.remove('selected');
+            checkbox.checked = false;
+        }
+    });
+
+    updateFloatingBar();
+}
+
+function clearSelection() {
+    selectedBloques.clear();
+    document.querySelectorAll('.bloque-card.selected').forEach(card => {
+        card.classList.remove('selected');
+        card.querySelector('.bloque-checkbox').checked = false;
+    });
+    document.getElementById('select-all').checked = false;
+    updateFloatingBar();
+}
+
+function updateFloatingBar() {
+    const floatingBar = document.getElementById('floating-actions');
+    const countText = document.getElementById('selected-count-text');
+    const selectionInfo = document.getElementById('selection-info');
+
+    countText.textContent = selectedBloques.size;
+
+    // Calcular BFT total
+    let totalBft = 0;
+    selectedBloques.forEach(id => {
+        const card = document.querySelector(`.bloque-card[data-bloque-id="${id}"]`);
+        if (card) {
+            totalBft += parseFloat(card.dataset.bft) || 0;
+        }
+    });
+
+    selectionInfo.textContent = selectedBloques.size > 0
+        ? `${selectedBloques.size} seleccionados (${totalBft.toFixed(0)} BFT)`
+        : '';
+
+    if (selectedBloques.size > 0) {
+        floatingBar.classList.add('visible');
+    } else {
+        floatingBar.classList.remove('visible');
+    }
+}
+
+function aplicarFiltros() {
+    const secuencia = document.getElementById('filter-secuencia').value;
+    const turno = document.getElementById('filter-turno').value;
+    const calidad = document.getElementById('filter-calidad').value;
+    const largo = document.getElementById('filter-largo').value;
+
+    const cards = document.querySelectorAll('.bloque-card');
+
+    cards.forEach(card => {
+        let visible = true;
+
+        if (secuencia && card.dataset.secuencia !== secuencia) visible = false;
+        if (turno && card.dataset.turno !== turno) visible = false;
+        if (calidad && card.dataset.calidad !== calidad) visible = false;
+        if (largo && card.dataset.largo !== largo) visible = false;
+
+        card.style.display = visible ? '' : 'none';
+    });
+}
+
+function resetFiltros() {
+    document.getElementById('filter-secuencia').value = '';
+    document.getElementById('filter-turno').value = '';
+    document.getElementById('filter-calidad').value = '';
+    document.getElementById('filter-largo').value = '';
+
+    document.querySelectorAll('.bloque-card').forEach(card => {
+        card.style.display = '';
+    });
+}
+
+function imprimirSeleccionados() {
+    if (selectedBloques.size === 0) {
+        alert('Seleccione al menos un bloque');
+        return;
+    }
+
+    const printGrid = document.getElementById('qr-print-grid');
+    let html = '';
+
+    selectedBloques.forEach(bloqueId => {
+        const card = document.querySelector(`.bloque-card[data-bloque-id="${bloqueId}"]`);
+        if (card) {
+            const codigo = card.dataset.codigo;
+            const largo = card.dataset.largo;
+            const peso = card.dataset.peso;
+            const bft = card.dataset.bft;
+
+            html += `
+                <div style="border: 2px solid #000; border-radius: 8px; padding: 20px; text-align: center; page-break-inside: avoid;">
+                    <div style="font-family: monospace; font-weight: bold; font-size: 1.1rem; margin-bottom: 10px;">${codigo}</div>
+                    <img src="/api/bloques/${bloqueId}/qr" alt="QR" style="width: 120px; height: 120px; margin: 10px auto;">
+                    <div style="border-top: 1px solid #ccc; margin-top: 10px; padding-top: 10px; text-align: left; font-size: 0.85rem;">
+                        <div><strong>Largo:</strong> ${largo}"</div>
+                        <div><strong>Peso:</strong> ${peso} kg</div>
+                        <div><strong>BFT:</strong> ${parseInt(bft)}</div>
+                        <div><strong>Estado:</strong> Presentado</div>
+                    </div>
+                </div>
+            `;
+        }
+    });
+
+    printGrid.innerHTML = html;
+
+    setTimeout(() => {
+        window.print();
+    }, 500);
+}
+
+function openEncolarModal() {
+    if (selectedBloques.size === 0) {
+        alert('Seleccione al menos un bloque');
+        return;
+    }
+
+    const modal = document.getElementById('encolar-modal');
+    const countEl = document.getElementById('encolar-count');
+    const listEl = document.getElementById('encolar-bloques-list');
+
+    countEl.textContent = selectedBloques.size;
+
+    let html = '';
+    selectedBloques.forEach(bloqueId => {
+        const card = document.querySelector(`.bloque-card[data-bloque-id="${bloqueId}"]`);
+        if (card) {
+            const codigo = card.dataset.codigo;
+            const pesoActual = card.dataset.peso;
+            const secuencia = card.dataset.secuencia;
+
+            const secuenciaBadge = secuencia
+                ? `<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 10px; font-weight: 600; font-size: 0.75rem;">${secuencia}</span>`
+                : '';
+
+            html += `
+                <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--color-bg); border-radius: var(--radius-sm); margin-bottom: 8px; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 200px;">
+                        <span style="font-family: monospace; font-weight: 600;">${codigo}</span>
+                        ${secuenciaBadge}
+                    </div>
+                    <span style="color: var(--color-text-muted); font-size: 0.85rem;">Peso actual: ${pesoActual} kg</span>
+                    <input type="number" step="0.1" class="encolar-peso-input" data-bloque-id="${bloqueId}"
+                           placeholder="Nuevo peso" value="${pesoActual}"
+                           style="width: 100px; padding: 6px 10px; border: 1px solid var(--color-gray-light); border-radius: var(--radius-sm);">
+                    <span>kg</span>
+                </div>
+            `;
+        }
+    });
+
+    listEl.innerHTML = html;
+    document.getElementById('encolar-result').innerHTML = '';
+    modal.classList.add('show');
+}
+
+function closeEncolarModal() {
+    document.getElementById('encolar-modal').classList.remove('show');
+}
+
+async function ejecutarEncolar() {
+    const inputs = document.querySelectorAll('.encolar-peso-input');
+    const bloques = [];
+
+    inputs.forEach(input => {
+        const bloqueId = input.dataset.bloqueId;
+        const peso = parseFloat(input.value);
+
+        if (peso > 0) {
+            bloques.push({ bloque_id: parseInt(bloqueId), peso: peso });
+        }
+    });
+
+    if (bloques.length === 0) {
+        alert('Ingrese el peso para al menos un bloque');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/bloques/encolar-multiple', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bloques: bloques })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById('encolar-result').innerHTML = `
+                <div style="padding: 12px; background: #d1fae5; color: #065f46; border-radius: var(--radius-sm);">
+                    <i class="bi bi-check-circle"></i> ${data.total_encolados} bloques encolados exitosamente
+                </div>
+            `;
+
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            document.getElementById('encolar-result').innerHTML = `
+                <div style="padding: 12px; background: #fee2e2; color: #991b1b; border-radius: var(--radius-sm);">
+                    <i class="bi bi-exclamation-circle"></i> ${data.error || 'Error al encolar'}
+                </div>
+            `;
+        }
+    } catch (error) {
+        document.getElementById('encolar-result').innerHTML = `
+            <div style="padding: 12px; background: #fee2e2; color: #991b1b; border-radius: var(--radius-sm);">
+                <i class="bi bi-exclamation-circle"></i> Error de conexion
+            </div>
+        `;
+    }
+}
+
+// Hacer clic en la tarjeta navega al detalle (doble click)
+document.querySelectorAll('.bloque-card').forEach(card => {
+    card.addEventListener('dblclick', function() {
+        window.location.href = '/bloque/' + this.dataset.bloqueId;
+    });
+});
+</script>
+{% endblock %}

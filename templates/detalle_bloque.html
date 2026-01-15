@@ -1,0 +1,440 @@
+{% extends "base.html" %}
+
+{% block title %}{{ bloque.codigo_qr }}{% endblock %}
+
+{% block head %}
+<style>
+    .detalle-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+    }
+
+    @media (max-width: 900px) {
+        .detalle-container {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .info-card {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+    }
+
+    .info-header {
+        padding: 16px 20px;
+        background: linear-gradient(135deg, var(--color-warning), #d97706);
+        color: white;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .info-header.encolado {
+        background: linear-gradient(135deg, var(--color-success), #059669);
+    }
+
+    .info-body {
+        padding: 20px;
+    }
+
+    .bloque-qr-section {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 20px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid var(--color-gray-light);
+    }
+
+    .bloque-qr img {
+        width: 140px;
+        height: 140px;
+        border: 2px solid var(--color-gray-light);
+        border-radius: var(--radius-sm);
+    }
+
+    .bloque-main-info h3 {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 1.3rem;
+        color: var(--color-primary);
+        margin-bottom: 8px;
+    }
+
+    .estado-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border-radius: 20px;
+        color: white;
+        font-weight: 600;
+    }
+
+    .estado-badge.presentado {
+        background: linear-gradient(135deg, var(--color-warning), #d97706);
+    }
+
+    .estado-badge.encolado {
+        background: linear-gradient(135deg, var(--color-success), #059669);
+    }
+
+    .bft-badge {
+        background: linear-gradient(135deg, var(--color-primary), var(--color-section));
+        color: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-family: 'JetBrains Mono', monospace;
+        margin-left: 8px;
+    }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+
+    .detail-item {
+        padding: 12px;
+        background: var(--color-bg-light);
+        border-radius: var(--radius-sm);
+    }
+
+    .detail-item.highlight {
+        background: #fef3c7;
+        border-left: 4px solid var(--color-warning);
+    }
+
+    .detail-item.success {
+        background: #d1fae5;
+        border-left: 4px solid var(--color-success);
+    }
+
+    .detail-label {
+        font-size: 0.8rem;
+        color: var(--color-text-muted);
+        margin-bottom: 4px;
+    }
+
+    .detail-value {
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .detail-value.mono {
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .encolar-section {
+        margin-top: 24px;
+        padding: 20px;
+        background: var(--color-bg);
+        border-radius: var(--radius-md);
+        border: 2px dashed var(--color-success);
+    }
+
+    .encolar-section h4 {
+        color: var(--color-success);
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-group {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 20px;
+    }
+
+    /* Modal */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-overlay.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: var(--radius-lg);
+        max-width: 450px;
+        width: 90%;
+    }
+
+    .modal-header {
+        padding: 16px 24px;
+        background: linear-gradient(135deg, var(--color-success), #059669);
+        color: white;
+        font-weight: 600;
+    }
+
+    .modal-body {
+        padding: 24px;
+    }
+
+    .modal-footer {
+        padding: 16px 24px;
+        border-top: 1px solid var(--color-gray-light);
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+    }
+
+    @media print {
+        .app-header, .btn-group, .encolar-section { display: none !important; }
+        .detalle-container { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 24px;">
+    <a href="/" class="btn btn-secondary" style="margin-right: 12px;">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<div class="detalle-container">
+    <!-- Informacion del bloque -->
+    <div class="info-card">
+        <div class="info-header {% if bloque.estado == 'encolado' %}encolado{% endif %}">
+            <i class="bi bi-box-seam"></i> Informacion del Bloque
+        </div>
+        <div class="info-body">
+            <div class="bloque-qr-section">
+                <div class="bloque-qr">
+                    <img src="/api/bloques/{{ bloque.id }}/qr" alt="QR">
+                </div>
+                <div class="bloque-main-info">
+                    <h3>{{ bloque.codigo_qr }}</h3>
+                    <span class="estado-badge {{ bloque.estado }}">
+                        {% if bloque.estado == 'presentado' %}
+                        <i class="bi bi-hourglass-split"></i> Presentado
+                        {% else %}
+                        <i class="bi bi-check-circle"></i> Encolado
+                        {% endif %}
+                    </span>
+                    <span class="bft-badge">{{ bloque.bft }} BFT</span>
+                </div>
+            </div>
+
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <div class="detail-label">Fecha</div>
+                    <div class="detail-value">{{ bloque.fecha.strftime('%d/%m/%Y') if bloque.fecha else '-' }}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Turno</div>
+                    <div class="detail-value">{{ bloque.turno or '-' }}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Calidad</div>
+                    <div class="detail-value">{{ bloque.calidad or '-' }}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Secuencia</div>
+                    <div class="detail-value mono">{{ bloque.secuencia or '-' }}</div>
+                </div>
+                <div class="detail-item highlight">
+                    <div class="detail-label">Largo</div>
+                    <div class="detail-value mono" style="font-size: 1.3rem;">{{ bloque.largo }}"</div>
+                </div>
+                <div class="detail-item highlight">
+                    <div class="detail-label">Peso Presentado</div>
+                    <div class="detail-value mono" style="font-size: 1.3rem;">{{ bloque.peso }} kg</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Densidad Presentado</div>
+                    <div class="detail-value mono">{{ "%.4f"|format(bloque.densidad) if bloque.densidad else '-' }}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Fecha Creacion</div>
+                    <div class="detail-value">{{ bloque.created_at.strftime('%d/%m/%Y %H:%M') if bloque.created_at else '-' }}</div>
+                </div>
+
+                {% if bloque.estado == 'encolado' %}
+                <div class="detail-item success">
+                    <div class="detail-label">Peso Encolado</div>
+                    <div class="detail-value mono" style="font-size: 1.3rem; color: var(--color-success);">{{ bloque.peso_encolado }} kg</div>
+                </div>
+                <div class="detail-item success">
+                    <div class="detail-label">Densidad Encolado</div>
+                    <div class="detail-value mono" style="color: var(--color-success);">{{ "%.4f"|format(bloque.densidad_encolado) if bloque.densidad_encolado else '-' }}</div>
+                </div>
+                <div class="detail-item success" style="grid-column: span 2;">
+                    <div class="detail-label">Fecha Encolado</div>
+                    <div class="detail-value">{{ bloque.fecha_encolado.strftime('%d/%m/%Y %H:%M') if bloque.fecha_encolado else '-' }}</div>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if bloque.notas %}
+            <div style="margin-top: 20px; padding: 12px; background: var(--color-bg-light); border-radius: var(--radius-sm);">
+                <div class="detail-label">Notas</div>
+                <div>{{ bloque.notas }}</div>
+            </div>
+            {% endif %}
+
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="window.print()">
+                    <i class="bi bi-printer"></i> Imprimir QR
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Acciones -->
+    <div>
+        {% if bloque.estado == 'presentado' %}
+        <!-- Seccion para encolar -->
+        <div class="info-card">
+            <div class="info-header encolado">
+                <i class="bi bi-arrow-right-circle"></i> Encolar Bloque
+            </div>
+            <div class="info-body">
+                <p style="margin-bottom: 16px; color: var(--color-text-muted);">
+                    Ingrese el nuevo peso del bloque para moverlo a estado <strong>Encolado</strong>.
+                </p>
+
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label>Peso Actual</label>
+                    <input type="text" value="{{ bloque.peso }} kg" disabled style="background: var(--color-bg);">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label>Nuevo Peso (kg)</label>
+                    <input type="number" id="nuevo-peso" step="0.1" placeholder="Ej: 145.5" style="font-size: 1.2rem; padding: 14px;">
+                </div>
+
+                <div id="calc-preview" style="display: none; padding: 16px; background: linear-gradient(135deg, var(--color-success), #059669); color: white; border-radius: var(--radius-md); margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span>Nueva Densidad:</span>
+                        <strong id="nueva-densidad" style="font-family: 'JetBrains Mono', monospace;">0</strong>
+                    </div>
+                </div>
+
+                <button class="btn btn-success" style="width: 100%; padding: 16px; font-size: 1.1rem;" onclick="encolarBloque()">
+                    <i class="bi bi-check-circle"></i> Confirmar Encolar
+                </button>
+            </div>
+        </div>
+        {% else %}
+        <!-- Ya esta encolado -->
+        <div class="info-card">
+            <div class="info-header encolado">
+                <i class="bi bi-check-circle"></i> Bloque Encolado
+            </div>
+            <div class="info-body">
+                <div style="text-align: center; padding: 40px;">
+                    <i class="bi bi-check-circle" style="font-size: 4rem; color: var(--color-success);"></i>
+                    <h3 style="margin-top: 16px; color: var(--color-success);">Proceso Completado</h3>
+                    <p style="color: var(--color-text-muted);">
+                        Este bloque fue encolado el {{ bloque.fecha_encolado.strftime('%d/%m/%Y a las %H:%M') if bloque.fecha_encolado else 'N/A' }}
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Comparativa de densidades -->
+        {% if bloque.estado == 'encolado' %}
+        <div class="info-card" style="margin-top: 24px;">
+            <div class="info-header" style="background: linear-gradient(135deg, var(--color-primary), var(--color-section));">
+                <i class="bi bi-bar-chart"></i> Comparativa
+            </div>
+            <div class="info-body">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div style="text-align: center; padding: 20px; background: #fef3c7; border-radius: var(--radius-md);">
+                        <div style="font-size: 0.85rem; color: #d97706;">Presentado</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; font-family: 'JetBrains Mono', monospace;">{{ bloque.peso }} kg</div>
+                        <div style="font-size: 0.8rem; color: var(--color-text-muted);">Densidad: {{ "%.4f"|format(bloque.densidad) if bloque.densidad else '-' }}</div>
+                    </div>
+                    <div style="text-align: center; padding: 20px; background: #d1fae5; border-radius: var(--radius-md);">
+                        <div style="font-size: 0.85rem; color: #059669;">Encolado</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; font-family: 'JetBrains Mono', monospace;">{{ bloque.peso_encolado }} kg</div>
+                        <div style="font-size: 0.8rem; color: var(--color-text-muted);">Densidad: {{ "%.4f"|format(bloque.densidad_encolado) if bloque.densidad_encolado else '-' }}</div>
+                    </div>
+                </div>
+
+                {% set diff_peso = bloque.peso_encolado - bloque.peso %}
+                <div style="margin-top: 16px; text-align: center; padding: 12px; background: var(--color-bg); border-radius: var(--radius-sm);">
+                    <span style="color: var(--color-text-muted);">Diferencia de peso:</span>
+                    <strong style="font-family: 'JetBrains Mono', monospace; color: {% if diff_peso >= 0 %}var(--color-success){% else %}var(--color-danger){% endif %};">
+                        {% if diff_peso >= 0 %}+{% endif %}{{ "%.1f"|format(diff_peso) }} kg
+                    </strong>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const largo = {{ bloque.largo }};
+
+    // Calcular nueva densidad al cambiar peso
+    document.getElementById('nuevo-peso')?.addEventListener('input', function() {
+        const peso = parseFloat(this.value) || 0;
+
+        if (peso > 0) {
+            // Formula para encolado: Peso / ((((Largo+0.75) * 24.75 * 48.75 * 2.54^3) / 1000000))
+            const volumen = (((largo + 0.75) * 24.75 * 48.75 * Math.pow(2.54, 3)) / 1000000);
+            const densidad = peso / volumen;
+
+            document.getElementById('nueva-densidad').textContent = densidad.toFixed(4);
+            document.getElementById('calc-preview').style.display = 'block';
+        } else {
+            document.getElementById('calc-preview').style.display = 'none';
+        }
+    });
+
+    async function encolarBloque() {
+        const nuevoPeso = document.getElementById('nuevo-peso').value;
+
+        if (!nuevoPeso) {
+            alert('Por favor ingrese el nuevo peso');
+            return;
+        }
+
+        if (!confirm('Confirmar encolar este bloque con peso ' + nuevoPeso + ' kg?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/bloques/{{ bloque.id }}/encolar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ peso: nuevoPeso })
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                alert(result.mensaje);
+                location.reload();
+            } else {
+                alert('Error: ' + result.error);
+            }
+        } catch (error) {
+            alert('Error de conexion: ' + error.message);
+        }
+    }
+</script>
+{% endblock %}

@@ -2,7 +2,19 @@
   "permissions": {
     "allow": [
       "Bash(python -m py_compile:*)",
-      "Bash(del inventario.db)"
+      "Bash(del inventario.db)",
+      "Bash(python:*)",
+      "Bash(dir:*)",
+      "Bash(Remove-Item -Force \"c:\\\\Users\\\\nicol\\\\OneDrive\\\\Documents\\\\Dashboards Proyectos\\\\Sky Composite\\\\Codigo\\\\inventario_qr\\\\nul\" -ErrorAction SilentlyContinue)",
+      "Bash(Remove-Item -Force \"c:\\\\Users\\\\nicol\\\\OneDrive\\\\Documents\\\\Dashboards Proyectos\\\\Sky Composite\\\\Codigo\\\\inventario_qr\\\\tmpclaude-607a-cwd\" -ErrorAction SilentlyContinue)",
+      "Bash(Remove-Item:*)",
+      "Bash(Remove-Item -Force \"c:\\\\Users\\\\nicol\\\\OneDrive\\\\Documents\\\\Dashboards Proyectos\\\\Sky Composite\\\\Codigo\\\\inventario_qr\\\\cert.pem\" -ErrorAction SilentlyContinue)",
+      "Bash(Remove-Item -Force \"c:\\\\Users\\\\nicol\\\\OneDrive\\\\Documents\\\\Dashboards Proyectos\\\\Sky Composite\\\\Codigo\\\\inventario_qr\\\\key.pem\" -ErrorAction SilentlyContinue)",
+      "Bash(Remove-Item -Force \"c:\\\\Users\\\\nicol\\\\OneDrive\\\\Documents\\\\Dashboards Proyectos\\\\Sky Composite\\\\Codigo\\\\inventario_qr\\\\run_https.py\" -ErrorAction SilentlyContinue)",
+      "Bash(Remove-Item -Force \"c:\\\\Users\\\\nicol\\\\OneDrive\\\\Documents\\\\Dashboards Proyectos\\\\Sky Composite\\\\Codigo\\\\inventario_qr\\\\run_ngrok.py\" -ErrorAction SilentlyContinue)",
+      "Bash(Remove-Item -Force \"c:\\\\Users\\\\nicol\\\\OneDrive\\\\Documents\\\\Dashboards Proyectos\\\\Sky Composite\\\\Codigo\\\\inventario_qr\\\\run_tunnel.py\" -ErrorAction SilentlyContinue)",
+      "Bash(Remove-Item -Force \"c:\\\\Users\\\\nicol\\\\OneDrive\\\\Documents\\\\Dashboards Proyectos\\\\Sky Composite\\\\Codigo\\\\inventario_qr\\\\run_server.py\" -ErrorAction SilentlyContinue)",
+      "Bash(Write-Host \"Archivos eliminados\")"
     ]
   }
 }

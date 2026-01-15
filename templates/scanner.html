@@ -494,6 +494,8 @@ async function buscarCoche(codigo) {
         if (response.ok) {
             if (result.tipo === 'lote') {
                 mostrarLote(result.lote);
+            } else if (result.tipo === 'bloque') {
+                mostrarBloque(result.bloque);
             } else {
                 mostrarCoche(result.coche);
             }
@@ -572,7 +574,7 @@ function mostrarCoche(coche) {
         1: { id: 1, nombre: 'Madera Verde', color: '#22c55e' },
         2: { id: 2, nombre: 'Secado', color: '#f59e0b' },
         3: { id: 3, nombre: 'Stock Secado', color: '#3b82f6' },
-        4: { id: 4, nombre: 'Ingresa a Taller', color: '#8b5cf6' }
+        4: { id: 4, nombre: 'Ingreso a Taller', color: '#8b5cf6' }
     };
 
     const ordenActual = coche.etapa_actual.orden;
@@ -595,8 +597,21 @@ function mostrarCoche(coche) {
                 </p>
             </div>
         `;
+    } else if (ordenActual === 3) {
+        // Stock Secado: coches deben asignarse a lote de produccion para ir a Taller
+        siguienteEtapaDiv.innerHTML = `
+            <div style="padding: 16px; background: #eff6ff; border-radius: var(--radius-sm); text-align: center;">
+                <i class="bi bi-info-circle" style="color: var(--color-primary); font-size: 1.5rem;"></i>
+                <p style="margin-top: 8px; color: var(--color-text);">
+                    Este coche debe ser asignado a un <strong>Lote de Producción</strong> para continuar al Taller.
+                </p>
+                <a href="/produccion" class="btn btn-primary" style="margin-top: 12px;">
+                    <i class="bi bi-gear"></i> Ir a Producción
+                </a>
+            </div>
+        `;
     } else {
-        // Mostrar boton para siguiente etapa
+        // Mostrar boton para siguiente etapa (solo etapas 1, 2, 3)
         const siguienteEtapa = etapasOrden[siguienteOrden];
 
         // Si la siguiente es Secado (orden 2), mostrar selector de camara
@@ -623,6 +638,90 @@ function mostrarCoche(coche) {
     document.getElementById('resultado-panel').scrollIntoView({ behavior: 'smooth' });
 }
 
+function mostrarBloque(bloque) {
+    cocheActual = null; // No es un coche
+    document.getElementById('error-panel').style.display = 'none';
+    document.getElementById('resultado-panel').style.display = 'block';
+
+    // Cambiar header segun estado
+    const header = document.getElementById('resultado-header');
+    if (bloque.estado === 'encolado') {
+        header.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+        document.getElementById('resultado-titulo').textContent = 'Bloque Encolado';
+    } else {
+        header.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
+        document.getElementById('resultado-titulo').textContent = 'Bloque Presentado';
+    }
+
+    // Codigo
+    document.getElementById('coche-codigo').textContent = bloque.codigo_qr;
+    document.getElementById('coche-codigo').style.color = bloque.estado === 'encolado' ? '#10b981' : '#f59e0b';
+
+    // Etapa actual
+    const etapaSpan = document.getElementById('etapa-actual');
+    etapaSpan.textContent = bloque.estado === 'encolado' ? 'Encolado' : 'Presentado';
+    etapaSpan.style.backgroundColor = bloque.estado === 'encolado' ? '#10b981' : '#f59e0b';
+
+    // BFT
+    document.getElementById('coche-bft').textContent = (bloque.bft || 0) + ' BFT';
+
+    // Info grid
+    let densidadHtml = '';
+    if (bloque.estado === 'encolado') {
+        densidadHtml = `
+            <div class="coche-info-item" style="background: #d1fae5;">
+                <div class="coche-info-label" style="color: #059669;">Peso Encolado</div>
+                <div class="coche-info-value" style="color: #059669;">${bloque.peso_encolado || bloque.peso} kg</div>
+            </div>
+            <div class="coche-info-item" style="background: #d1fae5;">
+                <div class="coche-info-label" style="color: #059669;">Densidad Encolado</div>
+                <div class="coche-info-value" style="color: #059669;">${bloque.densidad_encolado || '-'}</div>
+            </div>
+            <div class="coche-info-item" style="grid-column: span 2;">
+                <div class="coche-info-label">Fecha Encolado</div>
+                <div class="coche-info-value">${bloque.fecha_encolado || '-'}</div>
+            </div>
+        `;
+    }
+
+    document.getElementById('coche-info').innerHTML = `
+        <div class="coche-info-item">
+            <div class="coche-info-label">Largo</div>
+            <div class="coche-info-value" style="font-family: 'JetBrains Mono', monospace; font-size: 1.2rem;">${bloque.largo}"</div>
+        </div>
+        <div class="coche-info-item">
+            <div class="coche-info-label">Peso Presentado</div>
+            <div class="coche-info-value">${bloque.peso} kg</div>
+        </div>
+        <div class="coche-info-item">
+            <div class="coche-info-label">Turno</div>
+            <div class="coche-info-value">${bloque.turno || 'Diurno'}</div>
+        </div>
+        <div class="coche-info-item">
+            <div class="coche-info-label">Calidad</div>
+            <div class="coche-info-value">${bloque.calidad || 'Estandar'}</div>
+        </div>
+        <div class="coche-info-item">
+            <div class="coche-info-label">Secuencia</div>
+            <div class="coche-info-value" style="font-family: 'JetBrains Mono', monospace;">${bloque.secuencia || '-'}</div>
+        </div>
+        <div class="coche-info-item">
+            <div class="coche-info-label">Densidad Presentado</div>
+            <div class="coche-info-value">${bloque.densidad || '-'}</div>
+        </div>
+        ${densidadHtml}
+    `;
+
+    // Link a detalle
+    document.getElementById('btn-ver-detalle').href = '/bloque/' + bloque.id;
+
+    // Ocultar seccion de mover (los bloques no se mueven desde aqui)
+    document.querySelector('.mover-section').style.display = 'none';
+
+    // Scroll al resultado
+    document.getElementById('resultado-panel').scrollIntoView({ behavior: 'smooth' });
+}
+
 function mostrarLote(lote) {
     cocheActual = null; // No es un coche
     document.getElementById('error-panel').style.display = 'none';
@@ -639,7 +738,7 @@ function mostrarLote(lote) {
 
     // Etapa actual (los lotes estan en Taller)
     const etapaSpan = document.getElementById('etapa-actual');
-    etapaSpan.textContent = 'Ingresa a Taller';
+    etapaSpan.textContent = 'Ingreso a Taller';
     etapaSpan.style.backgroundColor = '#6f42c1';
 
     // BFT

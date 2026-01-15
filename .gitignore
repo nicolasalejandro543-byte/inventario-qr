@@ -14,10 +14,12 @@ ENV/
 *.sqlite
 *.sqlite3
 inventario.db
+instance/
 
 # Variables de entorno
 .env
 .env.local
+.env.production
 
 # IDE
 .vscode/
@@ -34,3 +36,16 @@ Thumbs.db
 
 # QR generados temporales
 qr_codes/
+
+# Certificados SSL (nunca subir)
+*.pem
+cert.pem
+key.pem
+
+# Archivos temporales de Claude Code
+tmpclaude-*
+.claude/
+
+# Archivos de Windows
+nul
+*.tmp

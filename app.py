@@ -2026,6 +2026,106 @@ def listar_bloques_encolados_disponibles():
     return jsonify(bloques_disponibles)
 
 
+@app.route('/api/reset-database', methods=['POST'])
+def reset_database():
+    """Resetea la base de datos - SOLO PARA DESARROLLO."""
+    data = request.json
+    password = data.get('password', '')
+
+    # Contraseña de seguridad
+    if password != 'resetdb2024':
+        return jsonify({'error': 'Contraseña incorrecta'}), 403
+
+    try:
+        # Eliminar todos los datos en orden correcto (por dependencias)
+        db.session.execute(contenedor_bloques.delete())
+        db.session.execute(lote_coches.delete())
+        Movimiento.query.delete()
+        ProcesoLote.query.delete()
+        Bloque.query.delete()
+        Contenedor.query.delete()
+        Lote.query.delete()
+        Coche.query.delete()
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'mensaje': 'Base de datos reseteada correctamente. Las etapas se mantienen.'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/reset-db')
+def reset_db_page():
+    """Página para resetear la base de datos."""
+    return '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Reset Database</title>
+        <style>
+            body { font-family: Arial; max-width: 500px; margin: 50px auto; padding: 20px; }
+            .warning { background: #fee; border: 2px solid #f00; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+            input { width: 100%; padding: 10px; margin: 10px 0; box-sizing: border-box; }
+            button { background: #dc3545; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; width: 100%; }
+            button:hover { background: #c82333; }
+            .result { margin-top: 20px; padding: 15px; border-radius: 8px; }
+            .success { background: #d4edda; color: #155724; }
+            .error { background: #f8d7da; color: #721c24; }
+        </style>
+    </head>
+    <body>
+        <h1>⚠️ Reset Database</h1>
+        <div class="warning">
+            <strong>ADVERTENCIA:</strong> Esta acción eliminará TODOS los datos:
+            <ul>
+                <li>Coches</li>
+                <li>Lotes</li>
+                <li>Bloques</li>
+                <li>Contenedores</li>
+                <li>Movimientos</li>
+                <li>Procesos/Plantillas</li>
+            </ul>
+            <p>Las etapas (Madera Verde, Secado, etc.) se mantienen.</p>
+        </div>
+        <input type="password" id="password" placeholder="Contraseña: resetdb2024">
+        <button onclick="resetDB()">🗑️ BORRAR TODA LA BASE DE DATOS</button>
+        <div id="result"></div>
+        <script>
+            async function resetDB() {
+                const password = document.getElementById('password').value;
+                if (!password) { alert('Ingrese la contraseña'); return; }
+                if (!confirm('¿ESTÁ SEGURO? Esta acción NO se puede deshacer.')) return;
+
+                try {
+                    const response = await fetch('/api/reset-database', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ password: password })
+                    });
+                    const data = await response.json();
+                    const resultDiv = document.getElementById('result');
+
+                    if (data.success) {
+                        resultDiv.className = 'result success';
+                        resultDiv.innerHTML = '✅ ' + data.mensaje + '<br><br><a href="/">Ir al Dashboard</a>';
+                    } else {
+                        resultDiv.className = 'result error';
+                        resultDiv.innerHTML = '❌ Error: ' + data.error;
+                    }
+                } catch (error) {
+                    document.getElementById('result').className = 'result error';
+                    document.getElementById('result').innerHTML = '❌ Error: ' + error.message;
+                }
+            }
+        </script>
+    </body>
+    </html>
+    '''
+
+
 if __name__ == '__main__':
     # Solo para desarrollo local
     port = int(os.environ.get('PORT', 5000))

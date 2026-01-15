@@ -1653,6 +1653,33 @@ def editar_lote_finalizado(lote_id):
     })
 
 
+@app.route('/api/lotes/<int:lote_id>/reabrir', methods=['POST'])
+def reabrir_lote_finalizado(lote_id):
+    """Reabre un lote finalizado para editarlo en producción."""
+    data = request.json
+    password = data.get('password', '')
+
+    # Verificar contraseña
+    if password != 'admin1208':
+        return jsonify({'error': 'Contraseña incorrecta'}), 403
+
+    lote = Lote.query.get_or_404(lote_id)
+
+    if lote.estado != 'finalizado':
+        return jsonify({'error': 'Este lote no está finalizado'}), 400
+
+    # Cambiar estado a en_proceso para poder editarlo
+    lote.estado = 'en_proceso'
+    lote.fecha_finalizado = None
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'mensaje': f'Lote {lote.codigo_qr} reabierto para edición',
+        'redirect_url': f'/produccion/{lote.id}'
+    })
+
+
 # ==================== CONTENEDORES (EMBARQUE) ====================
 
 @app.route('/contenedores')

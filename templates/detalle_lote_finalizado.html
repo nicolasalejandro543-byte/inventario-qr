@@ -436,35 +436,6 @@
         color: #f59e0b;
         margin-bottom: 16px;
     }
-
-    .edit-step {
-        display: none;
-    }
-
-    .edit-step.active {
-        display: block;
-    }
-
-    .password-step.hidden {
-        display: none;
-    }
-
-    .desperdicio-preview {
-        background: var(--color-bg);
-        padding: 12px;
-        border-radius: var(--radius-sm);
-        text-align: center;
-        margin-top: 8px;
-    }
-
-    .desperdicio-preview-value {
-        font-size: 1.5rem;
-        font-weight: 700;
-        font-family: 'JetBrains Mono', monospace;
-    }
-
-    .desperdicio-preview-value.good { color: #28a745; }
-    .desperdicio-preview-value.bad { color: #ef4444; }
 </style>
 {% endblock %}
 
@@ -609,62 +580,31 @@
 <div class="modal-editar-overlay" id="modal-editar">
     <div class="modal-editar">
         <div class="modal-editar-header">
-            <span><i class="bi bi-pencil"></i> Editar Lote Finalizado</span>
+            <span><i class="bi bi-pencil"></i> Reabrir Lote para Edición</span>
             <button onclick="cerrarModalEditar()" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer;">
                 <i class="bi bi-x"></i>
             </button>
         </div>
         <div class="modal-editar-body">
-            <!-- Paso 1: Contraseña -->
             <div class="password-step" id="password-step">
                 <i class="bi bi-shield-lock"></i>
                 <h3 style="margin-bottom: 8px;">Acceso Restringido</h3>
                 <p style="color: var(--color-text-muted); margin-bottom: 20px;">
-                    Ingrese la contraseña de administrador para editar este lote finalizado.
+                    Ingrese la contraseña de administrador para reabrir este lote y editarlo en la pantalla de producción.
                 </p>
                 <div class="form-group">
                     <label>Contraseña</label>
-                    <input type="password" id="edit-password" placeholder="Ingrese la contraseña" onkeypress="if(event.key==='Enter') verificarPassword()">
+                    <input type="password" id="edit-password" placeholder="Ingrese la contraseña" onkeypress="if(event.key==='Enter') reabrirLote()">
                 </div>
                 <p id="password-error" style="color: var(--color-danger); display: none; margin-top: 8px;">
                     <i class="bi bi-exclamation-circle"></i> Contraseña incorrecta
                 </p>
             </div>
-
-            <!-- Paso 2: Formulario de edicion -->
-            <div class="edit-step" id="edit-step">
-                <div class="form-group">
-                    <label>BFT Total del Lote (no editable)</label>
-                    <input type="text" value="{{ '%.1f'|format(lote.total_bft) }}" disabled style="background: #f0f0f0;">
-                </div>
-                <div class="form-group">
-                    <label>BFT Usado</label>
-                    <input type="number" id="edit-bft-usado" step="0.1" value="{{ '%.1f'|format(lote.bft_usado or 0) }}" oninput="calcularDesperdicioPreview()">
-                    <div class="desperdicio-preview">
-                        <div style="font-size: 0.85rem; color: var(--color-text-muted);">Desperdicio calculado:</div>
-                        <div class="desperdicio-preview-value" id="desperdicio-preview">0%</div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Turno</label>
-                    <select id="edit-turno">
-                        <option value="Diurno" {% if lote.turno == 'Diurno' %}selected{% endif %}>Diurno</option>
-                        <option value="Nocturno" {% if lote.turno == 'Nocturno' %}selected{% endif %}>Nocturno</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Notas</label>
-                    <textarea id="edit-notas" rows="3" placeholder="Notas adicionales...">{{ lote.notas or '' }}</textarea>
-                </div>
-            </div>
         </div>
         <div class="modal-editar-footer">
             <button class="btn btn-secondary" onclick="cerrarModalEditar()">Cancelar</button>
-            <button class="btn btn-primary" id="btn-password-next" onclick="verificarPassword()">
-                <i class="bi bi-arrow-right"></i> Continuar
-            </button>
-            <button class="btn btn-success" id="btn-guardar-edicion" onclick="guardarEdicion()" style="display: none;">
-                <i class="bi bi-check"></i> Guardar Cambios
+            <button class="btn btn-primary" onclick="reabrirLote()">
+                <i class="bi bi-arrow-right"></i> Reabrir y Editar
             </button>
         </div>
     </div>
@@ -809,9 +749,6 @@
 {% block scripts %}
 <script>
     const LOTE_ID = {{ lote.id }};
-    const LOTE_BFT_TOTAL = {{ lote.total_bft }};
-    let passwordVerificada = false;
-    let passwordGuardada = '';
 
     function imprimirReporte() {
         window.print();
@@ -820,23 +757,16 @@
     // ==================== MODAL EDITAR ====================
     function abrirModalEditar() {
         document.getElementById('modal-editar').classList.add('active');
-        document.getElementById('edit-password').focus();
-        // Reset al paso de contraseña
-        document.getElementById('password-step').classList.remove('hidden');
-        document.getElementById('edit-step').classList.remove('active');
-        document.getElementById('btn-password-next').style.display = 'inline-flex';
-        document.getElementById('btn-guardar-edicion').style.display = 'none';
-        document.getElementById('password-error').style.display = 'none';
         document.getElementById('edit-password').value = '';
-        passwordVerificada = false;
-        passwordGuardada = '';
+        document.getElementById('password-error').style.display = 'none';
+        document.getElementById('edit-password').focus();
     }
 
     function cerrarModalEditar() {
         document.getElementById('modal-editar').classList.remove('active');
     }
 
-    async function verificarPassword() {
+    async function reabrirLote() {
         const password = document.getElementById('edit-password').value;
 
         if (!password) {
@@ -844,13 +774,13 @@
             return;
         }
 
-        // Verificar contraseña haciendo una petición de prueba al servidor
         try {
-            const response = await fetch(`/api/lotes/${LOTE_ID}/editar-finalizado`, {
+            const response = await fetch(`/api/lotes/${LOTE_ID}/reabrir`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ password: password })
             });
+            const data = await response.json();
 
             if (response.status === 403) {
                 document.getElementById('password-error').style.display = 'block';
@@ -859,65 +789,8 @@
                 return;
             }
 
-            // Contraseña correcta - pasar al formulario de edicion
-            passwordVerificada = true;
-            passwordGuardada = password;
-            document.getElementById('password-step').classList.add('hidden');
-            document.getElementById('edit-step').classList.add('active');
-            document.getElementById('btn-password-next').style.display = 'none';
-            document.getElementById('btn-guardar-edicion').style.display = 'inline-flex';
-            calcularDesperdicioPreview();
-        } catch (error) {
-            alert('Error de conexion: ' + error.message);
-        }
-    }
-
-    function calcularDesperdicioPreview() {
-        const bftUsado = parseFloat(document.getElementById('edit-bft-usado').value) || 0;
-        const desperdicioBft = LOTE_BFT_TOTAL - bftUsado;
-        const desperdicioPct = LOTE_BFT_TOTAL > 0 ? (desperdicioBft / LOTE_BFT_TOTAL) * 100 : 0;
-
-        const previewEl = document.getElementById('desperdicio-preview');
-        previewEl.textContent = desperdicioPct.toFixed(1) + '%';
-        previewEl.className = 'desperdicio-preview-value ' + (desperdicioPct < 18 ? 'good' : 'bad');
-    }
-
-    async function guardarEdicion() {
-        if (!passwordVerificada) {
-            alert('Debe verificar la contraseña primero');
-            return;
-        }
-
-        const bftUsado = parseFloat(document.getElementById('edit-bft-usado').value);
-        const turno = document.getElementById('edit-turno').value;
-        const notas = document.getElementById('edit-notas').value;
-
-        if (isNaN(bftUsado) || bftUsado < 0) {
-            alert('Por favor ingrese un valor valido para BFT Usado');
-            return;
-        }
-
-        if (bftUsado > LOTE_BFT_TOTAL) {
-            alert('El BFT Usado no puede ser mayor al BFT Total del lote');
-            return;
-        }
-
-        try {
-            const response = await fetch(`/api/lotes/${LOTE_ID}/editar-finalizado`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    password: passwordGuardada,
-                    bft_usado: bftUsado,
-                    turno: turno,
-                    notas: notas
-                })
-            });
-            const data = await response.json();
-
             if (data.success) {
-                alert(data.mensaje);
-                window.location.reload();
+                window.location.href = data.redirect_url;
             } else {
                 alert('Error: ' + data.error);
             }

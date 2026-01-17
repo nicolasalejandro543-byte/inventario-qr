@@ -2243,6 +2243,14 @@ function showResultMessage(message, type) {
     resultMessage.className = 'result-message ' + type;
 }
 
+// Helper para formatear info de plantillas
+function formatPlantillaInfoPrint(largo, espesor, plantillas, num) {
+    if (!largo || !espesor || !plantillas) return '';
+    // Formula: ROUNDDOWN((Largo * Espesor * Plantillas * 45) / 12, 0)
+    const bft = Math.floor((largo * espesor * plantillas * 45) / 12);
+    return `<p style="font-size:10px;margin:2px 0;"><strong>${num}:</strong> ${largo}' x ${espesor}" x ${plantillas} = ${bft} BFT</p>`;
+}
+
 // Funcion para imprimir QRs seleccionados
 function imprimirQRsSeleccionados() {
     if (selectedCoches.size === 0) {
@@ -2250,35 +2258,127 @@ function imprimirQRsSeleccionados() {
         return;
     }
 
-    const printGrid = document.getElementById('qr-print-grid');
-    let html = '';
+    let cardsHtml = '';
 
     selectedCoches.forEach(cocheId => {
         const card = document.querySelector(`.coche-card[data-coche-id="${cocheId}"]`);
         if (card) {
             const codigo = card.dataset.codigoQr;
-            const proveedor = card.querySelector('.coche-detail-value')?.textContent || '-';
+            const proveedor = card.dataset.proveedor || '-';
+            const viaje = card.dataset.viaje || '-';
             const bftElement = card.querySelector('.coche-bft');
             const bft = bftElement ? bftElement.textContent.replace(' BFT', '') : '0';
 
-            html += `
-                <div style="border: 2px solid #000; border-radius: 8px; padding: 20px; text-align: center; page-break-inside: avoid;">
-                    <div style="font-family: monospace; font-weight: bold; font-size: 1.1rem; margin-bottom: 10px;">${codigo}</div>
-                    <img src="/api/coches/${cocheId}/qr" alt="QR" style="width: 120px; height: 120px; margin: 10px auto;">
-                    <div style="border-top: 1px solid #ccc; margin-top: 10px; padding-top: 10px; text-align: left; font-size: 0.85rem;">
-                        <div><strong>BFT:</strong> ${bft}</div>
-                        <div><strong>Etapa:</strong> ${etapaActual.nombre}</div>
+            // Obtener datos de plantillas
+            const espesor1 = card.dataset.espesor1;
+            const largo1 = card.dataset.largo1;
+            const plantillas1 = card.dataset.plantillas1;
+            const espesor2 = card.dataset.espesor2;
+            const largo2 = card.dataset.largo2;
+            const plantillas2 = card.dataset.plantillas2;
+            const espesor3 = card.dataset.espesor3;
+            const largo3 = card.dataset.largo3;
+            const plantillas3 = card.dataset.plantillas3;
+
+            // Formatear info de plantillas
+            const plantilla1Html = formatPlantillaInfoPrint(largo1, espesor1, plantillas1, 1);
+            const plantilla2Html = formatPlantillaInfoPrint(largo2, espesor2, plantillas2, 2);
+            const plantilla3Html = formatPlantillaInfoPrint(largo3, espesor3, plantillas3, 3);
+            const tieneAlgunaPlantilla = plantilla1Html || plantilla2Html || plantilla3Html;
+
+            cardsHtml += `
+                <div class="qr-card">
+                    <div class="qr-card-codigo">${codigo}</div>
+                    <img src="/api/coches/${cocheId}/qr" alt="QR ${codigo}">
+                    <div class="qr-card-datos">
+                        <p><strong>Proveedor:</strong> ${proveedor}</p>
+                        <p><strong>Viaje:</strong> ${viaje}</p>
+                        ${tieneAlgunaPlantilla ? `
+                        <div style="border-top:1px dashed #ccc;margin:5px 0;padding-top:5px;">
+                            <p style="font-size:10px;margin-bottom:3px;"><strong>Plantillas (Largo x Espesor x Cant):</strong></p>
+                            ${plantilla1Html}
+                            ${plantilla2Html}
+                            ${plantilla3Html}
+                        </div>
+                        ` : ''}
+                        <p style="font-weight:bold;font-size:12px;margin-top:5px;"><strong>Total BFT:</strong> ${bft}</p>
                     </div>
                 </div>
             `;
         }
     });
 
-    printGrid.innerHTML = html;
-
-    setTimeout(() => {
-        window.print();
-    }, 500);
+    // Abrir ventana de impresión con estilos similares a nuevo_coche.html
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>Etiquetas QR - Coches</title>
+            <style>
+                body {
+                    font-family: 'Segoe UI', sans-serif;
+                    padding: 10px;
+                    margin: 0;
+                }
+                .qr-grid {
+                    display: grid;
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 15px;
+                }
+                .qr-card {
+                    border: 2px solid #333;
+                    border-radius: 8px;
+                    padding: 10px;
+                    text-align: center;
+                    page-break-inside: avoid;
+                }
+                .qr-card img {
+                    max-width: 100px;
+                    margin: 5px auto;
+                    display: block;
+                }
+                .qr-card-codigo {
+                    font-family: monospace;
+                    font-size: 16px;
+                    font-weight: bold;
+                    margin-bottom: 5px;
+                }
+                .qr-card-datos {
+                    text-align: left;
+                    font-size: 10px;
+                    border-top: 1px solid #ccc;
+                    padding-top: 5px;
+                    margin-top: 5px;
+                }
+                .qr-card-datos p {
+                    margin: 2px 0;
+                }
+                @media print {
+                    body { padding: 0; }
+                    .qr-grid {
+                        grid-template-columns: repeat(2, 1fr);
+                    }
+                    .qr-card {
+                        page-break-inside: avoid;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="qr-grid">
+                ${cardsHtml}
+            </div>
+            <script>
+                window.onload = function() {
+                    setTimeout(function() {
+                        window.print();
+                    }, 500);
+                };
+            </script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
 }
 
 // Cerrar modal al hacer clic fuera

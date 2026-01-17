@@ -1558,6 +1558,17 @@
                     <input type="text" id="print-responsable" placeholder="Nombre del responsable">
                 </div>
 
+                <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="print-fecha-inicio"><i class="bi bi-calendar-event"></i> Fecha Inicial:</label>
+                        <input type="date" id="print-fecha-inicio" style="width: 100%; padding: 10px; border: 2px solid var(--color-gray-light); border-radius: var(--radius-sm);">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="print-fecha-fin"><i class="bi bi-calendar-check"></i> Fecha Final:</label>
+                        <input type="date" id="print-fecha-fin" style="width: 100%; padding: 10px; border: 2px solid var(--color-gray-light); border-radius: var(--radius-sm);">
+                    </div>
+                </div>
+
                 <div class="form-group" style="margin-bottom: 16px;">
                     <label for="print-observaciones"><i class="bi bi-chat-text"></i> Observaciones:</label>
                     <textarea id="print-observaciones" rows="3" placeholder="Observaciones generales del lote..." style="width: 100%; padding: 10px; border: 2px solid var(--color-gray-light); border-radius: var(--radius-sm); font-family: inherit; resize: vertical;"></textarea>
@@ -2532,12 +2543,14 @@ function confirmarImprimirSecado() {
     const loteSecado = document.getElementById('print-lote').value;
     const responsable = document.getElementById('print-responsable').value.trim();
     const observaciones = document.getElementById('print-observaciones').value.trim();
+    const fechaInicio = document.getElementById('print-fecha-inicio').value;
+    const fechaFin = document.getElementById('print-fecha-fin').value;
 
     closeImprimirSecadoModal();
-    imprimirLoteSecado(camara, loteSecado, responsable, observaciones);
+    imprimirLoteSecado(camara, loteSecado, responsable, observaciones, fechaInicio, fechaFin);
 }
 
-async function imprimirLoteSecado(camara, loteSecado, responsable = '', observaciones = '') {
+async function imprimirLoteSecado(camara, loteSecado, responsable = '', observaciones = '', fechaInicio = '', fechaFin = '') {
     try {
         const response = await fetch(`/api/secado/camara/${camara}/lote/${loteSecado}`);
         const data = await response.json();
@@ -2652,11 +2665,11 @@ async function imprimirLoteSecado(camara, loteSecado, responsable = '', observac
 
                 <div class="info-row">
                     <div class="info-cell" style="width: 25%;"><span class="info-label">Secadora #:</span> ${camara}</div>
-                    <div class="info-cell" style="width: 25%;"><span class="info-label">Fecha inicial:</span> ${data.fecha_inicial}</div>
+                    <div class="info-cell" style="width: 25%;"><span class="info-label">Fecha inicial:</span> ${fechaInicio || data.fecha_inicial || '-'}</div>
                 </div>
                 <div class="info-row" style="border-top: none;">
                     <div class="info-cell" style="width: 25%;"><span class="info-label">Lote #:</span> ${loteSecado}</div>
-                    <div class="info-cell" style="width: 25%;"><span class="info-label">Fecha final:</span> ${data.fecha_final}</div>
+                    <div class="info-cell" style="width: 25%;"><span class="info-label">Fecha final:</span> ${fechaFin || data.fecha_final || '-'}</div>
                 </div>
 
                 <table>

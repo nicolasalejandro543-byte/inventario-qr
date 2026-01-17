@@ -4,7 +4,13 @@ from datetime import datetime
 from functools import wraps
 from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, session
 from models import db, Etapa, Coche, Movimiento, Lote, Bloque, ProcesoLote, Contenedor, contenedor_bloques, lote_coches, init_etapas, ESPESORES, LARGOS, LARGOS_PRODUCCION, LARGOS_CONTENEDOR
-from qr_service import generar_codigo_coche_consecutivo, generar_codigo_lote, generar_codigo_bloque, generar_codigo_contenedor, generar_imagen_qr
+from qr_service import (
+    generar_codigo_coche_consecutivo, extraer_numero_coche,
+    generar_codigo_lote_consecutivo, extraer_numero_lote,
+    generar_codigo_bloque_consecutivo, extraer_numero_bloque,
+    generar_codigo_contenedor_consecutivo, extraer_numero_contenedor,
+    generar_imagen_qr
+)
 from config import get_config
 import io
 
@@ -603,29 +609,13 @@ def crear_coche():
     """Crea un nuevo coche. Siempre inicia en Madera Verde (etapa 1)."""
     data = request.get_json()
 
-    # Generar código consecutivo (COC-YYYYMMDD-AAA001, AAA002... AAB001...)
-    # Buscar el número secuencial más alto existente
+    # Generar codigo consecutivo (COC-YYYYMMDD-AAAA0001...)
+    # Buscar el numero secuencial mas alto existente
     siguiente_num = 1
-    coches = Coche.query.all()
-    for c in coches:
-        # Buscar formato nuevo: COC-YYYYMMDD-AAA001
-        match = re.search(r'COC-\d{8}-([A-Z]{3})(\d{3})', c.codigo_qr)
-        if match:
-            letras = match.group(1)
-            numero = int(match.group(2))
-            # Convertir letras a grupo: AAA=0, AAB=1, AAC=2... ABA=26, ABB=27...
-            grupo = (ord(letras[0]) - 65) * 26 * 26 + (ord(letras[1]) - 65) * 26 + (ord(letras[2]) - 65)
-            # Calcular número secuencial total
-            num_secuencial = grupo * 999 + numero
-            if num_secuencial >= siguiente_num:
-                siguiente_num = num_secuencial + 1
-        else:
-            # Buscar formato antiguo: FJA001 o COC-YYYYMMDD-XXXXXX
-            match_old = re.search(r'FJA(\d+)', c.codigo_qr)
-            if match_old:
-                num = int(match_old.group(1))
-                if num >= siguiente_num:
-                    siguiente_num = num + 1
+    for c in Coche.query.all():
+        num = extraer_numero_coche(c.codigo_qr)
+        if num and num >= siguiente_num:
+            siguiente_num = num + 1
 
     codigo_qr = generar_codigo_coche_consecutivo(siguiente_num)
 
@@ -1367,8 +1357,19 @@ def crear_lote():
             'errores': errores
         }), 400
 
-    # Generar código único para el lote
-    codigo_lote = generar_codigo_lote()
+    # Generar codigo consecutivo para el lote (PRO-YYYYMMDD-AAAA0001...)
+    siguiente_num = 1
+    for l in Lote.query.all():
+        num = extraer_numero_lote(l.codigo_qr)
+        if num and num >= siguiente_num:
+            siguiente_num = num + 1
+
+    codigo_lote = generar_codigo_lote_consecutivo(siguiente_num)
+
+    # Verificar unicidad
+    while Lote.query.filter_by(codigo_qr=codigo_lote).first():
+        siguiente_num += 1
+        codigo_lote = generar_codigo_lote_consecutivo(siguiente_num)
 
     # Crear el lote
     lote = Lote(
@@ -1589,8 +1590,19 @@ def crear_bloque():
     if not peso:
         return jsonify({'error': 'Se requiere el peso del bloque'}), 400
 
-    # Generar código QR único
-    codigo_qr = generar_codigo_bloque()
+    # Generar codigo consecutivo para el bloque (BLQ-YYYYMMDD-AAAA0001...)
+    siguiente_num = 1
+    for b in Bloque.query.all():
+        num = extraer_numero_bloque(b.codigo_qr)
+        if num and num >= siguiente_num:
+            siguiente_num = num + 1
+
+    codigo_qr = generar_codigo_bloque_consecutivo(siguiente_num)
+
+    # Verificar unicidad
+    while Bloque.query.filter_by(codigo_qr=codigo_qr).first():
+        siguiente_num += 1
+        codigo_qr = generar_codigo_bloque_consecutivo(siguiente_num)
 
     # Parsear fecha si viene
     fecha = data.get('fecha')
@@ -2044,22 +2056,19 @@ def crear_contenedor():
     """Crea un nuevo contenedor de embarque."""
     data = request.get_json()
 
-    # Buscar el número secuencial más alto usado en códigos existentes
+    # Generar codigo consecutivo para el contenedor (CON-YYYYMMDD-AAAA0001...)
     siguiente_num = 1
-    contenedores = Contenedor.query.all()
-    for c in contenedores:
-        match = re.search(r'SC-B-000-(\d+)', c.codigo)
-        if match:
-            num = int(match.group(1))
-            if num >= siguiente_num:
-                siguiente_num = num + 1
+    for c in Contenedor.query.all():
+        num = extraer_numero_contenedor(c.codigo)
+        if num and num >= siguiente_num:
+            siguiente_num = num + 1
 
-    codigo = generar_codigo_contenedor(siguiente_num)
+    codigo = generar_codigo_contenedor_consecutivo(siguiente_num)
 
-    # Verificar que el código no exista (por seguridad)
+    # Verificar unicidad
     while Contenedor.query.filter_by(codigo=codigo).first():
         siguiente_num += 1
-        codigo = generar_codigo_contenedor(siguiente_num)
+        codigo = generar_codigo_contenedor_consecutivo(siguiente_num)
 
     # Parsear fechas si vienen
     fecha_carga = None

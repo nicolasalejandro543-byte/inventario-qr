@@ -171,6 +171,25 @@
         color: var(--color-primary);
     }
 
+    .coche-pendiente-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-edit {
+        background: var(--color-warning);
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        font-size: 0.85rem;
+    }
+
+    .btn-edit:hover {
+        opacity: 0.9;
+    }
+
     .btn-remove {
         background: var(--color-danger);
         color: white;
@@ -437,9 +456,9 @@
                 <button type="button" class="btn btn-primary" onclick="imprimirTodos()">
                     <i class="bi bi-printer"></i> Imprimir Todos
                 </button>
-                <a href="/nuevo" class="btn btn-success">
-                    <i class="bi bi-plus-circle"></i> Crear Más Coches
-                </a>
+                <button type="button" class="btn btn-warning" onclick="regresarAlFormulario()">
+                    <i class="bi bi-arrow-left"></i> Regresar
+                </button>
                 <a href="/" class="btn btn-secondary">
                     <i class="bi bi-grid-3x3-gap"></i> Ir al Resumen
                 </a>
@@ -454,6 +473,7 @@
 // Cola de coches pendientes
 let cochesPendientes = [];
 let cochesCreados = [];
+let ultimoCocheAgregado = null; // Para detectar duplicados
 
 function calcularBFT() {
     let total = 0;
@@ -496,6 +516,19 @@ function obtenerDatosFormulario() {
     };
 }
 
+function sonDatosIguales(datos1, datos2) {
+    if (!datos1 || !datos2) return false;
+    return datos1.espesor_1 === datos2.espesor_1 &&
+           datos1.largo_1 === datos2.largo_1 &&
+           datos1.plantillas_1 === datos2.plantillas_1 &&
+           datos1.espesor_2 === datos2.espesor_2 &&
+           datos1.largo_2 === datos2.largo_2 &&
+           datos1.plantillas_2 === datos2.plantillas_2 &&
+           datos1.espesor_3 === datos2.espesor_3 &&
+           datos1.largo_3 === datos2.largo_3 &&
+           datos1.plantillas_3 === datos2.plantillas_3;
+}
+
 function agregarACola() {
     const registrador = document.getElementById('registrador').value.trim();
     const proveedor = document.getElementById('proveedor').value.trim();
@@ -513,7 +546,16 @@ function agregarACola() {
     }
 
     const datos = obtenerDatosFormulario();
+
+    // Verificar si es duplicado del último coche agregado
+    if (sonDatosIguales(datos, ultimoCocheAgregado)) {
+        if (!confirm('⚠️ Los datos son iguales al último coche agregado.\n\n¿Desea agregar este coche duplicado a la lista?')) {
+            return; // El usuario canceló
+        }
+    }
+
     datos.id_temp = Date.now(); // ID temporal para identificar en la lista
+    ultimoCocheAgregado = {...datos}; // Guardar copia para comparar
 
     cochesPendientes.push(datos);
     actualizarListaPendientes();
@@ -535,6 +577,33 @@ function limpiarFormularioPlantillas() {
 function removerDeCola(idTemp) {
     cochesPendientes = cochesPendientes.filter(c => c.id_temp !== idTemp);
     actualizarListaPendientes();
+}
+
+function editarDeCola(idTemp) {
+    const coche = cochesPendientes.find(c => c.id_temp === idTemp);
+    if (!coche) return;
+
+    // Cargar datos en el formulario
+    document.getElementById('registrador').value = coche.registrador || '';
+    document.getElementById('proveedor').value = coche.proveedor || '';
+    document.getElementById('numero_viaje').value = coche.numero_viaje || '';
+    document.getElementById('notas').value = coche.notas || '';
+
+    // Cargar datos de plantillas
+    for (let i = 1; i <= 3; i++) {
+        document.getElementById('largo_' + i).value = coche['largo_' + i] || '';
+        document.getElementById('espesor_' + i).value = coche['espesor_' + i] || '';
+        document.getElementById('plantillas_' + i).value = coche['plantillas_' + i] || 0;
+    }
+
+    // Recalcular BFT
+    calcularBFT();
+
+    // Remover de la cola (se volverá a agregar cuando el usuario guarde)
+    removerDeCola(idTemp);
+
+    // Scroll al formulario
+    document.getElementById('form-nuevo-coche').scrollIntoView({ behavior: 'smooth' });
 }
 
 function actualizarListaPendientes() {
@@ -561,9 +630,14 @@ function actualizarListaPendientes() {
                 <span>Viaje: <strong>${coche.numero_viaje || 'N/A'}</strong></span>
                 <span>BFT: <strong>${coche.total_bft}</strong></span>
             </div>
-            <button type="button" class="btn-remove" onclick="removerDeCola(${coche.id_temp})">
-                <i class="bi bi-trash"></i> Quitar
-            </button>
+            <div class="coche-pendiente-actions">
+                <button type="button" class="btn-edit" onclick="editarDeCola(${coche.id_temp})">
+                    <i class="bi bi-pencil"></i> Editar
+                </button>
+                <button type="button" class="btn-remove" onclick="removerDeCola(${coche.id_temp})">
+                    <i class="bi bi-trash"></i> Quitar
+                </button>
+            </div>
         </div>
     `).join('');
 }
@@ -654,6 +728,20 @@ function mostrarQRsCreados() {
 
     // Limpiar cola
     cochesPendientes = [];
+}
+
+function regresarAlFormulario() {
+    // Ocultar panel de QRs
+    document.getElementById('qr-panel').classList.remove('visible');
+
+    // Mostrar formulario
+    document.getElementById('form-nuevo-coche').style.display = 'block';
+
+    // Resetear variable de último coche para evitar falsos duplicados
+    ultimoCocheAgregado = null;
+
+    // Scroll al formulario
+    document.getElementById('form-nuevo-coche').scrollIntoView({ behavior: 'smooth' });
 }
 
 function imprimirTodos() {

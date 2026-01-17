@@ -416,11 +416,11 @@
         </div>
 
         <div class="btn-group">
-            <button type="button" class="btn btn-primary" onclick="agregarACola()">
+            <button type="button" class="btn btn-primary" id="btn-agregar" onclick="agregarACola()">
                 <i class="bi bi-plus-circle"></i> Agregar a Lista
             </button>
-            <button type="button" class="btn btn-success" id="btn-crear-todos" onclick="crearTodosLosCoches()" style="display: none;">
-                <i class="bi bi-printer"></i> Crear e Imprimir Todos
+            <button type="button" class="btn btn-success" id="btn-crear-todos" onclick="mostrarPreview()" style="display: none;">
+                <i class="bi bi-eye"></i> Ver Preview y Crear
             </button>
             <a href="/" class="btn btn-secondary">
                 <i class="bi bi-arrow-left"></i> Cancelar
@@ -448,11 +448,21 @@
             <i class="bi bi-qr-code"></i> Códigos QR Generados
         </div>
         <div class="form-card-body">
-            <p class="no-print" style="color: var(--color-text-muted); margin-bottom: 20px;">
-                Se crearon los siguientes coches. Imprima las etiquetas y péguelas en cada coche.
+            <p id="qr-mensaje" class="no-print" style="color: var(--color-text-muted); margin-bottom: 20px;">
+                Preview de los coches a crear. Revise y confirme para guardar.
             </p>
             <div id="qr-grid" class="qr-grid"></div>
-            <div class="btn-group no-print" style="justify-content: center; margin-top: 24px;">
+            <!-- Botones modo PREVIEW (antes de crear) -->
+            <div id="btns-preview" class="btn-group no-print" style="justify-content: center; margin-top: 24px;">
+                <button type="button" class="btn btn-success" onclick="confirmarYCrear()">
+                    <i class="bi bi-check-circle"></i> Confirmar y Crear
+                </button>
+                <button type="button" class="btn btn-warning" onclick="regresarAEditar()">
+                    <i class="bi bi-arrow-left"></i> Regresar a Editar
+                </button>
+            </div>
+            <!-- Botones modo CREADO (después de crear) -->
+            <div id="btns-creado" class="btn-group no-print" style="justify-content: center; margin-top: 24px; display: none;">
                 <button type="button" class="btn btn-primary" onclick="imprimirTodos()">
                     <i class="bi bi-printer"></i> Imprimir Todos
                 </button>
@@ -474,6 +484,8 @@
 let cochesPendientes = [];
 let cochesCreados = [];
 let ultimoCocheAgregado = null; // Para detectar duplicados
+let cocheEditandoId = null; // ID del coche que se está editando
+let modoPreview = false; // Si estamos en modo preview (antes de crear)
 
 function calcularBFT() {
     let total = 0;
@@ -547,17 +559,27 @@ function agregarACola() {
 
     const datos = obtenerDatosFormulario();
 
-    // Verificar si es duplicado del último coche agregado
-    if (sonDatosIguales(datos, ultimoCocheAgregado)) {
-        if (!confirm('⚠️ Los datos son iguales al último coche agregado.\n\n¿Desea agregar este coche duplicado a la lista?')) {
-            return; // El usuario canceló
+    // Si estamos editando un coche existente
+    if (cocheEditandoId !== null) {
+        const index = cochesPendientes.findIndex(c => c.id_temp === cocheEditandoId);
+        if (index !== -1) {
+            datos.id_temp = cocheEditandoId; // Mantener el mismo ID
+            cochesPendientes[index] = datos; // Actualizar en lugar de agregar
         }
+        cocheEditandoId = null; // Salir del modo edición
+        document.getElementById('btn-agregar').innerHTML = '<i class="bi bi-plus-circle"></i> Agregar a Lista';
+    } else {
+        // Verificar si es duplicado del último coche agregado
+        if (sonDatosIguales(datos, ultimoCocheAgregado)) {
+            if (!confirm('⚠️ Los datos son iguales al último coche agregado.\n\n¿Desea agregar este coche duplicado a la lista?')) {
+                return; // El usuario canceló
+            }
+        }
+        datos.id_temp = Date.now(); // ID temporal para identificar en la lista
+        cochesPendientes.push(datos);
     }
 
-    datos.id_temp = Date.now(); // ID temporal para identificar en la lista
     ultimoCocheAgregado = {...datos}; // Guardar copia para comparar
-
-    cochesPendientes.push(datos);
     actualizarListaPendientes();
     limpiarFormularioPlantillas();
 }
@@ -583,6 +605,9 @@ function editarDeCola(idTemp) {
     const coche = cochesPendientes.find(c => c.id_temp === idTemp);
     if (!coche) return;
 
+    // Marcar que estamos editando este coche
+    cocheEditandoId = idTemp;
+
     // Cargar datos en el formulario
     document.getElementById('registrador').value = coche.registrador || '';
     document.getElementById('proveedor').value = coche.proveedor || '';
@@ -599,11 +624,21 @@ function editarDeCola(idTemp) {
     // Recalcular BFT
     calcularBFT();
 
-    // Remover de la cola (se volverá a agregar cuando el usuario guarde)
-    removerDeCola(idTemp);
+    // Cambiar texto del botón para indicar que estamos editando
+    document.getElementById('btn-agregar').innerHTML = '<i class="bi bi-check-circle"></i> Guardar Cambios';
+
+    // NO remover de la cola - se actualiza cuando guarde
 
     // Scroll al formulario
     document.getElementById('form-nuevo-coche').scrollIntoView({ behavior: 'smooth' });
+}
+
+function cancelarEdicion() {
+    if (cocheEditandoId !== null) {
+        cocheEditandoId = null;
+        document.getElementById('btn-agregar').innerHTML = '<i class="bi bi-plus-circle"></i> Agregar a Lista';
+        limpiarFormularioPlantillas();
+    }
 }
 
 function actualizarListaPendientes() {
@@ -642,18 +677,81 @@ function actualizarListaPendientes() {
     `).join('');
 }
 
-async function crearTodosLosCoches() {
+function mostrarPreview() {
     if (cochesPendientes.length === 0) {
         alert('No hay coches en la lista para crear');
         return;
     }
 
-    const btnCrear = document.getElementById('btn-crear-todos');
-    btnCrear.disabled = true;
-    btnCrear.innerHTML = '<i class="bi bi-hourglass-split"></i> Creando...';
+    modoPreview = true;
 
-    // No resetear cochesCreados para mantener los coches creados anteriormente
-    const cantidadAnterior = cochesCreados.length;
+    // Ocultar formulario y lista pendientes
+    document.getElementById('form-nuevo-coche').style.display = 'none';
+    document.getElementById('coches-pendientes-container').style.display = 'none';
+
+    // Generar preview de QRs (sin crear aún)
+    const qrGrid = document.getElementById('qr-grid');
+    qrGrid.innerHTML = cochesPendientes.map((coche, index) => `
+        <div class="qr-card" style="border: 2px dashed #f59e0b;">
+            <div class="qr-card-codigo" style="color: #f59e0b;">PREVIEW #${index + 1}</div>
+            <div style="padding: 20px; color: #666; font-size: 12px;">
+                <i class="bi bi-qr-code" style="font-size: 60px; color: #ccc;"></i>
+                <p style="margin-top: 10px;">El QR se generará al confirmar</p>
+            </div>
+            <div class="qr-card-datos">
+                <p><strong>Registrador:</strong> ${coche.registrador || '-'}</p>
+                <p><strong>Proveedor:</strong> ${coche.proveedor || '-'}</p>
+                <p><strong>Viaje:</strong> ${coche.numero_viaje || '-'}</p>
+                <div style="border-top:1px dashed #ccc;margin:5px 0;padding-top:5px;">
+                    <p style="font-size:10px;margin-bottom:3px;"><strong>Plantillas (Largo x Espesor x Cant):</strong></p>
+                    ${formatPlantillaInfo(coche, 1)}
+                    ${formatPlantillaInfo(coche, 2)}
+                    ${formatPlantillaInfo(coche, 3)}
+                </div>
+                <p style="font-weight:bold;font-size:12px;margin-top:5px;"><strong>Total BFT:</strong> ${coche.total_bft}</p>
+            </div>
+        </div>
+    `).join('');
+
+    // Mostrar mensaje de preview
+    document.getElementById('qr-mensaje').textContent = `Preview de ${cochesPendientes.length} coche(s) a crear. Revise y confirme para guardar.`;
+
+    // Mostrar botones de preview, ocultar botones de creado
+    document.getElementById('btns-preview').style.display = 'flex';
+    document.getElementById('btns-creado').style.display = 'none';
+
+    // Mostrar panel
+    document.getElementById('qr-panel').classList.add('visible');
+    document.getElementById('qr-panel').scrollIntoView({ behavior: 'smooth' });
+}
+
+function regresarAEditar() {
+    modoPreview = false;
+
+    // Ocultar panel de QRs
+    document.getElementById('qr-panel').classList.remove('visible');
+
+    // Mostrar formulario y lista pendientes
+    document.getElementById('form-nuevo-coche').style.display = 'block';
+    if (cochesPendientes.length > 0) {
+        document.getElementById('coches-pendientes-container').style.display = 'block';
+    }
+
+    // Scroll al formulario
+    document.getElementById('form-nuevo-coche').scrollIntoView({ behavior: 'smooth' });
+}
+
+async function confirmarYCrear() {
+    if (cochesPendientes.length === 0) {
+        alert('No hay coches para crear');
+        return;
+    }
+
+    const btnConfirmar = document.querySelector('#btns-preview .btn-success');
+    btnConfirmar.disabled = true;
+    btnConfirmar.innerHTML = '<i class="bi bi-hourglass-split"></i> Creando...';
+
+    cochesCreados = [];
 
     try {
         for (const cocheDatos of cochesPendientes) {
@@ -676,16 +774,15 @@ async function crearTodosLosCoches() {
             }
         }
 
-        // Mostrar si se creó al menos un coche nuevo
-        if (cochesCreados.length > cantidadAnterior) {
+        if (cochesCreados.length > 0) {
             mostrarQRsCreados();
         }
 
     } catch (error) {
         alert('Error de conexión: ' + error.message);
     } finally {
-        btnCrear.disabled = false;
-        btnCrear.innerHTML = '<i class="bi bi-printer"></i> Crear e Imprimir Todos';
+        btnConfirmar.disabled = false;
+        btnConfirmar.innerHTML = '<i class="bi bi-check-circle"></i> Confirmar y Crear';
     }
 }
 
@@ -699,11 +796,9 @@ function formatPlantillaInfo(coche, num) {
 }
 
 function mostrarQRsCreados() {
-    // Ocultar formulario y lista pendientes
-    document.getElementById('form-nuevo-coche').style.display = 'none';
-    document.getElementById('coches-pendientes-container').style.display = 'none';
+    modoPreview = false;
 
-    // Generar grid de QRs
+    // Generar grid de QRs reales
     const qrGrid = document.getElementById('qr-grid');
     qrGrid.innerHTML = cochesCreados.map(coche => `
         <div class="qr-card">
@@ -724,12 +819,16 @@ function mostrarQRsCreados() {
         </div>
     `).join('');
 
-    // Mostrar panel
-    document.getElementById('qr-panel').classList.add('visible');
-    document.getElementById('qr-panel').scrollIntoView({ behavior: 'smooth' });
+    // Actualizar mensaje
+    document.getElementById('qr-mensaje').textContent = `Se crearon ${cochesCreados.length} coche(s). Imprima las etiquetas y péguelas en cada coche.`;
 
-    // Limpiar cola
+    // Mostrar botones de creado, ocultar botones de preview
+    document.getElementById('btns-preview').style.display = 'none';
+    document.getElementById('btns-creado').style.display = 'flex';
+
+    // Limpiar cola de pendientes
     cochesPendientes = [];
+    actualizarListaPendientes();
 }
 
 function agregarMasCoches() {

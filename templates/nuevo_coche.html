@@ -652,7 +652,8 @@ async function crearTodosLosCoches() {
     btnCrear.disabled = true;
     btnCrear.innerHTML = '<i class="bi bi-hourglass-split"></i> Creando...';
 
-    cochesCreados = [];
+    // No resetear cochesCreados para mantener los coches creados anteriormente
+    const cantidadAnterior = cochesCreados.length;
 
     try {
         for (const cocheDatos of cochesPendientes) {
@@ -675,7 +676,8 @@ async function crearTodosLosCoches() {
             }
         }
 
-        if (cochesCreados.length > 0) {
+        // Mostrar si se creó al menos un coche nuevo
+        if (cochesCreados.length > cantidadAnterior) {
             mostrarQRsCreados();
         }
 

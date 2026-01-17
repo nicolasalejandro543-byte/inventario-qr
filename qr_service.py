@@ -4,11 +4,11 @@ import uuid
 from datetime import datetime
 
 
-def generar_codigo_unico():
-    """Genera un código único para el QR de coches."""
-    timestamp = datetime.now().strftime('%Y%m%d')
-    unique_id = uuid.uuid4().hex[:6].upper()
-    return f"COC-{timestamp}-{unique_id}"
+def generar_codigo_coche_consecutivo(numero_secuencial: int):
+    """Genera un código consecutivo para coches.
+    Formato: FJA001, FJA002, FJA003...
+    """
+    return f"FJA{numero_secuencial:03d}"
 
 
 def generar_codigo_lote():

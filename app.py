@@ -4,7 +4,7 @@ from datetime import datetime
 from functools import wraps
 from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, session
 from models import db, Etapa, Coche, Movimiento, Lote, Bloque, ProcesoLote, Contenedor, contenedor_bloques, lote_coches, init_etapas, ESPESORES, LARGOS, LARGOS_PRODUCCION, LARGOS_CONTENEDOR
-from qr_service import generar_codigo_unico, generar_codigo_lote, generar_codigo_bloque, generar_codigo_contenedor, generar_imagen_qr
+from qr_service import generar_codigo_coche_consecutivo, generar_codigo_lote, generar_codigo_bloque, generar_codigo_contenedor, generar_imagen_qr
 from config import get_config
 import io
 
@@ -603,8 +603,23 @@ def crear_coche():
     """Crea un nuevo coche. Siempre inicia en Madera Verde (etapa 1)."""
     data = request.get_json()
 
-    # Generar código QR único
-    codigo_qr = generar_codigo_unico()
+    # Generar código consecutivo (FJA001, FJA002...)
+    # Buscar el número más alto existente
+    siguiente_num = 1
+    coches = Coche.query.all()
+    for c in coches:
+        match = re.search(r'FJA(\d+)', c.codigo_qr)
+        if match:
+            num = int(match.group(1))
+            if num >= siguiente_num:
+                siguiente_num = num + 1
+
+    codigo_qr = generar_codigo_coche_consecutivo(siguiente_num)
+
+    # Verificar unicidad
+    while Coche.query.filter_by(codigo_qr=codigo_qr).first():
+        siguiente_num += 1
+        codigo_qr = generar_codigo_coche_consecutivo(siguiente_num)
 
     # Etapa inicial SIEMPRE es Madera Verde (orden 1)
     etapa_inicial = Etapa.query.filter_by(orden=1).first()

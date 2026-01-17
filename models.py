@@ -46,19 +46,19 @@ class Coche(db.Model):
     # Fila 1
     espesor_1 = db.Column(db.String(10))
     largo_1 = db.Column(db.String(10))
-    plantillas_1 = db.Column(db.Integer, default=0)
+    plantillas_1 = db.Column(db.Float, default=0)  # Permitir decimales
     bft_1 = db.Column(db.Float, default=0)
 
     # Fila 2
     espesor_2 = db.Column(db.String(10))
     largo_2 = db.Column(db.String(10))
-    plantillas_2 = db.Column(db.Integer, default=0)
+    plantillas_2 = db.Column(db.Float, default=0)  # Permitir decimales
     bft_2 = db.Column(db.Float, default=0)
 
     # Fila 3
     espesor_3 = db.Column(db.String(10))
     largo_3 = db.Column(db.String(10))
-    plantillas_3 = db.Column(db.Integer, default=0)
+    plantillas_3 = db.Column(db.Float, default=0)  # Permitir decimales
     bft_3 = db.Column(db.Float, default=0)
 
     # Total
@@ -89,7 +89,7 @@ class Coche(db.Model):
         try:
             l = float(largo) if largo else 0
             e = float(espesor) if espesor else 0
-            p = int(plantillas) if plantillas else 0
+            p = float(plantillas) if plantillas else 0  # Permitir decimales
             # Formula: floor((largo * espesor * plantillas * 45) / 12)
             return math.floor((l * e * p * 45) / 12)
         except (ValueError, TypeError):

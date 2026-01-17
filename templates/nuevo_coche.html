@@ -456,8 +456,8 @@
                 <button type="button" class="btn btn-primary" onclick="imprimirTodos()">
                     <i class="bi bi-printer"></i> Imprimir Todos
                 </button>
-                <button type="button" class="btn btn-warning" onclick="regresarAlFormulario()">
-                    <i class="bi bi-arrow-left"></i> Regresar
+                <button type="button" class="btn btn-success" onclick="agregarMasCoches()">
+                    <i class="bi bi-plus-circle"></i> Agregar Más Coches
                 </button>
                 <a href="/" class="btn btn-secondary">
                     <i class="bi bi-grid-3x3-gap"></i> Ir al Resumen
@@ -732,8 +732,17 @@ function mostrarQRsCreados() {
     cochesPendientes = [];
 }
 
-function regresarAlFormulario() {
-    // Mostrar formulario (mantener panel de QRs visible abajo)
+function agregarMasCoches() {
+    // Ocultar panel de QRs
+    document.getElementById('qr-panel').classList.remove('visible');
+
+    // Limpiar el grid de QRs para la próxima vez
+    document.getElementById('qr-grid').innerHTML = '';
+
+    // Resetear la lista de coches creados (los anteriores ya están en BD)
+    cochesCreados = [];
+
+    // Mostrar formulario
     document.getElementById('form-nuevo-coche').style.display = 'block';
 
     // Resetear variable de último coche para evitar falsos duplicados

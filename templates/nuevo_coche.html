@@ -733,10 +733,7 @@ function mostrarQRsCreados() {
 }
 
 function regresarAlFormulario() {
-    // Ocultar panel de QRs
-    document.getElementById('qr-panel').classList.remove('visible');
-
-    // Mostrar formulario
+    // Mostrar formulario (mantener panel de QRs visible abajo)
     document.getElementById('form-nuevo-coche').style.display = 'block';
 
     // Resetear variable de último coche para evitar falsos duplicados

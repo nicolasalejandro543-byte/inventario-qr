@@ -603,16 +603,29 @@ def crear_coche():
     """Crea un nuevo coche. Siempre inicia en Madera Verde (etapa 1)."""
     data = request.get_json()
 
-    # Generar código consecutivo (FJA001, FJA002...)
-    # Buscar el número más alto existente
+    # Generar código consecutivo (COC-YYYYMMDD-AAA001, AAA002... AAB001...)
+    # Buscar el número secuencial más alto existente
     siguiente_num = 1
     coches = Coche.query.all()
     for c in coches:
-        match = re.search(r'FJA(\d+)', c.codigo_qr)
+        # Buscar formato nuevo: COC-YYYYMMDD-AAA001
+        match = re.search(r'COC-\d{8}-([A-Z]{3})(\d{3})', c.codigo_qr)
         if match:
-            num = int(match.group(1))
-            if num >= siguiente_num:
-                siguiente_num = num + 1
+            letras = match.group(1)
+            numero = int(match.group(2))
+            # Convertir letras a grupo: AAA=0, AAB=1, AAC=2... ABA=26, ABB=27...
+            grupo = (ord(letras[0]) - 65) * 26 * 26 + (ord(letras[1]) - 65) * 26 + (ord(letras[2]) - 65)
+            # Calcular número secuencial total
+            num_secuencial = grupo * 999 + numero
+            if num_secuencial >= siguiente_num:
+                siguiente_num = num_secuencial + 1
+        else:
+            # Buscar formato antiguo: FJA001 o COC-YYYYMMDD-XXXXXX
+            match_old = re.search(r'FJA(\d+)', c.codigo_qr)
+            if match_old:
+                num = int(match_old.group(1))
+                if num >= siguiente_num:
+                    siguiente_num = num + 1
 
     codigo_qr = generar_codigo_coche_consecutivo(siguiente_num)
 

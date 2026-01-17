@@ -50,6 +50,22 @@
         box-shadow: 0 0 0 2px rgba(1,115,198,0.2);
     }
 
+    /* Checkbox individual en cada coche */
+    .coche-checkbox {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        width: 22px;
+        height: 22px;
+        cursor: pointer;
+        accent-color: var(--color-primary);
+        z-index: 10;
+    }
+
+    .coche-card.selected .coche-checkbox {
+        accent-color: var(--color-primary);
+    }
+
     /* Barra flotante de acciones */
     .floating-actions {
         position: fixed;
@@ -1218,7 +1234,8 @@
             <div class="coches-grid">
                 {% for coche in coches %}
                 <div class="coche-card" data-coche-id="{{ coche.id }}" data-codigo-qr="{{ coche.codigo_qr }}">
-                                        <div onclick="goToCoche({{ coche.id }})">
+                    <input type="checkbox" class="coche-checkbox" data-coche-id="{{ coche.id }}" onclick="event.stopPropagation(); toggleCocheCheckbox({{ coche.id }})">
+                    <div onclick="goToCoche({{ coche.id }})">
                         <div class="coche-header">
                             <span class="coche-codigo">{{ coche.codigo_qr }}</span>
                             <span class="coche-bft">{{ "%.1f"|format(coche.total_bft or 0) }} BFT</span>
@@ -1327,7 +1344,8 @@
                 <div class="camara-coches-grid" style="padding: 12px;">
                     {% for coche in lote_datos.coches %}
                     <div class="coche-card" data-coche-id="{{ coche.id }}" data-codigo-qr="{{ coche.codigo_qr }}">
-                                                <div onclick="goToCoche({{ coche.id }})">
+                        <input type="checkbox" class="coche-checkbox" data-coche-id="{{ coche.id }}" onclick="event.stopPropagation(); toggleCocheCheckbox({{ coche.id }})">
+                        <div onclick="goToCoche({{ coche.id }})">
                             <div class="coche-header">
                                 <span class="coche-codigo">{{ coche.codigo_qr }}</span>
                                 <span class="coche-bft">{{ "%.1f"|format(coche.total_bft or 0) }} BFT</span>
@@ -1364,7 +1382,8 @@
              data-espesor1="{{ coche.espesor_1 or '' }}" data-largo1="{{ coche.largo_1 or '' }}" data-plantillas1="{{ coche.plantillas_1 or 0 }}"
              data-espesor2="{{ coche.espesor_2 or '' }}" data-largo2="{{ coche.largo_2 or '' }}" data-plantillas2="{{ coche.plantillas_2 or 0 }}"
              data-espesor3="{{ coche.espesor_3 or '' }}" data-largo3="{{ coche.largo_3 or '' }}" data-plantillas3="{{ coche.plantillas_3 or 0 }}">
-                        <div onclick="goToCoche({{ coche.id }})">
+            <input type="checkbox" class="coche-checkbox" data-coche-id="{{ coche.id }}" onclick="event.stopPropagation(); toggleCocheCheckbox({{ coche.id }})">
+            <div onclick="goToCoche({{ coche.id }})">
                 <div class="coche-header">
                     <span class="coche-codigo">{{ coche.codigo_qr }}</span>
                     <span class="coche-bft">{{ "%.1f"|format(coche.total_bft or 0) }} BFT</span>
@@ -1997,15 +2016,35 @@ function toggleSelectAll() {
 
     allCards.forEach(card => {
         const cocheId = parseInt(card.dataset.cocheId);
+        const checkbox = card.querySelector('.coche-checkbox');
 
         if (selectAllCheckbox.checked) {
             selectedCoches.add(cocheId);
             card.classList.add('selected');
+            if (checkbox) checkbox.checked = true;
         } else {
             selectedCoches.delete(cocheId);
             card.classList.remove('selected');
+            if (checkbox) checkbox.checked = false;
         }
     });
+
+    updateSelectionUI();
+}
+
+function toggleCocheCheckbox(cocheId) {
+    const card = document.querySelector(`.coche-card[data-coche-id="${cocheId}"]`);
+    const checkbox = card ? card.querySelector('.coche-checkbox') : null;
+
+    if (!card) return;
+
+    if (checkbox && checkbox.checked) {
+        selectedCoches.add(cocheId);
+        card.classList.add('selected');
+    } else {
+        selectedCoches.delete(cocheId);
+        card.classList.remove('selected');
+    }
 
     updateSelectionUI();
 }
@@ -2014,6 +2053,8 @@ function clearSelection() {
     selectedCoches.clear();
     document.querySelectorAll('.coche-card').forEach(card => {
         card.classList.remove('selected');
+        const checkbox = card.querySelector('.coche-checkbox');
+        if (checkbox) checkbox.checked = false;
     });
     document.getElementById('select-all').checked = false;
     updateSelectionUI();

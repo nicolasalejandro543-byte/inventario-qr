@@ -1804,6 +1804,7 @@ def crear_proceso():
         largo=int(largo),
         ancho=24,  # Fijo
         alto=float(alto),
+        calidad=data.get('calidad', 'R8 Estándar'),
         procesado_por=usuario,
         notas=data.get('notas', '')
     )

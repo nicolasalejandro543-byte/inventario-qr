@@ -269,6 +269,24 @@ class Lote(db.Model):
 # Largos disponibles para Producción (en pulgadas)
 LARGOS_PRODUCCION = [25, 24, 23, 22, 21, 20, 18, 16, 15, 14, 12, 10, 8, 6]
 
+# Opciones de calidad para producción
+CALIDADES_PRODUCCION = ['R8 Estándar', 'R9 Pesada', 'R11 Liviana', 'Madera Corta']
+
+# Mapeo de calidad a forma corta
+CALIDAD_CORTA = {
+    'R8 Estándar': 'R8',
+    'R9 Pesada': 'R9',
+    'R11 Liviana': 'R11',
+    'Madera Corta': 'MC',
+    # Mantener compatibilidad con valores antiguos
+    'Estándar': 'R8',
+    'Liviano': 'R11'
+}
+
+def get_calidad_corta(calidad):
+    """Devuelve la forma corta de la calidad."""
+    return CALIDAD_CORTA.get(calidad, calidad or '-')
+
 
 class Bloque(db.Model):
     """Modelo para bloques de producción con código QR."""
@@ -283,7 +301,7 @@ class Bloque(db.Model):
     # Datos del bloque
     fecha = db.Column(db.Date, default=lambda: datetime.now().date())
     turno = db.Column(db.String(20), default='Diurno')  # Diurno / Nocturno
-    calidad = db.Column(db.String(20), default='Estándar')  # Estándar / Liviano
+    calidad = db.Column(db.String(20), default='R8 Estándar')  # R8 Estándar, R9 Pesada, R11 Liviana, Madera Corta
     secuencia = db.Column(db.String(50))  # Ingreso manual
 
     # Dimensiones y cálculos
@@ -388,6 +406,9 @@ class ProcesoLote(db.Model):
     # BFT calculado (con 10% reducción en alto)
     bft_calculado = db.Column(db.Float)
 
+    # Calidad
+    calidad = db.Column(db.String(20), default='R8 Estándar')  # R8 Estándar, R9 Pesada, R11 Liviana, Madera Corta
+
     # Usuario que procesó
     procesado_por = db.Column(db.String(100))
 
@@ -417,6 +438,7 @@ class ProcesoLote(db.Model):
             'ancho': self.ancho,
             'alto': self.alto,
             'bft_calculado': round(self.bft_calculado, 2) if self.bft_calculado else None,
+            'calidad': self.calidad,
             'procesado_por': self.procesado_por,
             'created_at': self.created_at.strftime('%d/%m/%Y %H:%M') if self.created_at else None,
             'notas': self.notas

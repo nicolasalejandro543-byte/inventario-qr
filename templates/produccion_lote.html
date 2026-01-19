@@ -714,6 +714,15 @@
                 <label>Alto (pulgadas)</label>
                 <input type="number" id="plantilla-alto" step="0.1" placeholder="Ej: 12.5" oninput="calcularPlantillaBFT()">
             </div>
+            <div class="form-group">
+                <label>Calidad</label>
+                <select id="plantilla-calidad">
+                    <option value="R8 Estándar">R8 Estándar</option>
+                    <option value="R9 Pesada">R9 Pesada</option>
+                    <option value="R11 Liviana">R11 Liviana</option>
+                    <option value="Madera Corta">Madera Corta</option>
+                </select>
+            </div>
         </div>
 
         <!-- BFT Preview automatico -->
@@ -751,8 +760,10 @@
             <div class="form-group">
                 <label>Calidad</label>
                 <select id="bloque-calidad">
-                    <option value="Estandar">Estandar</option>
-                    <option value="Liviano">Liviano</option>
+                    <option value="R8 Estándar">R8 Estándar</option>
+                    <option value="R9 Pesada">R9 Pesada</option>
+                    <option value="R11 Liviana">R11 Liviana</option>
+                    <option value="Madera Corta">Madera Corta</option>
                 </select>
             </div>
             <div class="form-group" style="display: flex; align-items: center; gap: 10px; padding-top: 24px;">
@@ -883,6 +894,21 @@
 
     const UMBRAL_DESPERDICIO = 18;
 
+    // Función helper para obtener calidad en forma corta
+    function getCalidadCorta(calidad) {
+        const mapeo = {
+            'R8 Estándar': 'R8',
+            'R9 Pesada': 'R9',
+            'R11 Liviana': 'R11',
+            'Madera Corta': 'MC',
+            // Compatibilidad con valores antiguos
+            'Estándar': 'R8',
+            'Estandar': 'R8',
+            'Liviano': 'R11'
+        };
+        return mapeo[calidad] || calidad || '-';
+    }
+
     // Listas de items pendientes (no guardados aun)
     let plantillasPendientes = [];
     let bloquesPendientes = [];
@@ -895,6 +921,7 @@
             largo: {{ p.largo }},
             alto: {{ p.alto }},
             bft: {{ p.bft_calculado or 0 }},
+            calidad: "{{ p.calidad or 'R8 Estándar' }}",
             guardado: true
         }{% if not loop.last %},{% endif %}
         {% endfor %}
@@ -947,6 +974,7 @@
     function agregarPlantilla() {
         const largo = document.getElementById('plantilla-largo').value;
         const alto = document.getElementById('plantilla-alto').value;
+        const calidad = document.getElementById('plantilla-calidad').value;
 
         if (!largo || !alto) {
             alert('Por favor complete largo y alto');
@@ -958,7 +986,7 @@
         const bft = (parseFloat(largo) * ancho * altoReducido) / 144;
 
         plantillasPendientes.push({
-            largo, alto,
+            largo, alto, calidad,
             bft: parseFloat(bft.toFixed(2)),
             guardada: false
         });
@@ -1016,6 +1044,7 @@
                     <div class="item-info">
                         <span><i class="bi bi-check-circle" style="color: var(--color-success);"></i></span>
                         <span><strong>${p.largo}"</strong> x 24" x <strong>${p.alto}"</strong></span>
+                        <span class="badge" style="background: var(--color-primary); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem;">${getCalidadCorta(p.calidad)}</span>
                         <span>BFT: <strong style="color: var(--color-success);">${p.bft.toFixed(2)}</strong></span>
                         <span style="color: var(--color-success); font-size: 0.8rem;">Guardada</span>
                     </div>
@@ -1032,6 +1061,7 @@
                 <div class="item-row">
                     <div class="item-info">
                         <span><strong>${p.largo}"</strong> x 24" x <strong>${p.alto}"</strong></span>
+                        <span class="badge" style="background: var(--color-primary); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem;">${getCalidadCorta(p.calidad)}</span>
                         <span>BFT: <strong style="color: var(--color-success);">${p.bft.toFixed(2)}</strong></span>
                     </div>
                     <button class="btn-remove" onclick="removerPlantilla(${i}, false)">
@@ -1145,6 +1175,7 @@
                         <span><i class="bi bi-check-circle" style="color: var(--color-success);"></i></span>
                         ${b.secuencia ? `<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 10px; font-weight: 600; font-size: 0.8rem;">${b.secuencia}</span>` : ''}
                         ${b.empatado ? `<span style="background: #dbeafe; color: #1d4ed8; padding: 2px 8px; border-radius: 10px; font-weight: 600; font-size: 0.75rem;">EMP</span>` : ''}
+                        <span class="badge" style="background: var(--color-warning); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem;">${getCalidadCorta(b.calidad)}</span>
                         <span><strong>${b.largo}"</strong> - ${b.peso}kg</span>
                         <span>BFT: <strong>${b.bft}</strong></span>
                         <span>${b.turno}</span>
@@ -1164,6 +1195,7 @@
                     <div class="item-info">
                         ${b.secuencia ? `<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 10px; font-weight: 600; font-size: 0.8rem;">${b.secuencia}</span>` : ''}
                         ${b.empatado ? `<span style="background: #dbeafe; color: #1d4ed8; padding: 2px 8px; border-radius: 10px; font-weight: 600; font-size: 0.75rem;">EMP</span>` : ''}
+                        <span class="badge" style="background: var(--color-warning); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem;">${getCalidadCorta(b.calidad)}</span>
                         <span><strong>${b.largo}"</strong> - ${b.peso}kg</span>
                         <span>BFT: <strong>${b.bft}</strong></span>
                         <span>${b.turno}</span>
@@ -1251,6 +1283,7 @@
                         lote_id: LOTE.id,
                         largo: p.largo,
                         alto: p.alto,
+                        calidad: p.calidad,
                         usuario: 'Usuario'
                     })
                 });
@@ -1409,6 +1442,7 @@
                         lote_id: LOTE.id,
                         largo: p.largo,
                         alto: p.alto,
+                        calidad: p.calidad,
                         usuario: 'Usuario'
                     })
                 });

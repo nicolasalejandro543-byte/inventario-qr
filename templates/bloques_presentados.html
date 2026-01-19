@@ -311,6 +311,16 @@
         letter-spacing: 0.5px;
     }
 
+    .bloque-calidad-badge {
+        background: var(--color-warning);
+        color: white;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 0.7rem;
+        letter-spacing: 0.5px;
+    }
+
     /* Barra flotante */
     .floating-actions {
         position: fixed;
@@ -619,6 +629,8 @@
             {% if bloque.empatado %}
             <span class="bloque-emp-badge">EMP</span>
             {% endif %}
+            {% set calidad_corta = {'R8 Estándar': 'R8', 'R9 Pesada': 'R9', 'R11 Liviana': 'R11', 'Madera Corta': 'MC', 'Estándar': 'R8', 'Estandar': 'R8', 'Liviano': 'R11'} %}
+            <span class="bloque-calidad-badge">{{ calidad_corta.get(bloque.calidad, bloque.calidad or '-') }}</span>
         </div>
         <div class="bloque-body">
             <div class="bloque-stats">

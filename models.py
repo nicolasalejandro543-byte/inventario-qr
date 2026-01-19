@@ -83,15 +83,15 @@ class Coche(db.Model):
         return self.total_bft
 
     def _calcular_bft_fila(self, largo, espesor, plantillas):
-        """Calcula BFT: ROUNDDOWN((Largo * Espesor * Plantillas * 45) / 12, 0)"""
+        """Calcula BFT: ROUND((Largo * Espesor * Plantillas * 45) / 12)"""
         if not largo or not espesor or not plantillas:
             return 0
         try:
             l = float(largo) if largo else 0
             e = float(espesor) if espesor else 0
             p = float(plantillas) if plantillas else 0  # Permitir decimales
-            # Formula: floor((largo * espesor * plantillas * 45) / 12)
-            return math.floor((l * e * p * 45) / 12)
+            # Formula: round((largo * espesor * plantillas * 45) / 12)
+            return round((l * e * p * 45) / 12)
         except (ValueError, TypeError):
             return 0
 

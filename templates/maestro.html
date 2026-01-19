@@ -603,7 +603,7 @@ function calcularBftCoches() {
     const plantillas = parseFloat(document.getElementById('coches-plantillas').value) || 0;
     const cantidad = parseInt(document.getElementById('coches-cantidad').value) || 0;
 
-    const bft = Math.floor((largo * espesor * plantillas * 45) / 12);
+    const bft = Math.round((largo * espesor * plantillas * 45) / 12);
     document.getElementById('coches-bft').textContent = bft;
     document.getElementById('coches-bft-total').textContent = (bft * cantidad).toLocaleString();
 }

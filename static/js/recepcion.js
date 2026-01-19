@@ -152,13 +152,13 @@ function calcularBFTValor(largo, espesor, plantillas, tipo) {
     if (plantillas === 0) return 0;
     let bft = 0;
     if (tipo === 'aceptada' || tipo === 'rechazo') {
-        bft = Math.floor((largo * espesor * plantillas * 45) / 12);
+        bft = Math.round((largo * espesor * plantillas * 45) / 12);
     } else if (tipo === 'rebajadoLargo') {
         let espesorAjustado = espesor >= 3 ? espesor - 1 : espesor - 0.5;
-        bft = Math.floor((largo * espesorAjustado * plantillas * 45) / 12);
+        bft = Math.round((largo * espesorAjustado * plantillas * 45) / 12);
     } else if (tipo === 'rebajadoEspesor') {
         let largoAjustado = largo === 4 ? 3 : largo - 0.5;
-        bft = Math.floor((largoAjustado * espesor * plantillas * 45) / 12);
+        bft = Math.round((largoAjustado * espesor * plantillas * 45) / 12);
     }
     return bft;
 }

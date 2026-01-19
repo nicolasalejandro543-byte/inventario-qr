@@ -2246,8 +2246,8 @@ function showResultMessage(message, type) {
 // Helper para formatear info de plantillas
 function formatPlantillaInfoPrint(largo, espesor, plantillas, num) {
     if (!largo || !espesor || !plantillas) return '';
-    // Formula: ROUNDDOWN((Largo * Espesor * Plantillas * 45) / 12, 0)
-    const bft = Math.floor((largo * espesor * plantillas * 45) / 12);
+    // Formula: ROUND((Largo * Espesor * Plantillas * 45) / 12)
+    const bft = Math.round((largo * espesor * plantillas * 45) / 12);
     return `<p style="font-size:10px;margin:2px 0;"><strong>${num}:</strong> ${largo}' x ${espesor}" x ${plantillas} = ${bft} BFT</p>`;
 }
 

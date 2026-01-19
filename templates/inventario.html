@@ -1051,7 +1051,7 @@ function calcularBFT() {
         const largo = parseFloat(document.getElementById('largo_' + i).value) || 0;
         const espesor = parseFloat(document.getElementById('espesor_' + i).value) || 0;
         const plantillas = parseInt(document.getElementById('plantillas_' + i).value) || 0;
-        const bft = Math.floor((largo * espesor * plantillas * 45) / 12);
+        const bft = Math.round((largo * espesor * plantillas * 45) / 12);
         document.getElementById('bft_' + i).textContent = bft;
         total += bft;
     }

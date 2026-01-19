@@ -615,6 +615,7 @@
          data-secuencia="{{ bloque.secuencia or '' }}"
          data-turno="{{ bloque.turno or '' }}"
          data-calidad="{{ bloque.calidad or '' }}"
+         data-empatado="{{ 'true' if bloque.empatado else 'false' }}"
          data-largo="{{ bloque.largo or '' }}"
          data-peso="{{ bloque.peso or 0 }}"
          data-bft="{{ bloque.bft or 0 }}"
@@ -820,14 +821,27 @@ function resetFiltros() {
     });
 }
 
+// Helper para obtener calidad corta
+function getCalidadCortaPrint(calidad) {
+    const mapeo = {
+        'R8 Estándar': 'R8',
+        'R9 Pesada': 'R9',
+        'R11 Liviana': 'R11',
+        'Madera Corta': 'MC',
+        'Estándar': 'R8',
+        'Estandar': 'R8',
+        'Liviano': 'R11'
+    };
+    return mapeo[calidad] || calidad || '-';
+}
+
 function imprimirSeleccionados() {
     if (selectedBloques.size === 0) {
         alert('Seleccione al menos un bloque');
         return;
     }
 
-    const printGrid = document.getElementById('qr-print-grid');
-    let html = '';
+    let cardsHtml = '';
 
     selectedBloques.forEach(bloqueId => {
         const card = document.querySelector(`.bloque-card[data-bloque-id="${bloqueId}"]`);
@@ -836,27 +850,126 @@ function imprimirSeleccionados() {
             const largo = card.dataset.largo;
             const peso = card.dataset.peso;
             const bft = card.dataset.bft;
+            const calidad = card.dataset.calidad;
+            const empatado = card.dataset.empatado === 'true';
+            const secuencia = card.dataset.secuencia;
+            const turno = card.dataset.turno;
 
-            html += `
-                <div style="border: 2px solid #000; border-radius: 8px; padding: 20px; text-align: center; page-break-inside: avoid;">
-                    <div style="font-family: monospace; font-weight: bold; font-size: 1.1rem; margin-bottom: 10px;">${codigo}</div>
-                    <img src="/api/bloques/${bloqueId}/qr" alt="QR" style="width: 120px; height: 120px; margin: 10px auto;">
-                    <div style="border-top: 1px solid #ccc; margin-top: 10px; padding-top: 10px; text-align: left; font-size: 0.85rem;">
-                        <div><strong>Largo:</strong> ${largo}"</div>
-                        <div><strong>Peso:</strong> ${peso} kg</div>
-                        <div><strong>BFT:</strong> ${parseInt(bft)}</div>
-                        <div><strong>Estado:</strong> Presentado</div>
+            const calidadCorta = getCalidadCortaPrint(calidad);
+            const empatadoBadge = empatado ? '<span style="background:#dbeafe;color:#1d4ed8;padding:2px 6px;border-radius:8px;font-size:10px;font-weight:bold;">EMP</span>' : '';
+
+            cardsHtml += `
+                <div class="qr-card">
+                    <div class="qr-card-codigo">${codigo} ${empatadoBadge}</div>
+                    <img src="/api/bloques/${bloqueId}/qr" alt="QR ${codigo}">
+                    <div class="qr-card-datos">
+                        <div class="datos-grid">
+                            <div class="dato-item"><span class="dato-label">Largo</span><span class="dato-value">${largo}"</span></div>
+                            <div class="dato-item"><span class="dato-label">Peso</span><span class="dato-value">${peso} kg</span></div>
+                            <div class="dato-item"><span class="dato-label">BFT</span><span class="dato-value">${parseInt(bft)}</span></div>
+                            <div class="dato-item"><span class="dato-label">Calidad</span><span class="dato-value calidad">${calidadCorta}</span></div>
+                            <div class="dato-item"><span class="dato-label">Turno</span><span class="dato-value">${turno || 'Diurno'}</span></div>
+                            <div class="dato-item"><span class="dato-label">Secuencia</span><span class="dato-value">${secuencia || '-'}</span></div>
+                        </div>
                     </div>
                 </div>
             `;
         }
     });
 
-    printGrid.innerHTML = html;
-
-    setTimeout(() => {
-        window.print();
-    }, 500);
+    // Abrir ventana de impresión
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>QR Bloques Presentados</title>
+            <style>
+                body {
+                    font-family: 'Segoe UI', sans-serif;
+                    padding: 10px;
+                    margin: 0;
+                }
+                .qr-grid {
+                    display: grid;
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 15px;
+                }
+                .qr-card {
+                    border: 2px solid #333;
+                    border-radius: 8px;
+                    padding: 10px;
+                    text-align: center;
+                    page-break-inside: avoid;
+                }
+                .qr-card img {
+                    max-width: 80px;
+                    margin: 5px auto;
+                    display: block;
+                }
+                .qr-card-codigo {
+                    font-family: monospace;
+                    font-size: 12px;
+                    font-weight: bold;
+                    margin-bottom: 5px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 5px;
+                }
+                .qr-card-datos {
+                    border-top: 1px solid #ccc;
+                    padding-top: 8px;
+                    margin-top: 5px;
+                }
+                .datos-grid {
+                    display: grid;
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 4px;
+                    text-align: left;
+                }
+                .dato-item {
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 9px;
+                    padding: 2px 4px;
+                    background: #f5f5f5;
+                    border-radius: 3px;
+                }
+                .dato-label {
+                    color: #666;
+                }
+                .dato-value {
+                    font-weight: bold;
+                }
+                .dato-value.calidad {
+                    background: #f59e0b;
+                    color: white;
+                    padding: 1px 4px;
+                    border-radius: 3px;
+                }
+                @media print {
+                    body { padding: 0; }
+                    .qr-card {
+                        page-break-inside: avoid;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="qr-grid">
+                ${cardsHtml}
+            </div>
+            <scr` + `ipt>
+                window.onload = function() {
+                    setTimeout(function() {
+                        window.print();
+                    }, 500);
+                };
+            </scr` + `ipt>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
 }
 
 function openEncolarModal() {

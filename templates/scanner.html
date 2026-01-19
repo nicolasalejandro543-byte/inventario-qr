@@ -627,6 +627,20 @@ function mostrarCoche(coche) {
     document.getElementById('resultado-panel').scrollIntoView({ behavior: 'smooth' });
 }
 
+// Helper para calidad corta
+function getCalidadCorta(calidad) {
+    const mapeo = {
+        'R8 Estándar': 'R8',
+        'R9 Pesada': 'R9',
+        'R11 Liviana': 'R11',
+        'Madera Corta': 'MC',
+        'Estándar': 'R8',
+        'Estandar': 'R8',
+        'Liviano': 'R11'
+    };
+    return mapeo[calidad] || calidad || '-';
+}
+
 function mostrarBloque(bloque) {
     cocheActual = null; // No es un coche
     document.getElementById('error-panel').style.display = 'none';
@@ -642,8 +656,9 @@ function mostrarBloque(bloque) {
         document.getElementById('resultado-titulo').textContent = 'Bloque Presentado';
     }
 
-    // Codigo
-    document.getElementById('coche-codigo').textContent = bloque.codigo_qr;
+    // Codigo con badge de empatado
+    const empatadoBadge = bloque.empatado ? ' <span style="background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:10px;font-size:0.7rem;font-weight:bold;margin-left:8px;">EMP</span>' : '';
+    document.getElementById('coche-codigo').innerHTML = bloque.codigo_qr + empatadoBadge;
     document.getElementById('coche-codigo').style.color = bloque.estado === 'encolado' ? '#10b981' : '#f59e0b';
 
     // Etapa actual
@@ -653,6 +668,9 @@ function mostrarBloque(bloque) {
 
     // BFT
     document.getElementById('coche-bft').textContent = (bloque.bft || 0) + ' BFT';
+
+    // Calidad corta
+    const calidadCorta = getCalidadCorta(bloque.calidad);
 
     // Info grid
     let densidadHtml = '';
@@ -688,11 +706,15 @@ function mostrarBloque(bloque) {
         </div>
         <div class="coche-info-item">
             <div class="coche-info-label">Calidad</div>
-            <div class="coche-info-value">${bloque.calidad || 'Estandar'}</div>
+            <div class="coche-info-value"><span style="background:#f59e0b;color:white;padding:2px 8px;border-radius:10px;font-weight:bold;">${calidadCorta}</span></div>
         </div>
         <div class="coche-info-item">
             <div class="coche-info-label">Secuencia</div>
             <div class="coche-info-value" style="font-family: 'JetBrains Mono', monospace;">${bloque.secuencia || '-'}</div>
+        </div>
+        <div class="coche-info-item">
+            <div class="coche-info-label">Empatado</div>
+            <div class="coche-info-value">${bloque.empatado ? '<span style="color:#1d4ed8;font-weight:bold;">Sí</span>' : 'No'}</div>
         </div>
         <div class="coche-info-item">
             <div class="coche-info-label">Densidad Presentado</div>

@@ -273,6 +273,26 @@
         color: var(--color-text-muted);
     }
 
+    .stat-bft-total {
+        text-align: right;
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px dashed var(--color-gray-light);
+    }
+
+    .stat-bft-total-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+        color: #6366f1;
+    }
+
+    .stat-bft-total-label {
+        font-size: 0.65rem;
+        color: var(--color-text-muted);
+        text-transform: uppercase;
+    }
+
     .stat-label {
         font-size: 0.75rem;
         color: var(--color-text-muted);
@@ -836,6 +856,7 @@
     {% for etapa in etapas %}
     {% set stats = stats_por_etapa[etapa.id] %}
     {% set class_name = etapa.nombre|lower|replace(' ', '-') %}
+    {% set bft_totales = {'madera-verde': 0, 'secado': 243687, 'stock-secado': 47256} %}
     <a href="/etapa/{{ etapa.id }}" class="stat-card {{ class_name }}" data-etapa-id="{{ etapa.id }}">
         <div class="stat-header">
             <span class="stat-title">{{ etapa.nombre }}</span>
@@ -858,8 +879,12 @@
             </div>
             <div class="stat-bft">
                 <div class="stat-bft-value" id="etapa-{{ etapa.id }}-bft">{{ "%.1f"|format(stats.total_bft) }}</div>
-                <div class="stat-bft-label">BFT Total</div>
+                <div class="stat-bft-label">BFT Actual</div>
             </div>
+        </div>
+        <div class="stat-bft-total">
+            <div class="stat-bft-total-value">{{ "{:,}".format(bft_totales.get(class_name, 0)) }}</div>
+            <div class="stat-bft-total-label">BFT TOTAL</div>
         </div>
     </a>
     {% endfor %}
@@ -881,6 +906,10 @@
                 <div class="stat-bft-value" id="produccion-bft">{{ "%.1f"|format(lotes_en_proceso|sum(attribute='bft_disponible') if lotes_en_proceso else 0) }}</div>
                 <div class="stat-bft-label">BFT Disponible</div>
             </div>
+        </div>
+        <div class="stat-bft-total">
+            <div class="stat-bft-total-value">12,536</div>
+            <div class="stat-bft-total-label">BFT TOTAL</div>
         </div>
     </a>
 
@@ -919,8 +948,12 @@
             </div>
             <div class="stat-bft">
                 <div class="stat-bft-value" id="bloques-presentados-bft">{{ "%.1f"|format(bloques_presentados|sum(attribute='bft') if bloques_presentados else 0) }}</div>
-                <div class="stat-bft-label">BFT Total</div>
+                <div class="stat-bft-label">BFT Actual</div>
             </div>
+        </div>
+        <div class="stat-bft-total">
+            <div class="stat-bft-total-value">54,976</div>
+            <div class="stat-bft-total-label">BFT TOTAL</div>
         </div>
     </a>
 
@@ -939,8 +972,12 @@
             </div>
             <div class="stat-bft">
                 <div class="stat-bft-value" id="bloques-encolados-bft">{{ "%.1f"|format(bloques_encolados|sum(attribute='bft') if bloques_encolados else 0) }}</div>
-                <div class="stat-bft-label">BFT Total</div>
+                <div class="stat-bft-label">BFT Actual</div>
             </div>
+        </div>
+        <div class="stat-bft-total">
+            <div class="stat-bft-total-value">57,664</div>
+            <div class="stat-bft-total-label">BFT TOTAL</div>
         </div>
     </a>
 

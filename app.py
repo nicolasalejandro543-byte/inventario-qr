@@ -32,6 +32,18 @@ with app.app_context():
     db.create_all()
     init_etapas()
 
+    # Migración: agregar columna calidad a proceso_lotes si no existe
+    try:
+        from sqlalchemy import inspect, text
+        inspector = inspect(db.engine)
+        columns = [col['name'] for col in inspector.get_columns('proceso_lotes')]
+        if 'calidad' not in columns:
+            db.session.execute(text("ALTER TABLE proceso_lotes ADD COLUMN calidad VARCHAR(20) DEFAULT 'R8 Estándar'"))
+            db.session.commit()
+            print("Migración: columna 'calidad' agregada a proceso_lotes")
+    except Exception as e:
+        print(f"Migración calidad: {e}")
+
 
 # ==================== AUTENTICACION ====================
 

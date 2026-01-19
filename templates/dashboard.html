@@ -856,7 +856,6 @@
     {% for etapa in etapas %}
     {% set stats = stats_por_etapa[etapa.id] %}
     {% set class_name = etapa.nombre|lower|replace(' ', '-') %}
-    {% set bft_totales = {'madera-verde': 0, 'secado': 243687, 'stock-secado': 47256} %}
     <a href="/etapa/{{ etapa.id }}" class="stat-card {{ class_name }}" data-etapa-id="{{ etapa.id }}">
         <div class="stat-header">
             <span class="stat-title">{{ etapa.nombre }}</span>
@@ -878,8 +877,8 @@
                 <div class="stat-label">Coches</div>
             </div>
             <div class="stat-bft">
-                <div class="stat-bft-value">{{ "{:,}".format(bft_totales.get(class_name, 0)) }}</div>
-                <div class="stat-bft-label">BFT TOTAL</div>
+                <div class="stat-bft-value" id="etapa-{{ etapa.id }}-bft">{{ "{:,.0f}".format(stats.total_bft) }}</div>
+                <div class="stat-bft-label">BFT</div>
             </div>
         </div>
     </a>
@@ -899,8 +898,8 @@
                 <div class="stat-label">Lotes en Proceso</div>
             </div>
             <div class="stat-bft">
-                <div class="stat-bft-value">12,536</div>
-                <div class="stat-bft-label">BFT TOTAL</div>
+                <div class="stat-bft-value" id="produccion-bft">{{ "{:,.0f}".format(lotes_en_proceso|sum(attribute='bft_total') if lotes_en_proceso else 0) }}</div>
+                <div class="stat-bft-label">BFT</div>
             </div>
         </div>
     </a>
@@ -939,8 +938,8 @@
                 <div class="stat-label">Bloques</div>
             </div>
             <div class="stat-bft">
-                <div class="stat-bft-value">54,976</div>
-                <div class="stat-bft-label">BFT TOTAL</div>
+                <div class="stat-bft-value" id="bloques-presentados-bft">{{ "{:,.0f}".format(bloques_presentados|sum(attribute='bft') if bloques_presentados else 0) }}</div>
+                <div class="stat-bft-label">BFT</div>
             </div>
         </div>
     </a>
@@ -959,8 +958,8 @@
                 <div class="stat-label">Bloques</div>
             </div>
             <div class="stat-bft">
-                <div class="stat-bft-value">57,664</div>
-                <div class="stat-bft-label">BFT TOTAL</div>
+                <div class="stat-bft-value" id="bloques-encolados-bft">{{ "{:,.0f}".format(bloques_encolados|sum(attribute='bft') if bloques_encolados else 0) }}</div>
+                <div class="stat-bft-label">BFT</div>
             </div>
         </div>
     </a>

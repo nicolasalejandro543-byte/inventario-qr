@@ -2505,6 +2505,424 @@ def reset_db_page():
     '''
 
 
+# ==================== ACCESO MAESTRO - DATOS HISTORICOS ====================
+
+@app.route('/maestro')
+@login_required
+def acceso_maestro():
+    """Página de acceso maestro para ingreso masivo de datos históricos."""
+    etapas = Etapa.query.order_by(Etapa.orden).all()
+    fecha_hoy = datetime.now().strftime('%Y-%m-%d')
+
+    return render_template('maestro.html',
+                           etapas=etapas,
+                           fecha_hoy=fecha_hoy,
+                           espesores=ESPESORES,
+                           largos=LARGOS,
+                           largos_produccion=LARGOS_PRODUCCION)
+
+
+@app.route('/api/maestro/coches', methods=['POST'])
+@login_required
+def maestro_crear_coches():
+    """Crea múltiples coches masivamente para datos históricos."""
+    data = request.get_json()
+
+    cantidad = data.get('cantidad', 1)
+    if cantidad > 200:
+        cantidad = 200
+
+    fecha_str = data.get('fecha_creacion')
+    if fecha_str:
+        try:
+            fecha_creacion = datetime.strptime(fecha_str, '%Y-%m-%d')
+        except:
+            fecha_creacion = datetime.now()
+    else:
+        fecha_creacion = datetime.now()
+
+    etapa_destino_id = data.get('etapa_destino_id')
+    if etapa_destino_id:
+        etapa = Etapa.query.get(etapa_destino_id)
+        if not etapa:
+            return jsonify({'success': False, 'error': 'Etapa no válida'}), 400
+    else:
+        etapa = Etapa.query.filter_by(orden=1).first()
+
+    proveedor = data.get('proveedor', '')
+    camara = data.get('camara')
+    if camara == '':
+        camara = None
+    elif camara:
+        camara = int(camara)
+    lote_secado = data.get('lote_secado', '')
+
+    espesor_1 = data.get('espesor_1')
+    largo_1 = data.get('largo_1')
+    plantillas_1 = data.get('plantillas_1', 0)
+
+    coches_creados = []
+    total_bft = 0
+
+    # Obtener siguiente número
+    siguiente_num = 1
+    for c in Coche.query.all():
+        num = extraer_numero_coche(c.codigo_qr)
+        if num and num >= siguiente_num:
+            siguiente_num = num + 1
+
+    for i in range(cantidad):
+        codigo_qr = generar_codigo_coche_consecutivo(siguiente_num)
+        while Coche.query.filter_by(codigo_qr=codigo_qr).first():
+            siguiente_num += 1
+            codigo_qr = generar_codigo_coche_consecutivo(siguiente_num)
+
+        coche = Coche(
+            codigo_qr=codigo_qr,
+            registrador='Maestro',
+            proveedor=proveedor,
+            camara=camara,
+            lote_secado=lote_secado,
+            espesor_1=espesor_1 if espesor_1 else None,
+            largo_1=largo_1 if largo_1 else None,
+            plantillas_1=float(plantillas_1) if plantillas_1 else 0,
+            etapa_actual_id=etapa.id,
+            created_at=fecha_creacion
+        )
+        coche.calcular_bft()
+        total_bft += coche.total_bft or 0
+
+        db.session.add(coche)
+        db.session.flush()
+
+        # Registrar movimiento
+        movimiento = Movimiento(
+            coche_id=coche.id,
+            etapa_origen_id=None,
+            etapa_destino_id=etapa.id,
+            usuario='Maestro',
+            notas='Creado vía Acceso Maestro',
+            timestamp=fecha_creacion
+        )
+        db.session.add(movimiento)
+
+        coches_creados.append(codigo_qr)
+        siguiente_num += 1
+
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'total_creados': len(coches_creados),
+        'total_bft': total_bft,
+        'mensaje': f'{len(coches_creados)} coches creados exitosamente'
+    })
+
+
+@app.route('/api/maestro/lotes', methods=['POST'])
+@login_required
+def maestro_crear_lote():
+    """Crea un lote con coches generados automáticamente."""
+    data = request.get_json()
+
+    fecha_str = data.get('fecha_creacion')
+    if fecha_str:
+        try:
+            fecha_creacion = datetime.strptime(fecha_str, '%Y-%m-%d')
+        except:
+            fecha_creacion = datetime.now()
+    else:
+        fecha_creacion = datetime.now()
+
+    turno = data.get('turno', 'Diurno')
+    cantidad_coches = data.get('cantidad_coches', 5)
+    bft_por_coche = data.get('bft_por_coche', 500)
+
+    # Generar código de lote
+    siguiente_num = 1
+    for l in Lote.query.all():
+        num = extraer_numero_lote(l.codigo_qr)
+        if num and num >= siguiente_num:
+            siguiente_num = num + 1
+
+    codigo_lote = generar_codigo_lote_consecutivo(siguiente_num)
+    while Lote.query.filter_by(codigo_qr=codigo_lote).first():
+        siguiente_num += 1
+        codigo_lote = generar_codigo_lote_consecutivo(siguiente_num)
+
+    # Crear el lote
+    lote = Lote(
+        codigo_qr=codigo_lote,
+        turno=turno,
+        estado='disponible',
+        bft_total=cantidad_coches * bft_por_coche,
+        created_at=fecha_creacion
+    )
+    db.session.add(lote)
+    db.session.flush()
+
+    # Obtener etapa de producción (orden 4)
+    etapa_produccion = Etapa.query.filter_by(orden=4).first()
+    if not etapa_produccion:
+        etapa_produccion = Etapa.query.first()
+
+    # Crear coches para el lote
+    siguiente_num_coche = 1
+    for c in Coche.query.all():
+        num = extraer_numero_coche(c.codigo_qr)
+        if num and num >= siguiente_num_coche:
+            siguiente_num_coche = num + 1
+
+    for i in range(cantidad_coches):
+        codigo_coche = generar_codigo_coche_consecutivo(siguiente_num_coche)
+        while Coche.query.filter_by(codigo_qr=codigo_coche).first():
+            siguiente_num_coche += 1
+            codigo_coche = generar_codigo_coche_consecutivo(siguiente_num_coche)
+
+        coche = Coche(
+            codigo_qr=codigo_coche,
+            registrador='Maestro',
+            etapa_actual_id=etapa_produccion.id,
+            created_at=fecha_creacion
+        )
+        # Asignar BFT fijo
+        coche.total_bft = bft_por_coche
+
+        db.session.add(coche)
+        db.session.flush()
+
+        lote.coches.append(coche)
+        siguiente_num_coche += 1
+
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'codigo': codigo_lote,
+        'total_bft': lote.bft_total,
+        'mensaje': f'Lote {codigo_lote} creado con {cantidad_coches} coches'
+    })
+
+
+@app.route('/api/maestro/bloques-presentados', methods=['POST'])
+@login_required
+def maestro_crear_bloques_presentados():
+    """Crea múltiples bloques presentados masivamente."""
+    data = request.get_json()
+
+    cantidad = data.get('cantidad', 10)
+    if cantidad > 100:
+        cantidad = 100
+
+    fecha_str = data.get('fecha')
+    if fecha_str:
+        try:
+            fecha = datetime.strptime(fecha_str, '%Y-%m-%d').date()
+        except:
+            fecha = datetime.now().date()
+    else:
+        fecha = datetime.now().date()
+
+    turno = data.get('turno', 'Diurno')
+    calidad = data.get('calidad', 'R8 Estándar')
+    largo = data.get('largo', 96)
+    peso = data.get('peso', 45)
+    secuencia_inicial = data.get('secuencia_inicial', 1)
+    empatado = data.get('empatado', False)
+
+    # Obtener siguiente número
+    siguiente_num = 1
+    for b in Bloque.query.all():
+        num = extraer_numero_bloque(b.codigo_qr)
+        if num and num >= siguiente_num:
+            siguiente_num = num + 1
+
+    bloques_creados = []
+    total_bft = 0
+
+    for i in range(cantidad):
+        codigo_qr = generar_codigo_bloque_consecutivo(siguiente_num)
+        while Bloque.query.filter_by(codigo_qr=codigo_qr).first():
+            siguiente_num += 1
+            codigo_qr = generar_codigo_bloque_consecutivo(siguiente_num)
+
+        bloque = Bloque(
+            codigo_qr=codigo_qr,
+            fecha=fecha,
+            turno=turno,
+            calidad=calidad,
+            secuencia=str(secuencia_inicial + i),
+            largo=int(largo),
+            peso=float(peso),
+            empatado=empatado,
+            estado='presentado',
+            created_at=datetime.combine(fecha, datetime.min.time())
+        )
+        bloque.calcular_bft()
+        bloque.calcular_densidad_presentado()
+        total_bft += bloque.bft or 0
+
+        db.session.add(bloque)
+        bloques_creados.append(codigo_qr)
+        siguiente_num += 1
+
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'total_creados': len(bloques_creados),
+        'total_bft': total_bft,
+        'mensaje': f'{len(bloques_creados)} bloques presentados creados'
+    })
+
+
+@app.route('/api/maestro/bloques-encolados', methods=['POST'])
+@login_required
+def maestro_crear_bloques_encolados():
+    """Crea múltiples bloques ya encolados masivamente."""
+    data = request.get_json()
+
+    cantidad = data.get('cantidad', 10)
+    if cantidad > 100:
+        cantidad = 100
+
+    fecha_pres_str = data.get('fecha_presentado')
+    fecha_enc_str = data.get('fecha_encolado')
+
+    if fecha_pres_str:
+        try:
+            fecha_presentado = datetime.strptime(fecha_pres_str, '%Y-%m-%d').date()
+        except:
+            fecha_presentado = datetime.now().date()
+    else:
+        fecha_presentado = datetime.now().date()
+
+    if fecha_enc_str:
+        try:
+            fecha_encolado = datetime.strptime(fecha_enc_str, '%Y-%m-%d')
+        except:
+            fecha_encolado = datetime.now()
+    else:
+        fecha_encolado = datetime.now()
+
+    turno = data.get('turno', 'Diurno')
+    calidad = data.get('calidad', 'R8 Estándar')
+    largo = data.get('largo', 96)
+    peso = data.get('peso', 44)
+    secuencia_inicial = data.get('secuencia_inicial', 1)
+
+    # Obtener siguiente número
+    siguiente_num = 1
+    for b in Bloque.query.all():
+        num = extraer_numero_bloque(b.codigo_qr)
+        if num and num >= siguiente_num:
+            siguiente_num = num + 1
+
+    bloques_creados = []
+    total_bft = 0
+
+    for i in range(cantidad):
+        codigo_qr = generar_codigo_bloque_consecutivo(siguiente_num)
+        while Bloque.query.filter_by(codigo_qr=codigo_qr).first():
+            siguiente_num += 1
+            codigo_qr = generar_codigo_bloque_consecutivo(siguiente_num)
+
+        bloque = Bloque(
+            codigo_qr=codigo_qr,
+            fecha=fecha_presentado,
+            turno=turno,
+            calidad=calidad,
+            secuencia=str(secuencia_inicial + i),
+            largo=int(largo),
+            peso=float(peso) + 1,  # Peso presentado un poco mayor
+            peso_encolado=float(peso),
+            empatado=False,
+            estado='encolado',
+            fecha_encolado=fecha_encolado,
+            created_at=datetime.combine(fecha_presentado, datetime.min.time())
+        )
+        bloque.calcular_bft()
+        bloque.calcular_densidad_presentado()
+        bloque.calcular_densidad_encolado()
+        total_bft += bloque.bft or 0
+
+        db.session.add(bloque)
+        bloques_creados.append(codigo_qr)
+        siguiente_num += 1
+
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'total_creados': len(bloques_creados),
+        'total_bft': total_bft,
+        'mensaje': f'{len(bloques_creados)} bloques encolados creados'
+    })
+
+
+@app.route('/api/maestro/contenedores', methods=['POST'])
+@login_required
+def maestro_crear_contenedor():
+    """Crea un contenedor y asigna bloques encolados disponibles."""
+    data = request.get_json()
+
+    fecha_str = data.get('fecha')
+    if fecha_str:
+        try:
+            fecha = datetime.strptime(fecha_str, '%Y-%m-%d').date()
+        except:
+            fecha = datetime.now().date()
+    else:
+        fecha = datetime.now().date()
+
+    nombre = data.get('nombre', '')
+    cantidad_bloques = data.get('cantidad_bloques', 50)
+    estado = data.get('estado', 'abierto')
+
+    # Generar código
+    siguiente_num = 1
+    for c in Contenedor.query.all():
+        num = extraer_numero_contenedor(c.codigo)
+        if num and num >= siguiente_num:
+            siguiente_num = num + 1
+
+    codigo = generar_codigo_contenedor_consecutivo(siguiente_num)
+    while Contenedor.query.filter_by(codigo=codigo).first():
+        siguiente_num += 1
+        codigo = generar_codigo_contenedor_consecutivo(siguiente_num)
+
+    contenedor = Contenedor(
+        codigo=codigo,
+        cliente=nombre,
+        fecha_carga=fecha,
+        estado=estado,
+        creado_por='Maestro',
+        created_at=datetime.combine(fecha, datetime.min.time())
+    )
+    db.session.add(contenedor)
+    db.session.flush()
+
+    # Buscar bloques encolados disponibles
+    bloques_disponibles = Bloque.query.filter_by(estado='encolado').all()
+    bloques_sin_contenedor = [b for b in bloques_disponibles if len(b.contenedores) == 0]
+
+    bloques_asignados = 0
+    for bloque in bloques_sin_contenedor[:cantidad_bloques]:
+        contenedor.bloques.append(bloque)
+        bloques_asignados += 1
+
+    contenedor.calcular_totales()
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'codigo': codigo,
+        'total_creados': 1,
+        'bloques_asignados': bloques_asignados,
+        'mensaje': f'Contenedor {codigo} creado con {bloques_asignados} bloques'
+    })
+
+
 if __name__ == '__main__':
     # Solo para desarrollo local
     port = int(os.environ.get('PORT', 5000))

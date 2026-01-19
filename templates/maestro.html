@@ -1,0 +1,791 @@
+{% extends "base.html" %}
+
+{% block title %}Acceso Maestro{% endblock %}
+
+{% block head %}
+<style>
+    .maestro-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding: 20px;
+        background: linear-gradient(135deg, #6f42c1, #5a32a3);
+        border-radius: var(--radius-lg);
+        color: white;
+    }
+
+    .maestro-header h2 {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .maestro-tabs {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 24px;
+        background: white;
+        padding: 8px;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        flex-wrap: wrap;
+    }
+
+    .maestro-tab {
+        padding: 12px 16px;
+        border: none;
+        background: transparent;
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+    }
+
+    .maestro-tab:hover {
+        background: var(--color-bg);
+    }
+
+    .maestro-tab.active {
+        color: white;
+    }
+
+    .maestro-tab.coches.active { background: linear-gradient(135deg, #28a745, #20c997); }
+    .maestro-tab.lotes.active { background: linear-gradient(135deg, #6f42c1, #5a32a3); }
+    .maestro-tab.bloques.active { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .maestro-tab.encolados.active { background: linear-gradient(135deg, #10b981, #059669); }
+    .maestro-tab.contenedores.active { background: linear-gradient(135deg, #0891b2, #0e7490); }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    .form-card {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        padding: 24px;
+        margin-bottom: 20px;
+    }
+
+    .form-card h3 {
+        margin: 0 0 20px 0;
+        padding-bottom: 12px;
+        border-bottom: 2px solid var(--color-gray-light);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .form-group label {
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: var(--color-text-muted);
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        padding: 10px 14px;
+        border: 2px solid var(--color-gray-light);
+        border-radius: var(--radius-sm);
+        font-size: 0.95rem;
+        transition: border-color 0.2s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: #6f42c1;
+    }
+
+    .fila-plantilla {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 80px;
+        gap: 12px;
+        padding: 12px;
+        background: var(--color-bg);
+        border-radius: var(--radius-sm);
+        margin-bottom: 10px;
+        align-items: end;
+    }
+
+    .fila-plantilla .form-group {
+        margin-bottom: 0;
+    }
+
+    .bft-calculado {
+        text-align: center;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--color-success);
+        font-size: 1.1rem;
+        padding-top: 28px;
+    }
+
+    .btn-crear {
+        width: 100%;
+        padding: 14px;
+        color: white;
+        border: none;
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.2s;
+        margin-top: 20px;
+    }
+
+    .btn-crear:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .btn-crear:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .btn-crear.coches { background: linear-gradient(135deg, #28a745, #20c997); }
+    .btn-crear.lotes { background: linear-gradient(135deg, #6f42c1, #5a32a3); }
+    .btn-crear.bloques { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .btn-crear.encolados { background: linear-gradient(135deg, #10b981, #059669); }
+    .btn-crear.contenedores { background: linear-gradient(135deg, #0891b2, #0e7490); }
+
+    .resultado-mensaje {
+        padding: 16px 20px;
+        border-radius: var(--radius-md);
+        margin-top: 20px;
+        display: none;
+    }
+
+    .resultado-mensaje.success {
+        display: block;
+        background: rgba(16, 185, 129, 0.1);
+        color: #059669;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .resultado-mensaje.error {
+        display: block;
+        background: rgba(239, 68, 68, 0.1);
+        color: #dc2626;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .cantidad-rapida {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .cantidad-rapida input {
+        width: 80px;
+        padding: 10px;
+        font-size: 1.1rem;
+        text-align: center;
+        border: 2px solid var(--color-gray-light);
+        border-radius: var(--radius-md);
+    }
+
+    .cantidad-rapida span {
+        font-weight: 600;
+        color: var(--color-text-muted);
+    }
+
+    .info-box {
+        background: var(--color-bg);
+        padding: 16px;
+        border-radius: var(--radius-md);
+        margin-bottom: 20px;
+        border-left: 4px solid #6f42c1;
+    }
+
+    .info-box h4 {
+        margin: 0 0 8px 0;
+        color: #6f42c1;
+    }
+
+    .info-box p {
+        margin: 0;
+        font-size: 0.9rem;
+        color: var(--color-text-muted);
+    }
+
+    @media (max-width: 768px) {
+        .fila-plantilla {
+            grid-template-columns: 1fr 1fr;
+        }
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+        .maestro-tabs {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="maestro-header">
+    <h2><i class="bi bi-shield-lock"></i> Acceso Maestro - Datos Históricos</h2>
+    <a href="/" class="btn btn-secondary" style="background: rgba(255,255,255,0.2); border: none;">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<!-- Tabs de procesos -->
+<div class="maestro-tabs">
+    <button class="maestro-tab coches active" onclick="cambiarTab('coches', this)">
+        <i class="bi bi-truck"></i> Coches
+    </button>
+    <button class="maestro-tab lotes" onclick="cambiarTab('lotes', this)">
+        <i class="bi bi-collection"></i> Lotes
+    </button>
+    <button class="maestro-tab bloques" onclick="cambiarTab('bloques', this)">
+        <i class="bi bi-box"></i> Bloques Presentados
+    </button>
+    <button class="maestro-tab encolados" onclick="cambiarTab('encolados', this)">
+        <i class="bi bi-check2-square"></i> Bloques Encolados
+    </button>
+    <button class="maestro-tab contenedores" onclick="cambiarTab('contenedores', this)">
+        <i class="bi bi-truck"></i> Contenedores
+    </button>
+</div>
+
+<!-- ==================== TAB COCHES ==================== -->
+<div id="tab-coches" class="tab-content active">
+    <div class="form-card">
+        <h3><i class="bi bi-truck" style="color: #28a745;"></i> Crear Coches Masivamente</h3>
+
+        <div class="info-box">
+            <h4><i class="bi bi-info-circle"></i> Registro Rápido</h4>
+            <p>Crea múltiples coches con los mismos datos. Útil para registrar datos históricos de madera verde o secado.</p>
+        </div>
+
+        <div class="cantidad-rapida">
+            <span>Crear</span>
+            <input type="number" id="coches-cantidad" min="1" max="200" value="10">
+            <span>coches</span>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Fecha de Creación</label>
+                <input type="date" id="coches-fecha" value="{{ fecha_hoy }}">
+            </div>
+            <div class="form-group">
+                <label>Etapa Destino</label>
+                <select id="coches-etapa">
+                    {% for etapa in etapas %}
+                    <option value="{{ etapa.id }}">{{ etapa.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Proveedor</label>
+                <input type="text" id="coches-proveedor" placeholder="Nombre">
+            </div>
+            <div class="form-group">
+                <label>Cámara</label>
+                <select id="coches-camara">
+                    <option value="">Sin cámara</option>
+                    {% for i in range(1, 16) %}
+                    <option value="{{ i }}">Cámara {{ i }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Lote Secado</label>
+                <input type="text" id="coches-lote-secado" placeholder="LS001">
+            </div>
+        </div>
+
+        <h4 style="margin: 20px 0 12px 0; color: var(--color-text-muted);">Plantillas (Fila 1)</h4>
+        <div class="fila-plantilla">
+            <div class="form-group">
+                <label>Espesor</label>
+                <select id="coches-espesor" onchange="calcularBftCoches()">
+                    <option value="">-</option>
+                    {% for e in espesores %}
+                    <option value="{{ e }}">{{ e }}"</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Largo</label>
+                <select id="coches-largo" onchange="calcularBftCoches()">
+                    <option value="">-</option>
+                    {% for l in largos %}
+                    <option value="{{ l }}">{{ l }}'</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Plantillas</label>
+                <input type="number" id="coches-plantillas" step="0.5" min="0" value="0" onchange="calcularBftCoches()">
+            </div>
+            <div class="bft-calculado" id="coches-bft">0</div>
+        </div>
+
+        <div style="text-align: right; margin: 10px 0;">
+            BFT Total: <strong id="coches-bft-total" style="color: var(--color-success); font-size: 1.2rem;">0</strong>
+        </div>
+
+        <button class="btn-crear coches" onclick="crearCoches()">
+            <i class="bi bi-plus-circle"></i> Crear Coches
+        </button>
+        <div id="resultado-coches" class="resultado-mensaje"></div>
+    </div>
+</div>
+
+<!-- ==================== TAB LOTES ==================== -->
+<div id="tab-lotes" class="tab-content">
+    <div class="form-card">
+        <h3><i class="bi bi-collection" style="color: #6f42c1;"></i> Crear Lotes con Coches</h3>
+
+        <div class="info-box">
+            <h4><i class="bi bi-info-circle"></i> Lotes de Producción</h4>
+            <p>Crea un lote y asigna coches del Stock Secado automáticamente.</p>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Fecha de Creación</label>
+                <input type="date" id="lotes-fecha" value="{{ fecha_hoy }}">
+            </div>
+            <div class="form-group">
+                <label>Turno</label>
+                <select id="lotes-turno">
+                    <option value="Diurno">Diurno</option>
+                    <option value="Nocturno">Nocturno</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Cantidad de Coches</label>
+                <input type="number" id="lotes-cantidad-coches" min="1" max="50" value="5">
+            </div>
+            <div class="form-group">
+                <label>BFT por Coche (aprox)</label>
+                <input type="number" id="lotes-bft-coche" min="0" value="500">
+            </div>
+        </div>
+
+        <button class="btn-crear lotes" onclick="crearLote()">
+            <i class="bi bi-plus-circle"></i> Crear Lote con Coches
+        </button>
+        <div id="resultado-lotes" class="resultado-mensaje"></div>
+    </div>
+</div>
+
+<!-- ==================== TAB BLOQUES PRESENTADOS ==================== -->
+<div id="tab-bloques" class="tab-content">
+    <div class="form-card">
+        <h3><i class="bi bi-box" style="color: #f59e0b;"></i> Crear Bloques Presentados</h3>
+
+        <div class="info-box">
+            <h4><i class="bi bi-info-circle"></i> Bloques de Producción</h4>
+            <p>Crea bloques presentados con datos históricos. Se asignarán a un turno automáticamente.</p>
+        </div>
+
+        <div class="cantidad-rapida">
+            <span>Crear</span>
+            <input type="number" id="bloques-cantidad" min="1" max="100" value="10">
+            <span>bloques presentados</span>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Fecha</label>
+                <input type="date" id="bloques-fecha" value="{{ fecha_hoy }}">
+            </div>
+            <div class="form-group">
+                <label>Turno</label>
+                <select id="bloques-turno">
+                    <option value="Diurno">Diurno</option>
+                    <option value="Nocturno">Nocturno</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Calidad</label>
+                <select id="bloques-calidad">
+                    <option value="R8 Estándar">R8 Estándar</option>
+                    <option value="R9 Pesada">R9 Pesada</option>
+                    <option value="R11 Liviana">R11 Liviana</option>
+                    <option value="Madera Corta">Madera Corta</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Largo (pulgadas)</label>
+                <select id="bloques-largo">
+                    {% for l in largos_produccion %}
+                    <option value="{{ l }}">{{ l }}"</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Peso Promedio (kg)</label>
+                <input type="number" id="bloques-peso" step="0.1" min="0" value="45">
+            </div>
+            <div class="form-group">
+                <label>Secuencia Inicial</label>
+                <input type="number" id="bloques-secuencia" min="1" value="1">
+            </div>
+            <div class="form-group">
+                <label>Empatado</label>
+                <select id="bloques-empatado">
+                    <option value="false">No</option>
+                    <option value="true">Sí</option>
+                </select>
+            </div>
+        </div>
+
+        <button class="btn-crear bloques" onclick="crearBloquesPresentados()">
+            <i class="bi bi-plus-circle"></i> Crear Bloques Presentados
+        </button>
+        <div id="resultado-bloques" class="resultado-mensaje"></div>
+    </div>
+</div>
+
+<!-- ==================== TAB BLOQUES ENCOLADOS ==================== -->
+<div id="tab-encolados" class="tab-content">
+    <div class="form-card">
+        <h3><i class="bi bi-check2-square" style="color: #10b981;"></i> Crear Bloques Encolados</h3>
+
+        <div class="info-box">
+            <h4><i class="bi bi-info-circle"></i> Bloques Encolados</h4>
+            <p>Crea bloques que ya pasaron por el proceso de encolado con datos históricos.</p>
+        </div>
+
+        <div class="cantidad-rapida">
+            <span>Crear</span>
+            <input type="number" id="encolados-cantidad" min="1" max="100" value="10">
+            <span>bloques encolados</span>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Fecha Presentado</label>
+                <input type="date" id="encolados-fecha-pres" value="{{ fecha_hoy }}">
+            </div>
+            <div class="form-group">
+                <label>Fecha Encolado</label>
+                <input type="date" id="encolados-fecha-enc" value="{{ fecha_hoy }}">
+            </div>
+            <div class="form-group">
+                <label>Turno</label>
+                <select id="encolados-turno">
+                    <option value="Diurno">Diurno</option>
+                    <option value="Nocturno">Nocturno</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Calidad</label>
+                <select id="encolados-calidad">
+                    <option value="R8 Estándar">R8 Estándar</option>
+                    <option value="R9 Pesada">R9 Pesada</option>
+                    <option value="R11 Liviana">R11 Liviana</option>
+                    <option value="Madera Corta">Madera Corta</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Largo (pulgadas)</label>
+                <select id="encolados-largo">
+                    {% for l in largos_produccion %}
+                    <option value="{{ l }}">{{ l }}"</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Peso Promedio (kg)</label>
+                <input type="number" id="encolados-peso" step="0.1" min="0" value="44">
+            </div>
+            <div class="form-group">
+                <label>Secuencia Inicial</label>
+                <input type="number" id="encolados-secuencia" min="1" value="1">
+            </div>
+        </div>
+
+        <button class="btn-crear encolados" onclick="crearBloquesEncolados()">
+            <i class="bi bi-plus-circle"></i> Crear Bloques Encolados
+        </button>
+        <div id="resultado-encolados" class="resultado-mensaje"></div>
+    </div>
+</div>
+
+<!-- ==================== TAB CONTENEDORES ==================== -->
+<div id="tab-contenedores" class="tab-content">
+    <div class="form-card">
+        <h3><i class="bi bi-truck" style="color: #0891b2;"></i> Crear Contenedores con Bloques</h3>
+
+        <div class="info-box">
+            <h4><i class="bi bi-info-circle"></i> Contenedores</h4>
+            <p>Crea contenedores y asigna bloques encolados automáticamente.</p>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Fecha</label>
+                <input type="date" id="contenedores-fecha" value="{{ fecha_hoy }}">
+            </div>
+            <div class="form-group">
+                <label>Nombre/Referencia</label>
+                <input type="text" id="contenedores-nombre" placeholder="Contenedor Export">
+            </div>
+            <div class="form-group">
+                <label>Cantidad de Bloques</label>
+                <input type="number" id="contenedores-bloques" min="1" max="200" value="50">
+            </div>
+            <div class="form-group">
+                <label>Estado</label>
+                <select id="contenedores-estado">
+                    <option value="abierto">Abierto</option>
+                    <option value="cerrado">Cerrado</option>
+                </select>
+            </div>
+        </div>
+
+        <button class="btn-crear contenedores" onclick="crearContenedor()">
+            <i class="bi bi-plus-circle"></i> Crear Contenedor
+        </button>
+        <div id="resultado-contenedores" class="resultado-mensaje"></div>
+    </div>
+</div>
+
+<script>
+function cambiarTab(tab, btn) {
+    document.querySelectorAll('.maestro-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+    btn.classList.add('active');
+    document.getElementById('tab-' + tab).classList.add('active');
+}
+
+// ==================== COCHES ====================
+function calcularBftCoches() {
+    const espesor = parseFloat(document.getElementById('coches-espesor').value) || 0;
+    const largo = parseFloat(document.getElementById('coches-largo').value) || 0;
+    const plantillas = parseFloat(document.getElementById('coches-plantillas').value) || 0;
+    const cantidad = parseInt(document.getElementById('coches-cantidad').value) || 0;
+
+    const bft = Math.floor((largo * espesor * plantillas * 45) / 12);
+    document.getElementById('coches-bft').textContent = bft;
+    document.getElementById('coches-bft-total').textContent = (bft * cantidad).toLocaleString();
+}
+
+document.getElementById('coches-cantidad').addEventListener('change', calcularBftCoches);
+
+async function crearCoches() {
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Creando...';
+
+    const datos = {
+        cantidad: parseInt(document.getElementById('coches-cantidad').value),
+        fecha_creacion: document.getElementById('coches-fecha').value,
+        etapa_destino_id: document.getElementById('coches-etapa').value,
+        proveedor: document.getElementById('coches-proveedor').value,
+        camara: document.getElementById('coches-camara').value,
+        lote_secado: document.getElementById('coches-lote-secado').value,
+        espesor_1: document.getElementById('coches-espesor').value,
+        largo_1: document.getElementById('coches-largo').value,
+        plantillas_1: document.getElementById('coches-plantillas').value
+    };
+
+    try {
+        const response = await fetch('/api/maestro/coches', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(datos)
+        });
+
+        const data = await response.json();
+        mostrarResultado('coches', data);
+    } catch (error) {
+        mostrarResultado('coches', { success: false, error: 'Error de conexión' });
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-plus-circle"></i> Crear Coches';
+}
+
+// ==================== LOTES ====================
+async function crearLote() {
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Creando...';
+
+    const datos = {
+        fecha_creacion: document.getElementById('lotes-fecha').value,
+        turno: document.getElementById('lotes-turno').value,
+        cantidad_coches: parseInt(document.getElementById('lotes-cantidad-coches').value),
+        bft_por_coche: parseInt(document.getElementById('lotes-bft-coche').value)
+    };
+
+    try {
+        const response = await fetch('/api/maestro/lotes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(datos)
+        });
+
+        const data = await response.json();
+        mostrarResultado('lotes', data);
+    } catch (error) {
+        mostrarResultado('lotes', { success: false, error: 'Error de conexión' });
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-plus-circle"></i> Crear Lote con Coches';
+}
+
+// ==================== BLOQUES PRESENTADOS ====================
+async function crearBloquesPresentados() {
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Creando...';
+
+    const datos = {
+        cantidad: parseInt(document.getElementById('bloques-cantidad').value),
+        fecha: document.getElementById('bloques-fecha').value,
+        turno: document.getElementById('bloques-turno').value,
+        calidad: document.getElementById('bloques-calidad').value,
+        largo: document.getElementById('bloques-largo').value,
+        peso: parseFloat(document.getElementById('bloques-peso').value),
+        secuencia_inicial: parseInt(document.getElementById('bloques-secuencia').value),
+        empatado: document.getElementById('bloques-empatado').value === 'true'
+    };
+
+    try {
+        const response = await fetch('/api/maestro/bloques-presentados', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(datos)
+        });
+
+        const data = await response.json();
+        mostrarResultado('bloques', data);
+    } catch (error) {
+        mostrarResultado('bloques', { success: false, error: 'Error de conexión' });
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-plus-circle"></i> Crear Bloques Presentados';
+}
+
+// ==================== BLOQUES ENCOLADOS ====================
+async function crearBloquesEncolados() {
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Creando...';
+
+    const datos = {
+        cantidad: parseInt(document.getElementById('encolados-cantidad').value),
+        fecha_presentado: document.getElementById('encolados-fecha-pres').value,
+        fecha_encolado: document.getElementById('encolados-fecha-enc').value,
+        turno: document.getElementById('encolados-turno').value,
+        calidad: document.getElementById('encolados-calidad').value,
+        largo: document.getElementById('encolados-largo').value,
+        peso: parseFloat(document.getElementById('encolados-peso').value),
+        secuencia_inicial: parseInt(document.getElementById('encolados-secuencia').value)
+    };
+
+    try {
+        const response = await fetch('/api/maestro/bloques-encolados', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(datos)
+        });
+
+        const data = await response.json();
+        mostrarResultado('encolados', data);
+    } catch (error) {
+        mostrarResultado('encolados', { success: false, error: 'Error de conexión' });
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-plus-circle"></i> Crear Bloques Encolados';
+}
+
+// ==================== CONTENEDORES ====================
+async function crearContenedor() {
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Creando...';
+
+    const datos = {
+        fecha: document.getElementById('contenedores-fecha').value,
+        nombre: document.getElementById('contenedores-nombre').value,
+        cantidad_bloques: parseInt(document.getElementById('contenedores-bloques').value),
+        estado: document.getElementById('contenedores-estado').value
+    };
+
+    try {
+        const response = await fetch('/api/maestro/contenedores', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(datos)
+        });
+
+        const data = await response.json();
+        mostrarResultado('contenedores', data);
+    } catch (error) {
+        mostrarResultado('contenedores', { success: false, error: 'Error de conexión' });
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-plus-circle"></i> Crear Contenedor';
+}
+
+function mostrarResultado(tipo, data) {
+    const resultado = document.getElementById('resultado-' + tipo);
+    if (data.success) {
+        resultado.className = 'resultado-mensaje success';
+        let msg = `<i class="bi bi-check-circle"></i> `;
+        if (data.total_creados) msg += `<strong>${data.total_creados}</strong> creados. `;
+        if (data.total_bft) msg += `Total BFT: <strong>${data.total_bft.toLocaleString()}</strong>. `;
+        if (data.codigo) msg += `Código: <strong>${data.codigo}</strong>. `;
+        if (data.mensaje) msg += data.mensaje;
+        resultado.innerHTML = msg;
+    } else {
+        resultado.className = 'resultado-mensaje error';
+        resultado.innerHTML = `<i class="bi bi-exclamation-circle"></i> Error: ${data.error}`;
+    }
+}
+</script>
+{% endblock %}

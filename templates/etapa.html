@@ -1036,9 +1036,10 @@
         </div>
         <div class="etapa-info">
             <h2>{{ etapa.nombre }}</h2>
+            {% set bft_totales_etapa = {1: 0, 2: 243687, 3: 47256} %}
             <div class="etapa-stats">
                 <span><i class="bi bi-box-seam"></i> <strong>{{ coches|length }}</strong> coches</span>
-                <span><i class="bi bi-rulers"></i> <strong>{{ "%.1f"|format(total_bft) }}</strong> BFT total</span>
+                <span><i class="bi bi-rulers"></i> <strong>{{ "{:,}".format(bft_totales_etapa.get(etapa.orden, 0)) }}</strong> BFT TOTAL</span>
             </div>
         </div>
     </div>

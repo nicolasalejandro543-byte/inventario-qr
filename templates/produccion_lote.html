@@ -1085,7 +1085,8 @@
 
         if (largo > 0 && peso > 0) {
             const bft = largo * 8;
-            const volumen = (((largo + 0.75) * 25.25 * 49.75 * Math.pow(2.54, 3)) / 1000000);
+            // Volumen: (25 x 2.54) x (49.5 x 2.54) x ((Largo+0.75) x 2.54) / 1000000 = m³
+            const volumen = ((25 * 2.54) * (49.5 * 2.54) * ((largo + 0.75) * 2.54)) / 1000000;
             const densidad = peso / volumen;
 
             document.getElementById('bloque-bft-result').textContent = bft.toFixed(0);
@@ -1104,7 +1105,8 @@
         if (!peso) { alert('Ingrese el peso'); return; }
 
         const bft = parseInt(largo) * 8;
-        const volumen = (((parseFloat(largo) + 0.75) * 25.25 * 49.75 * Math.pow(2.54, 3)) / 1000000);
+        // Volumen: (25 x 2.54) x (49.5 x 2.54) x ((Largo+0.75) x 2.54) / 1000000 = m³
+        const volumen = ((25 * 2.54) * (49.5 * 2.54) * ((parseFloat(largo) + 0.75) * 2.54)) / 1000000;
         const densidad = parseFloat(peso) / volumen;
 
         bloquesPendientes.push({

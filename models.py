@@ -335,9 +335,14 @@ class Bloque(db.Model):
         """Calcula la densidad para bloque presentado."""
         if not self.largo or not self.peso:
             return 0
-        # Fórmula: Peso / ((((Largo+0.75) * 25.25 * 49.75 * 2.54^3) / 1000000))
-        volumen = (((self.largo + 0.75) * 25.25 * 49.75 * (2.54 ** 3)) / 1000000)
-        self.densidad = self.peso / volumen if volumen > 0 else 0
+        # Fórmula: (25 x 2.54) x (49.5 x 2.54) x ((Largo+0.75) x 2.54) = volumen en cm³
+        # Dividir por 1,000,000 para convertir a m³
+        # Densidad = Peso / Volumen
+        ancho_cm = 25 * 2.54
+        alto_cm = 49.5 * 2.54
+        largo_cm = (self.largo + 0.75) * 2.54
+        volumen_m3 = (ancho_cm * alto_cm * largo_cm) / 1000000
+        self.densidad = self.peso / volumen_m3 if volumen_m3 > 0 else 0
         return self.densidad
 
     def calcular_densidad_encolado(self):
@@ -345,9 +350,14 @@ class Bloque(db.Model):
         peso = self.peso_encolado or self.peso
         if not self.largo or not peso:
             return 0
-        # Fórmula: Peso / ((((Largo+0.75) * 24.75 * 48.75 * 2.54^3) / 1000000))
-        volumen = (((self.largo + 0.75) * 24.75 * 48.75 * (2.54 ** 3)) / 1000000)
-        self.densidad_encolado = peso / volumen if volumen > 0 else 0
+        # Fórmula: (24.75 x 2.54) x (48.75 x 2.54) x ((Largo+0.75) x 2.54) = volumen en cm³
+        # Dividir por 1,000,000 para convertir a m³
+        # Densidad = Peso / Volumen
+        ancho_cm = 24.75 * 2.54
+        alto_cm = 48.75 * 2.54
+        largo_cm = (self.largo + 0.75) * 2.54
+        volumen_m3 = (ancho_cm * alto_cm * largo_cm) / 1000000
+        self.densidad_encolado = peso / volumen_m3 if volumen_m3 > 0 else 0
         return self.densidad_encolado
 
     def calcular_bft(self):

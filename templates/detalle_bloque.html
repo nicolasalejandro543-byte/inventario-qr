@@ -394,8 +394,8 @@
         const peso = parseFloat(this.value) || 0;
 
         if (peso > 0) {
-            // Formula para encolado: Peso / ((((Largo+0.75) * 24.75 * 48.75 * 2.54^3) / 1000000))
-            const volumen = (((largo + 0.75) * 24.75 * 48.75 * Math.pow(2.54, 3)) / 1000000);
+            // Formula para encolado: (24.75 x 2.54) x (48.75 x 2.54) x ((Largo+0.75) x 2.54) / 1000000 = m³
+            const volumen = ((24.75 * 2.54) * (48.75 * 2.54) * ((largo + 0.75) * 2.54)) / 1000000;
             const densidad = peso / volumen;
 
             document.getElementById('nueva-densidad').textContent = densidad.toFixed(4);

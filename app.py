@@ -518,23 +518,53 @@ def detalle_lote_finalizado(lote_id):
 @app.route('/bloques/presentados')
 @login_required
 def bloques_presentados():
-    """Vista de bloques presentados con filtros."""
+    """Vista de bloques presentados con filtros, agrupados por calidad."""
     bloques = Bloque.query.filter_by(estado='presentado').order_by(Bloque.created_at.desc()).all()
+
+    # Agrupar bloques por calidad
+    bloques_por_calidad = {}
+    orden_calidades = ['R8 Estándar', 'R9 Pesada', 'R11 Liviana', 'Madera Corta']
+    calidad_corta = {
+        'R8 Estándar': 'R8', 'R9 Pesada': 'R9', 'R11 Liviana': 'R11', 'Madera Corta': 'MC',
+        'Estándar': 'R8', 'Estandar': 'R8', 'Liviano': 'R11'
+    }
+
+    for bloque in bloques:
+        cal = bloque.calidad or 'Sin Calidad'
+        if cal not in bloques_por_calidad:
+            bloques_por_calidad[cal] = {
+                'bloques': [],
+                'count': 0,
+                'total_bft': 0,
+                'calidad_corta': calidad_corta.get(cal, cal)
+            }
+        bloques_por_calidad[cal]['bloques'].append(bloque)
+        bloques_por_calidad[cal]['count'] += 1
+        bloques_por_calidad[cal]['total_bft'] += bloque.bft or 0
+
+    # Ordenar calidades según el orden definido
+    bloques_por_calidad_ordenado = {}
+    for cal in orden_calidades:
+        if cal in bloques_por_calidad:
+            bloques_por_calidad_ordenado[cal] = bloques_por_calidad[cal]
+    # Agregar calidades no contempladas al final
+    for cal in bloques_por_calidad:
+        if cal not in bloques_por_calidad_ordenado:
+            bloques_por_calidad_ordenado[cal] = bloques_por_calidad[cal]
 
     # Obtener valores únicos para filtros
     secuencias_raw = list(set(b.secuencia for b in bloques if b.secuencia))
-    # Ordenar secuencias de mayor a menor (intentar orden numerico, sino alfabetico inverso)
     try:
         secuencias = sorted(secuencias_raw, key=lambda x: int(x) if x.isdigit() else x, reverse=True)
     except:
         secuencias = sorted(secuencias_raw, reverse=True)
     turnos = list(set(b.turno for b in bloques if b.turno))
     calidades = list(set(b.calidad for b in bloques if b.calidad))
-    # Usar todos los largos de produccion, ordenados de mayor a menor
     largos = sorted(LARGOS_PRODUCCION, reverse=True)
 
     return render_template('bloques_presentados.html',
                           bloques=bloques,
+                          bloques_por_calidad=bloques_por_calidad_ordenado,
                           secuencias=secuencias,
                           turnos=turnos,
                           calidades=calidades,
@@ -545,25 +575,55 @@ def bloques_presentados():
 @app.route('/bloques/encolados')
 @login_required
 def bloques_encolados():
-    """Vista de bloques encolados con filtros."""
+    """Vista de bloques encolados con filtros, agrupados por calidad."""
     bloques_todos = Bloque.query.filter_by(estado='encolado').order_by(Bloque.fecha_encolado.desc()).all()
     # Filtrar bloques que no estan asignados a ningun contenedor
     bloques = [b for b in bloques_todos if len(b.contenedores) == 0]
 
+    # Agrupar bloques por calidad
+    bloques_por_calidad = {}
+    orden_calidades = ['R8 Estándar', 'R9 Pesada', 'R11 Liviana', 'Madera Corta']
+    calidad_corta = {
+        'R8 Estándar': 'R8', 'R9 Pesada': 'R9', 'R11 Liviana': 'R11', 'Madera Corta': 'MC',
+        'Estándar': 'R8', 'Estandar': 'R8', 'Liviano': 'R11'
+    }
+
+    for bloque in bloques:
+        cal = bloque.calidad or 'Sin Calidad'
+        if cal not in bloques_por_calidad:
+            bloques_por_calidad[cal] = {
+                'bloques': [],
+                'count': 0,
+                'total_bft': 0,
+                'calidad_corta': calidad_corta.get(cal, cal)
+            }
+        bloques_por_calidad[cal]['bloques'].append(bloque)
+        bloques_por_calidad[cal]['count'] += 1
+        bloques_por_calidad[cal]['total_bft'] += bloque.bft or 0
+
+    # Ordenar calidades según el orden definido
+    bloques_por_calidad_ordenado = {}
+    for cal in orden_calidades:
+        if cal in bloques_por_calidad:
+            bloques_por_calidad_ordenado[cal] = bloques_por_calidad[cal]
+    # Agregar calidades no contempladas al final
+    for cal in bloques_por_calidad:
+        if cal not in bloques_por_calidad_ordenado:
+            bloques_por_calidad_ordenado[cal] = bloques_por_calidad[cal]
+
     # Obtener valores únicos para filtros
     secuencias_raw = list(set(b.secuencia for b in bloques if b.secuencia))
-    # Ordenar secuencias de mayor a menor (intentar orden numerico, sino alfabetico inverso)
     try:
         secuencias = sorted(secuencias_raw, key=lambda x: int(x) if x.isdigit() else x, reverse=True)
     except:
         secuencias = sorted(secuencias_raw, reverse=True)
     turnos = list(set(b.turno for b in bloques if b.turno))
     calidades = list(set(b.calidad for b in bloques if b.calidad))
-    # Usar todos los largos de produccion, ordenados de mayor a menor
     largos = sorted(LARGOS_PRODUCCION, reverse=True)
 
     return render_template('bloques_encolados.html',
                           bloques=bloques,
+                          bloques_por_calidad=bloques_por_calidad_ordenado,
                           secuencias=secuencias,
                           turnos=turnos,
                           calidades=calidades,

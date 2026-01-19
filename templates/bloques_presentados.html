@@ -373,6 +373,86 @@
         background: rgba(255,255,255,0.2);
     }
 
+    /* Estilos para agrupación por calidad */
+    .calidad-group {
+        margin-bottom: 20px;
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+    }
+
+    .calidad-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .calidad-header:hover {
+        background: linear-gradient(135deg, #d97706, #b45309);
+    }
+
+    .calidad-header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .calidad-icon {
+        width: 40px;
+        height: 40px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        font-weight: 700;
+    }
+
+    .calidad-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    .calidad-stats {
+        display: flex;
+        gap: 20px;
+        font-size: 0.9rem;
+    }
+
+    .calidad-stats span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(255,255,255,0.2);
+        padding: 4px 12px;
+        border-radius: 15px;
+    }
+
+    .calidad-toggle {
+        font-size: 1.2rem;
+        transition: transform 0.3s;
+    }
+
+    .calidad-toggle.collapsed {
+        transform: rotate(-90deg);
+    }
+
+    .calidad-body {
+        padding: 20px;
+        display: none;
+    }
+
+    .calidad-body.show {
+        display: block;
+    }
+
     /* Empty state */
     .empty-state {
         text-align: center;
@@ -606,56 +686,73 @@
 </div>
 
 {% if bloques %}
-<!-- Grid de bloques -->
-<div class="bloques-grid" id="bloques-grid">
-    {% for bloque in bloques %}
-    <div class="bloque-card"
-         data-bloque-id="{{ bloque.id }}"
-         data-codigo="{{ bloque.codigo_qr }}"
-         data-secuencia="{{ bloque.secuencia or '' }}"
-         data-turno="{{ bloque.turno or '' }}"
-         data-calidad="{{ bloque.calidad or '' }}"
-         data-empatado="{{ 'true' if bloque.empatado else 'false' }}"
-         data-largo="{{ bloque.largo or '' }}"
-         data-peso="{{ bloque.peso or 0 }}"
-         data-bft="{{ bloque.bft or 0 }}"
-         onclick="toggleSelection(this)">
-        <input type="checkbox" class="bloque-checkbox" onclick="event.stopPropagation(); toggleSelection(this.parentElement)">
-        <div class="bloque-header">
-            {% if bloque.secuencia %}
-            <span class="bloque-codigo">{{ bloque.secuencia }}</span>
-            {% else %}
-            <span class="bloque-codigo">-</span>
-            {% endif %}
-            {% if bloque.empatado %}
-            <span class="bloque-emp-badge">EMP</span>
-            {% endif %}
-            {% set calidad_corta = {'R8 Estándar': 'R8', 'R9 Pesada': 'R9', 'R11 Liviana': 'R11', 'Madera Corta': 'MC', 'Estándar': 'R8', 'Estandar': 'R8', 'Liviano': 'R11'} %}
-            <span class="bloque-calidad-badge">{{ calidad_corta.get(bloque.calidad, bloque.calidad or '-') }}</span>
+<!-- Vista agrupada por calidad -->
+{% for calidad_nombre, datos in bloques_por_calidad.items() %}
+<div class="calidad-group">
+    <div class="calidad-header" onclick="toggleCalidad('{{ calidad_nombre|replace(' ', '-') }}')">
+        <div class="calidad-header-left">
+            <div class="calidad-icon">{{ datos.calidad_corta }}</div>
+            <div class="calidad-title">{{ calidad_nombre }}</div>
         </div>
-        <div class="bloque-body">
-            <div class="bloque-stats">
-                <div class="bloque-stat">
-                    <div class="bloque-stat-label">Largo</div>
-                    <div class="bloque-stat-value">{{ bloque.largo }}"</div>
+        <div class="calidad-stats">
+            <span><i class="bi bi-box"></i> {{ datos.count }} bloques</span>
+            <span><i class="bi bi-rulers"></i> {{ "%.0f"|format(datos.total_bft) }} BFT</span>
+        </div>
+        <i class="bi bi-chevron-down calidad-toggle" id="toggle-{{ calidad_nombre|replace(' ', '-') }}"></i>
+    </div>
+    <div class="calidad-body" id="calidad-body-{{ calidad_nombre|replace(' ', '-') }}">
+        <div class="bloques-grid">
+            {% for bloque in datos.bloques %}
+            <div class="bloque-card"
+                 data-bloque-id="{{ bloque.id }}"
+                 data-codigo="{{ bloque.codigo_qr }}"
+                 data-secuencia="{{ bloque.secuencia or '' }}"
+                 data-turno="{{ bloque.turno or '' }}"
+                 data-calidad="{{ bloque.calidad or '' }}"
+                 data-empatado="{{ 'true' if bloque.empatado else 'false' }}"
+                 data-largo="{{ bloque.largo or '' }}"
+                 data-peso="{{ bloque.peso or 0 }}"
+                 data-bft="{{ bloque.bft or 0 }}"
+                 onclick="toggleSelection(this)">
+                <input type="checkbox" class="bloque-checkbox" onclick="event.stopPropagation(); toggleSelection(this.parentElement)">
+                <div class="bloque-header">
+                    {% if bloque.secuencia %}
+                    <span class="bloque-codigo">{{ bloque.secuencia }}</span>
+                    {% else %}
+                    <span class="bloque-codigo">-</span>
+                    {% endif %}
+                    {% if bloque.empatado %}
+                    <span class="bloque-emp-badge">EMP</span>
+                    {% endif %}
+                    {% set calidad_corta = {'R8 Estándar': 'R8', 'R9 Pesada': 'R9', 'R11 Liviana': 'R11', 'Madera Corta': 'MC', 'Estándar': 'R8', 'Estandar': 'R8', 'Liviano': 'R11'} %}
+                    <span class="bloque-calidad-badge">{{ calidad_corta.get(bloque.calidad, bloque.calidad or '-') }}</span>
                 </div>
-                <div class="bloque-stat">
-                    <div class="bloque-stat-label">Peso</div>
-                    <div class="bloque-stat-value peso">{{ bloque.peso }} kg</div>
+                <div class="bloque-body">
+                    <div class="bloque-stats">
+                        <div class="bloque-stat">
+                            <div class="bloque-stat-label">Largo</div>
+                            <div class="bloque-stat-value">{{ bloque.largo }}"</div>
+                        </div>
+                        <div class="bloque-stat">
+                            <div class="bloque-stat-label">Peso</div>
+                            <div class="bloque-stat-value peso">{{ bloque.peso }} kg</div>
+                        </div>
+                        <div class="bloque-stat">
+                            <div class="bloque-stat-label">BFT</div>
+                            <div class="bloque-stat-value bft">{{ bloque.bft|int }}</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="bloque-stat">
-                    <div class="bloque-stat-label">BFT</div>
-                    <div class="bloque-stat-value bft">{{ bloque.bft|int }}</div>
+                <div class="bloque-footer">
+                    <span>{{ bloque.fecha.strftime('%d/%m/%Y') if bloque.fecha else 'N/A' }} - {{ bloque.turno }}</span>
+                    <span class="bloque-secuencia">{{ bloque.codigo_qr }}</span>
                 </div>
             </div>
-        </div>
-        <div class="bloque-footer">
-            <span>{{ bloque.fecha.strftime('%d/%m/%Y') if bloque.fecha else 'N/A' }} - {{ bloque.turno }}</span>
-            <span class="bloque-secuencia">{{ bloque.codigo_qr }}</span>
+            {% endfor %}
         </div>
     </div>
-    {% endfor %}
 </div>
+{% endfor %}
 {% else %}
 <div class="empty-state">
     <i class="bi bi-box"></i>
@@ -1079,6 +1176,29 @@ document.querySelectorAll('.bloque-card').forEach(card => {
     card.addEventListener('dblclick', function() {
         window.location.href = '/bloque/' + this.dataset.bloqueId;
     });
+});
+
+// Toggle calidad group
+function toggleCalidad(calidadId) {
+    const body = document.getElementById('calidad-body-' + calidadId);
+    const toggle = document.getElementById('toggle-' + calidadId);
+
+    if (body.classList.contains('show')) {
+        body.classList.remove('show');
+        toggle.classList.add('collapsed');
+    } else {
+        body.classList.add('show');
+        toggle.classList.remove('collapsed');
+    }
+}
+
+// Expandir el primer grupo por defecto
+document.addEventListener('DOMContentLoaded', function() {
+    const primerCalidad = document.querySelector('.calidad-body');
+    const primerToggle = document.querySelector('.calidad-toggle');
+    if (primerCalidad) {
+        primerCalidad.classList.add('show');
+    }
 });
 </script>
 {% endblock %}

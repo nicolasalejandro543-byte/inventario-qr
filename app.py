@@ -3677,17 +3677,20 @@ def get_google_drive_service():
             return None, "No se ha configurado GOOGLE_SERVICE_ACCOUNT_JSON"
 
         # Las credenciales pueden venir como JSON string o como path a archivo
+        # Usamos scope 'drive' para poder acceder a carpetas compartidas
+        SCOPES = ['https://www.googleapis.com/auth/drive']
+
         if GOOGLE_SERVICE_ACCOUNT_JSON.startswith('{'):
             import json as json_lib
             credentials_info = json_lib.loads(GOOGLE_SERVICE_ACCOUNT_JSON)
             credentials = service_account.Credentials.from_service_account_info(
                 credentials_info,
-                scopes=['https://www.googleapis.com/auth/drive.file']
+                scopes=SCOPES
             )
         else:
             credentials = service_account.Credentials.from_service_account_file(
                 GOOGLE_SERVICE_ACCOUNT_JSON,
-                scopes=['https://www.googleapis.com/auth/drive.file']
+                scopes=SCOPES
             )
 
         service = build('drive', 'v3', credentials=credentials)

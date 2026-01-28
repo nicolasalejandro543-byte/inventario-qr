@@ -3234,6 +3234,7 @@ def backup_csv_zip():
 
         # ============================================================
         # CSV PRODUCCIÓN COMPLETA - Una fila por bloque con todos los datos relacionados
+        # Incluye: bloque, lote, madera plantillada, contenedor
         # ============================================================
         produccion_csv = StringIO()
         writer = csv.writer(produccion_csv)
@@ -3252,11 +3253,14 @@ def backup_csv_zip():
             'Lote Estado', 'Lote Turno', 'Lote Creado Por',
             'Lote Desperdicio BFT', 'Lote Desperdicio %',
             'Lote Fecha Creación', 'Lote Fecha Inicio', 'Lote Fecha Finalizado',
+            # Madera plantillada del lote
+            'Lote BFT Plantillado', 'Lote Cantidad Procesos', 'Lote Cantidad Bloques',
             # Datos del contenedor (si está embarcado)
             'En Contenedor', 'Contenedor ID', 'Contenedor Código', 'Contenedor Cliente',
             'Contenedor Número', 'Contenedor Estado',
             'Contenedor Fecha Carga', 'Contenedor Fecha Zarpe',
             'Contenedor Total Bloques', 'Contenedor Total BFT', 'Contenedor Total M³',
+            'Contenedor Tally Sheet', 'Contenedor Seguro 1', 'Contenedor Seguro 2', 'Contenedor Seguro 3',
             # Timestamps
             'Fecha Creación', 'Fecha Actualización',
             'Notas'
@@ -3284,6 +3288,16 @@ def backup_csv_zip():
             lote_fecha_inicio = lote.fecha_inicio_proceso.strftime('%Y-%m-%d %H:%M:%S') if lote and lote.fecha_inicio_proceso else ''
             lote_fecha_fin = lote.fecha_finalizado.strftime('%Y-%m-%d %H:%M:%S') if lote and lote.fecha_finalizado else ''
 
+            # Madera plantillada del lote (suma de ProcesoLote)
+            lote_bft_plantillado = ''
+            lote_cant_procesos = ''
+            lote_cant_bloques = ''
+            if lote:
+                procesos_lote = ProcesoLote.query.filter_by(lote_id=lote.id).all()
+                lote_bft_plantillado = sum(p.bft_calculado or 0 for p in procesos_lote)
+                lote_cant_procesos = len(procesos_lote)
+                lote_cant_bloques = len(lote.bloques)
+
             # Buscar si está en algún contenedor
             contenedor = b.contenedores[0] if b.contenedores else None
             en_contenedor = 'Sí' if contenedor else 'No'
@@ -3297,6 +3311,10 @@ def backup_csv_zip():
             cont_total_bloques = contenedor.total_bloques if contenedor else ''
             cont_total_bft = contenedor.total_bft if contenedor else ''
             cont_total_m3 = contenedor.total_m3 if contenedor else ''
+            cont_tally = contenedor.tally_sheet if contenedor else ''
+            cont_seguro1 = contenedor.seguro_1 if contenedor else ''
+            cont_seguro2 = contenedor.seguro_2 if contenedor else ''
+            cont_seguro3 = contenedor.seguro_3 if contenedor else ''
 
             writer.writerow([
                 b.id, b.codigo_qr,
@@ -3314,138 +3332,17 @@ def backup_csv_zip():
                 lote_estado, lote_turno, lote_creado_por,
                 lote_desperdicio_bft, lote_desperdicio_pct,
                 lote_fecha_creacion, lote_fecha_inicio, lote_fecha_fin,
+                lote_bft_plantillado, lote_cant_procesos, lote_cant_bloques,
                 en_contenedor, cont_id, cont_codigo, cont_cliente,
                 cont_numero, cont_estado,
                 cont_fecha_carga, cont_fecha_zarpe,
                 cont_total_bloques, cont_total_bft, cont_total_m3,
+                cont_tally, cont_seguro1, cont_seguro2, cont_seguro3,
                 b.created_at.strftime('%Y-%m-%d %H:%M:%S') if b.created_at else '',
                 b.updated_at.strftime('%Y-%m-%d %H:%M:%S') if b.updated_at else '',
                 b.notas
             ])
         zf.writestr('produccion_completa.csv', produccion_csv.getvalue())
-
-        # ============================================================
-        # CSV MADERA PLANTILLADA - Procesos de lotes
-        # ============================================================
-        plantillada_csv = StringIO()
-        writer = csv.writer(plantillada_csv)
-        writer.writerow([
-            'Proceso ID', 'Lote ID', 'Lote Código',
-            'Largo', 'Ancho', 'Alto', 'BFT Calculado',
-            'Calidad', 'Procesado Por',
-            'Fecha', 'Año', 'Mes', 'Día', 'Semana',
-            'Lote Total BFT', 'Lote BFT Usado', 'Lote Estado',
-            'Notas'
-        ])
-        for p in ProcesoLote.query.all():
-            lote = p.lote
-            fecha_p = p.created_at
-            semana_p = fecha_p.isocalendar()[1] if fecha_p else ''
-            writer.writerow([
-                p.id, p.lote_id, lote.codigo_qr if lote else '',
-                p.largo, p.ancho, p.alto, p.bft_calculado,
-                p.calidad, p.procesado_por,
-                fecha_p.strftime('%Y-%m-%d %H:%M:%S') if fecha_p else '',
-                fecha_p.year if fecha_p else '',
-                fecha_p.month if fecha_p else '',
-                fecha_p.day if fecha_p else '',
-                semana_p,
-                lote.total_bft if lote else '',
-                lote.bft_usado if lote else '',
-                lote.estado if lote else '',
-                p.notas
-            ])
-        zf.writestr('madera_plantillada.csv', plantillada_csv.getvalue())
-
-        # ============================================================
-        # CSV MOVIMIENTOS - Historial de cambios de etapa
-        # ============================================================
-        movimientos_csv = StringIO()
-        writer = csv.writer(movimientos_csv)
-        writer.writerow([
-            'Movimiento ID', 'Coche ID', 'Coche Código', 'Coche BFT',
-            'Etapa Origen', 'Etapa Destino',
-            'Usuario',
-            'Fecha', 'Año', 'Mes', 'Día', 'Hora', 'Semana',
-            'Notas'
-        ])
-        for m in Movimiento.query.all():
-            coche = m.coche
-            fecha_m = m.timestamp
-            semana_m = fecha_m.isocalendar()[1] if fecha_m else ''
-            writer.writerow([
-                m.id, m.coche_id,
-                coche.codigo_qr if coche else '',
-                coche.total_bft if coche else '',
-                m.etapa_origen.nombre if m.etapa_origen else 'Nuevo',
-                m.etapa_destino.nombre if m.etapa_destino else '',
-                m.usuario,
-                fecha_m.strftime('%Y-%m-%d %H:%M:%S') if fecha_m else '',
-                fecha_m.year if fecha_m else '',
-                fecha_m.month if fecha_m else '',
-                fecha_m.day if fecha_m else '',
-                fecha_m.strftime('%H:%M') if fecha_m else '',
-                semana_m,
-                m.notas
-            ])
-        zf.writestr('movimientos.csv', movimientos_csv.getvalue())
-
-        # ============================================================
-        # CSV RESUMEN - Métricas generales (igual que en dashboard)
-        # ============================================================
-        resumen_csv = StringIO()
-        writer = csv.writer(resumen_csv)
-
-        # Calcular métricas
-        total_coches = Coche.query.count()
-        total_bft_coches = sum(c.total_bft or 0 for c in Coche.query.all())
-        total_lotes = Lote.query.count()
-        lotes_disponibles = Lote.query.filter_by(estado='disponible').count()
-        lotes_en_proceso = Lote.query.filter_by(estado='en_proceso').count()
-        lotes_finalizados = Lote.query.filter_by(estado='finalizado').count()
-        total_bloques = Bloque.query.count()
-        bloques_presentados = Bloque.query.filter_by(estado='presentado').count()
-        bloques_encolados = Bloque.query.filter_by(estado='encolado').count()
-        bft_bloques_presentados = sum(b.bft or 0 for b in Bloque.query.filter_by(estado='presentado').all())
-        bft_bloques_encolados = sum(b.bft or 0 for b in Bloque.query.filter_by(estado='encolado').all())
-        total_contenedores = Contenedor.query.count()
-        contenedores_abiertos = Contenedor.query.filter_by(estado='abierto').count()
-        contenedores_cerrados = Contenedor.query.filter_by(estado='cerrado').count()
-        contenedores_embarcados = Contenedor.query.filter_by(estado='embarcado').count()
-        bft_contenedores = sum(c.total_bft or 0 for c in Contenedor.query.all())
-
-        writer.writerow(['RESUMEN GENERAL', '', ''])
-        writer.writerow(['Métrica', 'Valor', 'Detalle'])
-        writer.writerow([])
-        writer.writerow(['RECEPCIÓN', '', ''])
-        writer.writerow(['Total Coches', total_coches, ''])
-        writer.writerow(['Total BFT Recibido', total_bft_coches, ''])
-        for e in Etapa.query.order_by(Etapa.orden).all():
-            coches_etapa = Coche.query.filter_by(etapa_actual_id=e.id).all()
-            bft_etapa = sum(c.total_bft or 0 for c in coches_etapa)
-            writer.writerow([f'Coches en {e.nombre}', len(coches_etapa), f'{bft_etapa} BFT'])
-        writer.writerow([])
-        writer.writerow(['LOTES', '', ''])
-        writer.writerow(['Total Lotes', total_lotes, ''])
-        writer.writerow(['Lotes Disponibles', lotes_disponibles, ''])
-        writer.writerow(['Lotes En Proceso', lotes_en_proceso, ''])
-        writer.writerow(['Lotes Finalizados', lotes_finalizados, ''])
-        writer.writerow([])
-        writer.writerow(['PRODUCCIÓN (BLOQUES)', '', ''])
-        writer.writerow(['Total Bloques', total_bloques, ''])
-        writer.writerow(['Bloques Presentados', bloques_presentados, f'{bft_bloques_presentados} BFT'])
-        writer.writerow(['Bloques Encolados', bloques_encolados, f'{bft_bloques_encolados} BFT'])
-        writer.writerow([])
-        writer.writerow(['EMBARQUE (CONTENEDORES)', '', ''])
-        writer.writerow(['Total Contenedores', total_contenedores, ''])
-        writer.writerow(['Contenedores Abiertos', contenedores_abiertos, ''])
-        writer.writerow(['Contenedores Cerrados', contenedores_cerrados, ''])
-        writer.writerow(['Contenedores Embarcados', contenedores_embarcados, ''])
-        writer.writerow(['Total BFT en Contenedores', bft_contenedores, ''])
-        writer.writerow([])
-        writer.writerow(['Fecha Backup', datetime.now().strftime('%Y-%m-%d %H:%M:%S'), ''])
-
-        zf.writestr('_RESUMEN.csv', resumen_csv.getvalue())
 
     memoria_zip.seek(0)
 

@@ -3151,29 +3151,46 @@ def backup_completo_json():
 def backup_csv_zip():
     """
     Genera un ZIP con archivos CSV de todas las tablas.
-    Ideal para revisar datos en Excel.
+    Ideal para revisar datos en Excel/Power BI.
+    Incluye campos de fecha separados para facilitar análisis.
     """
     memoria_zip = BytesIO()
 
     with zipfile.ZipFile(memoria_zip, 'w', zipfile.ZIP_DEFLATED) as zf:
 
-        # CSV de Coches
+        # CSV de Etapas (catálogo)
+        etapas_csv = StringIO()
+        writer = csv.writer(etapas_csv)
+        writer.writerow(['ID', 'Nombre', 'Orden', 'Color', 'Icono'])
+        for e in Etapa.query.order_by(Etapa.orden).all():
+            writer.writerow([e.id, e.nombre, e.orden, e.color, e.icono])
+        zf.writestr('etapas.csv', etapas_csv.getvalue())
+
+        # CSV de Coches (Recepción completa)
         coches_csv = StringIO()
         writer = csv.writer(coches_csv)
-        writer.writerow(['ID', 'Código QR', 'Registrador', 'Proveedor', 'Viaje', 'Cámara', 'Lote Secado',
+        writer.writerow(['ID', 'Código QR', 'Registrador', 'Proveedor', 'Número Viaje', 'Cámara', 'Lote Secado',
                         'Espesor 1', 'Largo 1', 'Plantillas 1', 'BFT 1',
                         'Espesor 2', 'Largo 2', 'Plantillas 2', 'BFT 2',
                         'Espesor 3', 'Largo 3', 'Plantillas 3', 'BFT 3',
-                        'Total BFT', 'Etapa Actual', 'Notas', 'Fecha Creación'])
+                        'Total BFT', 'Etapa Actual ID', 'Etapa Actual', 'Notas',
+                        'Fecha Creación', 'Año', 'Mes', 'Día', 'Hora',
+                        'Fecha Actualización'])
         for c in Coche.query.all():
             etapa_nombre = c.etapa_actual.nombre if c.etapa_actual else ''
+            fecha_c = c.created_at
             writer.writerow([
                 c.id, c.codigo_qr, c.registrador, c.proveedor, c.numero_viaje, c.camara, c.lote_secado,
                 c.espesor_1, c.largo_1, c.plantillas_1, c.bft_1,
                 c.espesor_2, c.largo_2, c.plantillas_2, c.bft_2,
                 c.espesor_3, c.largo_3, c.plantillas_3, c.bft_3,
-                c.total_bft, etapa_nombre, c.notas,
-                c.created_at.strftime('%d/%m/%Y %H:%M') if c.created_at else ''
+                c.total_bft, c.etapa_actual_id, etapa_nombre, c.notas,
+                fecha_c.strftime('%Y-%m-%d %H:%M:%S') if fecha_c else '',
+                fecha_c.year if fecha_c else '',
+                fecha_c.month if fecha_c else '',
+                fecha_c.day if fecha_c else '',
+                fecha_c.strftime('%H:%M') if fecha_c else '',
+                c.updated_at.strftime('%Y-%m-%d %H:%M:%S') if c.updated_at else ''
             ])
         zf.writestr('coches.csv', coches_csv.getvalue())
 
@@ -3182,33 +3199,52 @@ def backup_csv_zip():
         writer = csv.writer(lotes_csv)
         writer.writerow(['ID', 'Código QR', 'Total BFT', 'BFT Usado', 'BFT Disponible', 'Cantidad Coches',
                         'Estado', 'Turno', 'Creado Por', 'Desperdicio BFT', 'Desperdicio %',
-                        'Fecha Creación', 'Fecha Inicio Proceso', 'Fecha Finalizado', 'Notas', 'Coches (IDs)'])
+                        'Fecha Creación', 'Año', 'Mes', 'Día',
+                        'Fecha Inicio Proceso', 'Fecha Finalizado', 'Notas'])
         for l in Lote.query.all():
-            coches_ids = ','.join([str(c.id) for c in l.coches])
+            fecha_c = l.created_at
             writer.writerow([
                 l.id, l.codigo_qr, l.total_bft, l.bft_usado, l.bft_disponible, l.cantidad_coches,
                 l.estado, l.turno, l.creado_por, l.desperdicio_bft, l.desperdicio_porcentaje,
-                l.created_at.strftime('%d/%m/%Y %H:%M') if l.created_at else '',
-                l.fecha_inicio_proceso.strftime('%d/%m/%Y %H:%M') if l.fecha_inicio_proceso else '',
-                l.fecha_finalizado.strftime('%d/%m/%Y %H:%M') if l.fecha_finalizado else '',
-                l.notas, coches_ids
+                fecha_c.strftime('%Y-%m-%d %H:%M:%S') if fecha_c else '',
+                fecha_c.year if fecha_c else '',
+                fecha_c.month if fecha_c else '',
+                fecha_c.day if fecha_c else '',
+                l.fecha_inicio_proceso.strftime('%Y-%m-%d %H:%M:%S') if l.fecha_inicio_proceso else '',
+                l.fecha_finalizado.strftime('%Y-%m-%d %H:%M:%S') if l.fecha_finalizado else '',
+                l.notas
             ])
         zf.writestr('lotes.csv', lotes_csv.getvalue())
+
+        # CSV de Lote-Coches (relación para Power BI)
+        lote_coches_csv = StringIO()
+        writer = csv.writer(lote_coches_csv)
+        writer.writerow(['Lote ID', 'Lote Código', 'Coche ID', 'Coche Código', 'Coche BFT'])
+        for l in Lote.query.all():
+            for c in l.coches:
+                writer.writerow([l.id, l.codigo_qr, c.id, c.codigo_qr, c.total_bft])
+        zf.writestr('lote_coches.csv', lote_coches_csv.getvalue())
 
         # CSV de Bloques
         bloques_csv = StringIO()
         writer = csv.writer(bloques_csv)
-        writer.writerow(['ID', 'Código QR', 'Lote ID', 'Lote Código', 'Fecha', 'Turno', 'Calidad', 'Secuencia',
-                        'Largo (pulg)', 'Peso (kg)', 'Densidad', 'BFT', 'Empatado', 'Estado',
-                        'Peso Encolado', 'Densidad Encolado', 'Fecha Encolado', 'Notas'])
+        writer.writerow(['ID', 'Código QR', 'Lote ID', 'Lote Código', 'Fecha', 'Año', 'Mes', 'Día',
+                        'Turno', 'Calidad', 'Secuencia', 'Largo (pulg)', 'Peso (kg)', 'Densidad', 'BFT',
+                        'Empatado', 'Estado', 'Peso Encolado', 'Densidad Encolado', 'Fecha Encolado',
+                        'Fecha Creación', 'Notas'])
         for b in Bloque.query.all():
             lote_codigo = b.lote.codigo_qr if b.lote else ''
+            fecha_b = b.fecha
             writer.writerow([
                 b.id, b.codigo_qr, b.lote_id, lote_codigo,
-                b.fecha.strftime('%d/%m/%Y') if b.fecha else '',
+                fecha_b.strftime('%Y-%m-%d') if fecha_b else '',
+                fecha_b.year if fecha_b else '',
+                fecha_b.month if fecha_b else '',
+                fecha_b.day if fecha_b else '',
                 b.turno, b.calidad, b.secuencia, b.largo, b.peso, b.densidad, b.bft,
                 'Sí' if b.empatado else 'No', b.estado, b.peso_encolado, b.densidad_encolado,
-                b.fecha_encolado.strftime('%d/%m/%Y %H:%M') if b.fecha_encolado else '',
+                b.fecha_encolado.strftime('%Y-%m-%d %H:%M:%S') if b.fecha_encolado else '',
+                b.created_at.strftime('%Y-%m-%d %H:%M:%S') if b.created_at else '',
                 b.notas
             ])
         zf.writestr('bloques.csv', bloques_csv.getvalue())
@@ -3216,31 +3252,54 @@ def backup_csv_zip():
         # CSV de Contenedores
         contenedores_csv = StringIO()
         writer = csv.writer(contenedores_csv)
-        writer.writerow(['ID', 'Código', 'Cliente', 'Número Contenedor', 'Fecha Carga', 'Fecha Zarpe',
-                        'Tally Sheet', 'Seguro 1', 'Seguro 2', 'Seguro 3', 'Estado',
-                        'Total Bloques', 'Total BFT', 'Total M³', 'Creado Por', 'Notas', 'Bloques (IDs)'])
+        writer.writerow(['ID', 'Código', 'Cliente', 'Número Contenedor', 'Fecha Carga', 'Año Carga', 'Mes Carga',
+                        'Fecha Zarpe', 'Tally Sheet', 'Seguro 1', 'Seguro 2', 'Seguro 3', 'Estado',
+                        'Total Bloques', 'Total BFT', 'Total M³', 'Creado Por', 'Fecha Creación', 'Fecha Cierre', 'Notas'])
         for cont in Contenedor.query.all():
-            bloques_ids = ','.join([str(b.id) for b in cont.bloques])
+            fecha_carga = cont.fecha_carga
             writer.writerow([
                 cont.id, cont.codigo, cont.cliente, cont.numero_contenedor,
-                cont.fecha_carga.strftime('%d/%m/%Y') if cont.fecha_carga else '',
-                cont.fecha_zarpe.strftime('%d/%m/%Y') if cont.fecha_zarpe else '',
+                fecha_carga.strftime('%Y-%m-%d') if fecha_carga else '',
+                fecha_carga.year if fecha_carga else '',
+                fecha_carga.month if fecha_carga else '',
+                cont.fecha_zarpe.strftime('%Y-%m-%d') if cont.fecha_zarpe else '',
                 cont.tally_sheet, cont.seguro_1, cont.seguro_2, cont.seguro_3, cont.estado,
-                cont.total_bloques, cont.total_bft, cont.total_m3, cont.creado_por, cont.notas, bloques_ids
+                cont.total_bloques, cont.total_bft, cont.total_m3, cont.creado_por,
+                cont.created_at.strftime('%Y-%m-%d %H:%M:%S') if cont.created_at else '',
+                cont.fecha_cierre.strftime('%Y-%m-%d %H:%M:%S') if cont.fecha_cierre else '',
+                cont.notas
             ])
         zf.writestr('contenedores.csv', contenedores_csv.getvalue())
 
-        # CSV de Movimientos
+        # CSV de Contenedor-Bloques (relación para Power BI)
+        contenedor_bloques_csv = StringIO()
+        writer = csv.writer(contenedor_bloques_csv)
+        writer.writerow(['Contenedor ID', 'Contenedor Código', 'Bloque ID', 'Bloque Código', 'Bloque Largo', 'Bloque BFT'])
+        for cont in Contenedor.query.all():
+            for b in cont.bloques:
+                writer.writerow([cont.id, cont.codigo, b.id, b.codigo_qr, b.largo, b.bft])
+        zf.writestr('contenedor_bloques.csv', contenedor_bloques_csv.getvalue())
+
+        # CSV de Movimientos (historial de cambios de etapa)
         movimientos_csv = StringIO()
         writer = csv.writer(movimientos_csv)
-        writer.writerow(['ID', 'Coche ID', 'Coche Código', 'Etapa Origen', 'Etapa Destino', 'Usuario', 'Fecha', 'Notas'])
+        writer.writerow(['ID', 'Coche ID', 'Coche Código', 'Etapa Origen ID', 'Etapa Origen',
+                        'Etapa Destino ID', 'Etapa Destino', 'Usuario', 'Fecha', 'Año', 'Mes', 'Día', 'Hora', 'Notas'])
         for m in Movimiento.query.all():
             coche_codigo = m.coche.codigo_qr if m.coche else ''
             origen = m.etapa_origen.nombre if m.etapa_origen else 'Nuevo'
             destino = m.etapa_destino.nombre if m.etapa_destino else ''
+            fecha_m = m.timestamp
             writer.writerow([
-                m.id, m.coche_id, coche_codigo, origen, destino, m.usuario,
-                m.timestamp.strftime('%d/%m/%Y %H:%M') if m.timestamp else '',
+                m.id, m.coche_id, coche_codigo,
+                m.etapa_origen_id, origen,
+                m.etapa_destino_id, destino,
+                m.usuario,
+                fecha_m.strftime('%Y-%m-%d %H:%M:%S') if fecha_m else '',
+                fecha_m.year if fecha_m else '',
+                fecha_m.month if fecha_m else '',
+                fecha_m.day if fecha_m else '',
+                fecha_m.strftime('%H:%M') if fecha_m else '',
                 m.notas
             ])
         zf.writestr('movimientos.csv', movimientos_csv.getvalue())
@@ -3249,23 +3308,29 @@ def backup_csv_zip():
         proceso_csv = StringIO()
         writer = csv.writer(proceso_csv)
         writer.writerow(['ID', 'Lote ID', 'Lote Código', 'Largo', 'Ancho', 'Alto', 'BFT Calculado',
-                        'Calidad', 'Procesado Por', 'Fecha', 'Notas'])
+                        'Calidad', 'Procesado Por', 'Fecha', 'Año', 'Mes', 'Día', 'Notas'])
         for p in ProcesoLote.query.all():
             lote_codigo = p.lote.codigo_qr if p.lote else ''
+            fecha_p = p.created_at
             writer.writerow([
                 p.id, p.lote_id, lote_codigo, p.largo, p.ancho, p.alto, p.bft_calculado,
                 p.calidad, p.procesado_por,
-                p.created_at.strftime('%d/%m/%Y %H:%M') if p.created_at else '',
+                fecha_p.strftime('%Y-%m-%d %H:%M:%S') if fecha_p else '',
+                fecha_p.year if fecha_p else '',
+                fecha_p.month if fecha_p else '',
+                fecha_p.day if fecha_p else '',
                 p.notas
             ])
         zf.writestr('proceso_lotes.csv', proceso_csv.getvalue())
 
-        # CSV Resumen
+        # CSV Resumen General
         resumen_csv = StringIO()
         writer = csv.writer(resumen_csv)
         writer.writerow(['Tabla', 'Total Registros', 'BFT Total'])
+        writer.writerow(['Etapas', Etapa.query.count(), '-'])
         writer.writerow(['Coches', Coche.query.count(), sum(c.total_bft or 0 for c in Coche.query.all())])
         writer.writerow(['Lotes', Lote.query.count(), sum(l.total_bft or 0 for l in Lote.query.all())])
+        writer.writerow(['Bloques Total', Bloque.query.count(), sum(b.bft or 0 for b in Bloque.query.all())])
         writer.writerow(['Bloques Presentados', Bloque.query.filter_by(estado='presentado').count(),
                         sum(b.bft or 0 for b in Bloque.query.filter_by(estado='presentado').all())])
         writer.writerow(['Bloques Encolados', Bloque.query.filter_by(estado='encolado').count(),
@@ -3273,7 +3338,18 @@ def backup_csv_zip():
         writer.writerow(['Contenedores', Contenedor.query.count(), sum(c.total_bft or 0 for c in Contenedor.query.all())])
         writer.writerow(['Movimientos', Movimiento.query.count(), '-'])
         writer.writerow(['Proceso Lotes', ProcesoLote.query.count(), sum(p.bft_calculado or 0 for p in ProcesoLote.query.all())])
+        writer.writerow([])
+        writer.writerow(['Fecha Backup', datetime.now().strftime('%Y-%m-%d %H:%M:%S'), ''])
         zf.writestr('_RESUMEN.csv', resumen_csv.getvalue())
+
+        # CSV de Coches por Etapa (útil para dashboard)
+        etapa_resumen_csv = StringIO()
+        writer = csv.writer(etapa_resumen_csv)
+        writer.writerow(['Etapa', 'Orden', 'Cantidad Coches', 'Total BFT'])
+        for e in Etapa.query.order_by(Etapa.orden).all():
+            coches_etapa = Coche.query.filter_by(etapa_actual_id=e.id).all()
+            writer.writerow([e.nombre, e.orden, len(coches_etapa), sum(c.total_bft or 0 for c in coches_etapa)])
+        zf.writestr('resumen_por_etapa.csv', etapa_resumen_csv.getvalue())
 
     memoria_zip.seek(0)
 

@@ -898,7 +898,7 @@
                 <div class="stat-label">Lotes en Proceso</div>
             </div>
             <div class="stat-bft">
-                <div class="stat-bft-value" id="produccion-bft">{{ "{:,.0f}".format(lotes_en_proceso|sum(attribute='bft_total') if lotes_en_proceso else 0) }}</div>
+                <div class="stat-bft-value" id="produccion-bft">{{ "{:,.0f}".format(lotes_en_proceso|sum(attribute='total_bft') if lotes_en_proceso else 0) }}</div>
                 <div class="stat-bft-label">BFT</div>
             </div>
         </div>

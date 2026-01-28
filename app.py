@@ -2655,7 +2655,7 @@ def maestro_crear_lote():
         codigo_qr=codigo_lote,
         turno=turno,
         estado='disponible',
-        bft_total=cantidad_coches * bft_por_coche,
+        total_bft=cantidad_coches * bft_por_coche,
         created_at=fecha_creacion
     )
     db.session.add(lote)
@@ -2699,7 +2699,7 @@ def maestro_crear_lote():
     return jsonify({
         'success': True,
         'codigo': codigo_lote,
-        'total_bft': lote.bft_total,
+        'total_bft': lote.total_bft,
         'mensaje': f'Lote {codigo_lote} creado con {cantidad_coches} coches'
     })
 

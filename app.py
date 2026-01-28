@@ -761,10 +761,10 @@ def obtener_coche_por_qr(codigo_qr):
 def editar_coche(coche_id):
     """Edita un coche existente. Solo permitido en Madera Verde."""
     coche = Coche.query.get_or_404(coche_id)
-    data = request.get_json()
+    data = request.get_json() or {}
 
     # Solo permitir edicion en Madera Verde (orden 1)
-    if coche.etapa_actual.orden != 1:
+    if not coche.etapa_actual or coche.etapa_actual.orden != 1:
         return jsonify({'error': 'Solo se pueden editar coches en Madera Verde'}), 400
 
     # Actualizar campos
@@ -815,7 +815,7 @@ def eliminar_coche(coche_id):
     coche = Coche.query.get_or_404(coche_id)
 
     # Solo permitir eliminacion en Madera Verde (orden 1)
-    if coche.etapa_actual.orden != 1:
+    if not coche.etapa_actual or coche.etapa_actual.orden != 1:
         return jsonify({'error': 'Solo se pueden eliminar coches en Madera Verde'}), 400
 
     codigo_qr = coche.codigo_qr
@@ -990,7 +990,7 @@ def cambiar_camara(coche_id):
     motivo = data.get('motivo', 'Cambio de camara')
 
     # Verificar que esta en Secado (orden 2)
-    if coche.etapa_actual.orden != 2:
+    if not coche.etapa_actual or coche.etapa_actual.orden != 2:
         return jsonify({'error': 'Solo se puede cambiar camara cuando esta en Secado'}), 400
 
     if not nueva_camara:
@@ -1049,7 +1049,7 @@ def cambiar_camara_multiple():
             continue
 
         # Verificar que esta en Secado (orden 2)
-        if coche.etapa_actual.orden != 2:
+        if not coche.etapa_actual or coche.etapa_actual.orden != 2:
             resultados['errores'].append({
                 'coche_id': coche_id,
                 'codigo_qr': coche.codigo_qr,
@@ -2014,7 +2014,7 @@ def finalizar_lote(lote_id):
 @login_required
 def editar_lote_finalizado(lote_id):
     """Edita un lote finalizado con verificacion de contraseña."""
-    data = request.json
+    data = request.get_json() or {}
     password = data.get('password', '')
 
     # Verificar contraseña
@@ -2055,7 +2055,7 @@ def editar_lote_finalizado(lote_id):
 @login_required
 def reabrir_lote_finalizado(lote_id):
     """Reabre un lote finalizado para editarlo en producción."""
-    data = request.json
+    data = request.get_json() or {}
     password = data.get('password', '')
 
     # Verificar contraseña
@@ -2548,6 +2548,8 @@ def maestro_crear_coches():
             return jsonify({'success': False, 'error': 'Etapa no válida'}), 400
     else:
         etapa = Etapa.query.filter_by(orden=1).first()
+        if not etapa:
+            return jsonify({'success': False, 'error': 'No existe la etapa Madera Verde'}), 500
 
     proveedor = data.get('proveedor', '')
     camara = data.get('camara')

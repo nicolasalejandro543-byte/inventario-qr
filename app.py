@@ -3767,7 +3767,8 @@ def subir_backup_drive():
         json_file = service.files().create(
             body=json_metadata,
             media_body=json_media,
-            fields='id, name, webViewLink'
+            fields='id, name, webViewLink',
+            supportsAllDrives=True
         ).execute()
 
         # Generar y subir ZIP con CSVs
@@ -3834,7 +3835,8 @@ def subir_backup_drive():
         zip_file = service.files().create(
             body=zip_metadata,
             media_body=zip_media,
-            fields='id, name, webViewLink'
+            fields='id, name, webViewLink',
+            supportsAllDrives=True
         ).execute()
 
         # Limpiar backups antiguos (más de 30 días)
@@ -3926,7 +3928,7 @@ def backup_automatico_drive():
             'parents': [GOOGLE_DRIVE_FOLDER_ID]
         }
         json_media = MediaInMemoryUpload(json_content.encode('utf-8'), mimetype='application/json')
-        json_file = service.files().create(body=json_metadata, media_body=json_media, fields='id, name').execute()
+        json_file = service.files().create(body=json_metadata, media_body=json_media, fields='id, name', supportsAllDrives=True).execute()
 
         # Limpiar antiguos
         eliminados = limpiar_backups_drive(service, GOOGLE_DRIVE_FOLDER_ID, dias=30)

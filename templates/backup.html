@@ -1,0 +1,683 @@
+{% extends "base.html" %}
+
+{% block title %}Backup y Restauración{% endblock %}
+
+{% block head %}
+<style>
+    .backup-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .backup-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .backup-header h1 {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--color-text);
+        margin-bottom: 8px;
+    }
+
+    .backup-header p {
+        color: var(--color-text-muted);
+        font-size: 0.95rem;
+    }
+
+    .backup-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .backup-card {
+        background: white;
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        box-shadow: var(--shadow-md);
+        border-top: 4px solid;
+    }
+
+    .backup-card.json { border-top-color: #3b82f6; }
+    .backup-card.csv { border-top-color: #10b981; }
+    .backup-card.restore { border-top-color: #f59e0b; }
+    .backup-card.auto { border-top-color: #8b5cf6; }
+
+    .backup-card-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .backup-card-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+
+    .backup-card.json .backup-card-icon { background: #dbeafe; color: #3b82f6; }
+    .backup-card.csv .backup-card-icon { background: #d1fae5; color: #10b981; }
+    .backup-card.restore .backup-card-icon { background: #fef3c7; color: #f59e0b; }
+    .backup-card.auto .backup-card-icon { background: #ede9fe; color: #8b5cf6; }
+
+    .backup-card-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--color-text);
+    }
+
+    .backup-card-subtitle {
+        font-size: 0.8rem;
+        color: var(--color-text-muted);
+    }
+
+    .backup-card-body {
+        margin-bottom: 20px;
+    }
+
+    .backup-card-body p {
+        font-size: 0.9rem;
+        color: var(--color-text-muted);
+        line-height: 1.6;
+        margin-bottom: 12px;
+    }
+
+    .backup-card-body ul {
+        font-size: 0.85rem;
+        color: var(--color-text-muted);
+        padding-left: 20px;
+        margin: 0;
+    }
+
+    .backup-card-body ul li {
+        margin-bottom: 4px;
+    }
+
+    .backup-btn {
+        width: 100%;
+        padding: 12px 20px;
+        border: none;
+        border-radius: var(--radius-md);
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .backup-btn.primary {
+        background: var(--color-primary);
+        color: white;
+    }
+
+    .backup-btn.primary:hover {
+        background: #0284c7;
+        transform: translateY(-2px);
+    }
+
+    .backup-btn.success {
+        background: #10b981;
+        color: white;
+    }
+
+    .backup-btn.success:hover {
+        background: #059669;
+    }
+
+    .backup-btn.warning {
+        background: #f59e0b;
+        color: white;
+    }
+
+    .backup-btn.warning:hover {
+        background: #d97706;
+    }
+
+    .backup-btn.purple {
+        background: #8b5cf6;
+        color: white;
+    }
+
+    .backup-btn.purple:hover {
+        background: #7c3aed;
+    }
+
+    .backup-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    /* Stats section */
+    .stats-section {
+        background: white;
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        box-shadow: var(--shadow-md);
+        margin-bottom: 30px;
+    }
+
+    .stats-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin-bottom: 16px;
+        color: var(--color-text);
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 16px;
+    }
+
+    .stat-item {
+        text-align: center;
+        padding: 16px;
+        background: var(--color-bg);
+        border-radius: var(--radius-md);
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--color-primary);
+    }
+
+    .stat-label {
+        font-size: 0.8rem;
+        color: var(--color-text-muted);
+        margin-top: 4px;
+    }
+
+    /* Modal */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-overlay.show {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .modal-title {
+        font-size: 1.2rem;
+        font-weight: 700;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: var(--color-text-muted);
+    }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .form-group input[type="password"],
+    .form-group input[type="file"] {
+        width: 100%;
+        padding: 10px 12px;
+        border: 2px solid var(--color-gray-light);
+        border-radius: var(--radius-md);
+        font-size: 0.95rem;
+    }
+
+    .form-group input:focus {
+        outline: none;
+        border-color: var(--color-primary);
+    }
+
+    .warning-box {
+        background: #fef3c7;
+        border: 1px solid #f59e0b;
+        border-radius: var(--radius-md);
+        padding: 12px;
+        margin-bottom: 16px;
+    }
+
+    .warning-box p {
+        font-size: 0.85rem;
+        color: #92400e;
+        margin: 0;
+    }
+
+    /* Loading */
+    .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255,255,255,0.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* Toast */
+    .toast {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        padding: 16px 24px;
+        border-radius: var(--radius-md);
+        color: white;
+        font-weight: 600;
+        z-index: 2000;
+        animation: slideIn 0.3s ease;
+    }
+
+    .toast.success { background: #10b981; }
+    .toast.error { background: #ef4444; }
+
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* Google Drive status */
+    .drive-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px;
+        background: var(--color-bg);
+        border-radius: var(--radius-md);
+        margin-bottom: 16px;
+    }
+
+    .drive-status.connected {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .drive-status.disconnected {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .drive-status-icon {
+        font-size: 1.2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="backup-container">
+    <div class="backup-header">
+        <h1><i class="bi bi-cloud-download"></i> Backup y Restauración</h1>
+        <p>Gestiona los respaldos de tu base de datos</p>
+    </div>
+
+    <!-- Estadísticas actuales -->
+    <div class="stats-section">
+        <div class="stats-title"><i class="bi bi-database"></i> Datos Actuales</div>
+        <div class="stats-grid" id="stats-grid">
+            <div class="stat-item">
+                <div class="stat-value" id="stat-coches">-</div>
+                <div class="stat-label">Coches</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="stat-lotes">-</div>
+                <div class="stat-label">Lotes</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="stat-bloques">-</div>
+                <div class="stat-label">Bloques</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="stat-contenedores">-</div>
+                <div class="stat-label">Contenedores</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="stat-bft">-</div>
+                <div class="stat-label">BFT Total</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Opciones de Backup -->
+    <div class="backup-grid">
+        <!-- JSON Completo -->
+        <div class="backup-card json">
+            <div class="backup-card-header">
+                <div class="backup-card-icon">
+                    <i class="bi bi-file-earmark-code"></i>
+                </div>
+                <div>
+                    <div class="backup-card-title">Backup JSON</div>
+                    <div class="backup-card-subtitle">Para migración completa</div>
+                </div>
+            </div>
+            <div class="backup-card-body">
+                <p>Descarga un archivo JSON con toda la estructura de la base de datos. Ideal para:</p>
+                <ul>
+                    <li>Migrar a otro servidor</li>
+                    <li>Restauración completa</li>
+                    <li>Respaldo técnico</li>
+                </ul>
+            </div>
+            <button class="backup-btn primary" onclick="descargarJSON()">
+                <i class="bi bi-download"></i> Descargar JSON
+            </button>
+        </div>
+
+        <!-- CSV para Excel -->
+        <div class="backup-card csv">
+            <div class="backup-card-header">
+                <div class="backup-card-icon">
+                    <i class="bi bi-file-earmark-spreadsheet"></i>
+                </div>
+                <div>
+                    <div class="backup-card-title">Backup CSV</div>
+                    <div class="backup-card-subtitle">Para revisión en Excel</div>
+                </div>
+            </div>
+            <div class="backup-card-body">
+                <p>Descarga un ZIP con archivos CSV de cada tabla. Incluye:</p>
+                <ul>
+                    <li>coches.csv</li>
+                    <li>lotes.csv</li>
+                    <li>bloques.csv</li>
+                    <li>contenedores.csv</li>
+                    <li>_RESUMEN.csv</li>
+                </ul>
+            </div>
+            <button class="backup-btn success" onclick="descargarCSV()">
+                <i class="bi bi-download"></i> Descargar CSV (ZIP)
+            </button>
+        </div>
+
+        <!-- Restaurar -->
+        <div class="backup-card restore">
+            <div class="backup-card-header">
+                <div class="backup-card-icon">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </div>
+                <div>
+                    <div class="backup-card-title">Restaurar</div>
+                    <div class="backup-card-subtitle">Desde archivo JSON</div>
+                </div>
+            </div>
+            <div class="backup-card-body">
+                <p><strong>Precaución:</strong> Esto reemplazará TODOS los datos actuales con los del backup.</p>
+                <ul>
+                    <li>Requiere contraseña de administrador</li>
+                    <li>Solo archivos JSON válidos</li>
+                    <li>Proceso irreversible</li>
+                </ul>
+            </div>
+            <button class="backup-btn warning" onclick="abrirModalRestaurar()">
+                <i class="bi bi-upload"></i> Restaurar Backup
+            </button>
+        </div>
+
+        <!-- Backup Automático a Google Drive -->
+        <div class="backup-card auto">
+            <div class="backup-card-header">
+                <div class="backup-card-icon">
+                    <i class="bi bi-google"></i>
+                </div>
+                <div>
+                    <div class="backup-card-title">Google Drive</div>
+                    <div class="backup-card-subtitle">Backup automático</div>
+                </div>
+            </div>
+            <div class="backup-card-body">
+                <div class="drive-status" id="drive-status">
+                    <span class="drive-status-icon"><i class="bi bi-cloud"></i></span>
+                    <span>Verificando conexión...</span>
+                </div>
+                <p>Backup automático a Google Drive dos veces al día (7:00 AM y 7:00 PM).</p>
+            </div>
+            <button class="backup-btn purple" onclick="ejecutarBackupDrive()">
+                <i class="bi bi-cloud-upload"></i> Ejecutar Backup Ahora
+            </button>
+        </div>
+    </div>
+
+    <div style="text-align: center; color: var(--color-text-muted); font-size: 0.85rem;">
+        <p><i class="bi bi-info-circle"></i> Los backups automáticos se guardan en Google Drive y se mantienen por 30 días.</p>
+    </div>
+</div>
+
+<!-- Modal Restaurar -->
+<div class="modal-overlay" id="modal-restaurar">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div class="modal-title"><i class="bi bi-exclamation-triangle"></i> Restaurar Backup</div>
+            <button class="modal-close" onclick="cerrarModal()">&times;</button>
+        </div>
+
+        <div class="warning-box">
+            <p><strong>ADVERTENCIA:</strong> Esta acción eliminará TODOS los datos actuales y los reemplazará con los del archivo de backup. Este proceso es IRREVERSIBLE.</p>
+        </div>
+
+        <form id="form-restaurar" onsubmit="restaurarBackup(event)">
+            <div class="form-group">
+                <label>Archivo de Backup (JSON)</label>
+                <input type="file" id="backup-file" accept=".json" required>
+            </div>
+
+            <div class="form-group">
+                <label>Contraseña de Administrador</label>
+                <input type="password" id="restore-password" placeholder="Ingresa la contraseña" required>
+            </div>
+
+            <button type="submit" class="backup-btn warning" id="btn-restaurar">
+                <i class="bi bi-arrow-counterclockwise"></i> Confirmar Restauración
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+// Cargar estadísticas al iniciar
+document.addEventListener('DOMContentLoaded', cargarEstadisticas);
+
+async function cargarEstadisticas() {
+    try {
+        const response = await fetch('/api/dashboard/stats');
+        if (response.ok) {
+            const data = await response.json();
+            // Actualizar estadísticas si están disponibles
+        }
+    } catch (e) {
+        console.log('No se pudieron cargar estadísticas');
+    }
+
+    // Cargar desde los endpoints directos
+    try {
+        const cochesResp = await fetch('/api/coches');
+        const coches = await cochesResp.json();
+        document.getElementById('stat-coches').textContent = coches.length || 0;
+
+        const lotesResp = await fetch('/api/lotes');
+        const lotes = await lotesResp.json();
+        document.getElementById('stat-lotes').textContent = lotes.length || 0;
+
+        let totalBFT = 0;
+        coches.forEach(c => totalBFT += (c.total_bft || 0));
+        document.getElementById('stat-bft').textContent = totalBFT.toLocaleString();
+    } catch (e) {
+        console.log('Error cargando estadísticas:', e);
+    }
+
+    // Verificar estado de Google Drive
+    verificarDriveStatus();
+}
+
+function descargarJSON() {
+    window.location.href = '/api/backup/completo';
+    mostrarToast('Descargando backup JSON...', 'success');
+}
+
+function descargarCSV() {
+    window.location.href = '/api/backup/csv';
+    mostrarToast('Descargando backup CSV...', 'success');
+}
+
+function abrirModalRestaurar() {
+    document.getElementById('modal-restaurar').classList.add('show');
+}
+
+function cerrarModal() {
+    document.getElementById('modal-restaurar').classList.remove('show');
+}
+
+async function restaurarBackup(event) {
+    event.preventDefault();
+
+    const file = document.getElementById('backup-file').files[0];
+    const password = document.getElementById('restore-password').value;
+    const btn = document.getElementById('btn-restaurar');
+
+    if (!file) {
+        mostrarToast('Selecciona un archivo de backup', 'error');
+        return;
+    }
+
+    if (!confirm('¿Estás SEGURO de que deseas restaurar este backup? Se eliminarán TODOS los datos actuales.')) {
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading-spinner"></span> Restaurando...';
+
+    try {
+        const backupData = JSON.parse(await file.text());
+
+        const response = await fetch('/api/backup/restaurar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                password: password,
+                backup_data: backupData
+            })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            mostrarToast('Backup restaurado exitosamente', 'success');
+            cerrarModal();
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            mostrarToast(result.error || 'Error al restaurar', 'error');
+        }
+    } catch (e) {
+        mostrarToast('Error al procesar el archivo: ' + e.message, 'error');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-arrow-counterclockwise"></i> Confirmar Restauración';
+}
+
+async function verificarDriveStatus() {
+    const statusEl = document.getElementById('drive-status');
+    try {
+        const response = await fetch('/api/backup/drive/status');
+        const data = await response.json();
+
+        if (data.connected) {
+            statusEl.className = 'drive-status connected';
+            statusEl.innerHTML = '<span class="drive-status-icon"><i class="bi bi-check-circle-fill"></i></span><span>Conectado a Google Drive</span>';
+        } else {
+            statusEl.className = 'drive-status disconnected';
+            statusEl.innerHTML = '<span class="drive-status-icon"><i class="bi bi-x-circle-fill"></i></span><span>' + (data.error || 'No conectado') + '</span>';
+        }
+    } catch (e) {
+        statusEl.className = 'drive-status disconnected';
+        statusEl.innerHTML = '<span class="drive-status-icon"><i class="bi bi-x-circle-fill"></i></span><span>No configurado</span>';
+    }
+}
+
+async function ejecutarBackupDrive() {
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading-spinner"></span> Subiendo a Drive...';
+
+    try {
+        const response = await fetch('/api/backup/drive/subir', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            mostrarToast('Backup subido a Google Drive', 'success');
+        } else {
+            mostrarToast(result.error || 'Error al subir', 'error');
+        }
+    } catch (e) {
+        mostrarToast('Error: ' + e.message, 'error');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-cloud-upload"></i> Ejecutar Backup Ahora';
+}
+
+function mostrarToast(mensaje, tipo) {
+    const toast = document.createElement('div');
+    toast.className = 'toast ' + tipo;
+    toast.textContent = mensaje;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
+}
+
+// Cerrar modal con Escape
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') cerrarModal();
+});
+</script>
+{% endblock %}

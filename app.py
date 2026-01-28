@@ -2925,6 +2925,1020 @@ def maestro_crear_contenedor():
     })
 
 
+# ==================== SISTEMA DE BACKUP ====================
+
+import json
+import csv
+import zipfile
+from io import StringIO, BytesIO
+
+# Carpeta de OneDrive para backups (configurable via variable de entorno)
+BACKUP_ONEDRIVE_PATH = os.environ.get('BACKUP_ONEDRIVE_PATH',
+    r'C:\Users\nicol\OneDrive\Documents\Dashboards Proyectos\Sky Composite\Backups')
+
+
+@app.route('/backup')
+@login_required
+def backup_page():
+    """Página de gestión de backups."""
+    return render_template('backup.html')
+
+
+@app.route('/api/backup/completo')
+@login_required
+def backup_completo_json():
+    """
+    Genera un JSON completo con TODA la estructura de la base de datos.
+    Este archivo permite restaurar/migrar la BD completa a otro servidor.
+    """
+    backup_data = {
+        'metadata': {
+            'version': '1.0',
+            'fecha_backup': datetime.now().isoformat(),
+            'descripcion': 'Backup completo de Sky Composite - Inventario QR',
+            'tablas': ['etapas', 'coches', 'movimientos', 'lotes', 'lote_coches',
+                      'bloques', 'proceso_lotes', 'contenedores', 'contenedor_bloques']
+        },
+        'etapas': [],
+        'coches': [],
+        'movimientos': [],
+        'lotes': [],
+        'lote_coches': [],  # Relación muchos a muchos
+        'bloques': [],
+        'proceso_lotes': [],
+        'contenedores': [],
+        'contenedor_bloques': []  # Relación muchos a muchos
+    }
+
+    # Etapas
+    for e in Etapa.query.all():
+        backup_data['etapas'].append({
+            'id': e.id,
+            'nombre': e.nombre,
+            'orden': e.orden,
+            'color': e.color,
+            'icono': e.icono
+        })
+
+    # Coches (con todos los campos)
+    for c in Coche.query.all():
+        backup_data['coches'].append({
+            'id': c.id,
+            'codigo_qr': c.codigo_qr,
+            'registrador': c.registrador,
+            'proveedor': c.proveedor,
+            'numero_viaje': c.numero_viaje,
+            'camara': c.camara,
+            'lote_secado': c.lote_secado,
+            'espesor_1': c.espesor_1,
+            'largo_1': c.largo_1,
+            'plantillas_1': c.plantillas_1,
+            'bft_1': c.bft_1,
+            'espesor_2': c.espesor_2,
+            'largo_2': c.largo_2,
+            'plantillas_2': c.plantillas_2,
+            'bft_2': c.bft_2,
+            'espesor_3': c.espesor_3,
+            'largo_3': c.largo_3,
+            'plantillas_3': c.plantillas_3,
+            'bft_3': c.bft_3,
+            'total_bft': c.total_bft,
+            'etapa_actual_id': c.etapa_actual_id,
+            'notas': c.notas,
+            'created_at': c.created_at.isoformat() if c.created_at else None,
+            'updated_at': c.updated_at.isoformat() if c.updated_at else None
+        })
+
+    # Movimientos
+    for m in Movimiento.query.all():
+        backup_data['movimientos'].append({
+            'id': m.id,
+            'coche_id': m.coche_id,
+            'etapa_origen_id': m.etapa_origen_id,
+            'etapa_destino_id': m.etapa_destino_id,
+            'usuario': m.usuario,
+            'timestamp': m.timestamp.isoformat() if m.timestamp else None,
+            'notas': m.notas
+        })
+
+    # Lotes
+    for l in Lote.query.all():
+        backup_data['lotes'].append({
+            'id': l.id,
+            'codigo_qr': l.codigo_qr,
+            'total_bft': l.total_bft,
+            'bft_usado': l.bft_usado,
+            'cantidad_coches': l.cantidad_coches,
+            'estado': l.estado,
+            'turno': l.turno,
+            'creado_por': l.creado_por,
+            'notas': l.notas,
+            'desperdicio_bft': l.desperdicio_bft,
+            'desperdicio_porcentaje': l.desperdicio_porcentaje,
+            'created_at': l.created_at.isoformat() if l.created_at else None,
+            'fecha_inicio_proceso': l.fecha_inicio_proceso.isoformat() if l.fecha_inicio_proceso else None,
+            'fecha_finalizado': l.fecha_finalizado.isoformat() if l.fecha_finalizado else None
+        })
+
+    # Relación Lote-Coches
+    for l in Lote.query.all():
+        for c in l.coches:
+            backup_data['lote_coches'].append({
+                'lote_id': l.id,
+                'coche_id': c.id
+            })
+
+    # Bloques
+    for b in Bloque.query.all():
+        backup_data['bloques'].append({
+            'id': b.id,
+            'codigo_qr': b.codigo_qr,
+            'lote_id': b.lote_id,
+            'fecha': b.fecha.isoformat() if b.fecha else None,
+            'turno': b.turno,
+            'calidad': b.calidad,
+            'secuencia': b.secuencia,
+            'largo': b.largo,
+            'peso': b.peso,
+            'densidad': b.densidad,
+            'bft': b.bft,
+            'empatado': b.empatado,
+            'estado': b.estado,
+            'peso_encolado': b.peso_encolado,
+            'densidad_encolado': b.densidad_encolado,
+            'created_at': b.created_at.isoformat() if b.created_at else None,
+            'updated_at': b.updated_at.isoformat() if b.updated_at else None,
+            'fecha_encolado': b.fecha_encolado.isoformat() if b.fecha_encolado else None,
+            'notas': b.notas
+        })
+
+    # Proceso Lotes
+    for p in ProcesoLote.query.all():
+        backup_data['proceso_lotes'].append({
+            'id': p.id,
+            'lote_id': p.lote_id,
+            'largo': p.largo,
+            'ancho': p.ancho,
+            'alto': p.alto,
+            'bft_calculado': p.bft_calculado,
+            'calidad': p.calidad,
+            'procesado_por': p.procesado_por,
+            'created_at': p.created_at.isoformat() if p.created_at else None,
+            'notas': p.notas
+        })
+
+    # Contenedores
+    for cont in Contenedor.query.all():
+        backup_data['contenedores'].append({
+            'id': cont.id,
+            'codigo': cont.codigo,
+            'cliente': cont.cliente,
+            'numero_contenedor': cont.numero_contenedor,
+            'fecha_carga': cont.fecha_carga.isoformat() if cont.fecha_carga else None,
+            'fecha_zarpe': cont.fecha_zarpe.isoformat() if cont.fecha_zarpe else None,
+            'tally_sheet': cont.tally_sheet,
+            'seguro_1': cont.seguro_1,
+            'seguro_2': cont.seguro_2,
+            'seguro_3': cont.seguro_3,
+            'estado': cont.estado,
+            'total_bloques': cont.total_bloques,
+            'total_bft': cont.total_bft,
+            'total_m3': cont.total_m3,
+            'creado_por': cont.creado_por,
+            'notas': cont.notas,
+            'created_at': cont.created_at.isoformat() if cont.created_at else None,
+            'updated_at': cont.updated_at.isoformat() if cont.updated_at else None,
+            'fecha_cierre': cont.fecha_cierre.isoformat() if cont.fecha_cierre else None
+        })
+
+    # Relación Contenedor-Bloques
+    for cont in Contenedor.query.all():
+        for b in cont.bloques:
+            backup_data['contenedor_bloques'].append({
+                'contenedor_id': cont.id,
+                'bloque_id': b.id
+            })
+
+    # Agregar estadísticas
+    backup_data['estadisticas'] = {
+        'total_etapas': len(backup_data['etapas']),
+        'total_coches': len(backup_data['coches']),
+        'total_movimientos': len(backup_data['movimientos']),
+        'total_lotes': len(backup_data['lotes']),
+        'total_bloques': len(backup_data['bloques']),
+        'total_proceso_lotes': len(backup_data['proceso_lotes']),
+        'total_contenedores': len(backup_data['contenedores']),
+        'bft_total_coches': sum(c['total_bft'] or 0 for c in backup_data['coches']),
+        'bft_total_bloques': sum(b['bft'] or 0 for b in backup_data['bloques'])
+    }
+
+    # Generar archivo JSON
+    json_content = json.dumps(backup_data, indent=2, ensure_ascii=False)
+
+    response = app.response_class(
+        response=json_content,
+        status=200,
+        mimetype='application/json'
+    )
+    fecha_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+    response.headers['Content-Disposition'] = f'attachment; filename=backup_completo_{fecha_str}.json'
+
+    return response
+
+
+@app.route('/api/backup/csv')
+@login_required
+def backup_csv_zip():
+    """
+    Genera un ZIP con archivos CSV de todas las tablas.
+    Ideal para revisar datos en Excel.
+    """
+    memoria_zip = BytesIO()
+
+    with zipfile.ZipFile(memoria_zip, 'w', zipfile.ZIP_DEFLATED) as zf:
+
+        # CSV de Coches
+        coches_csv = StringIO()
+        writer = csv.writer(coches_csv)
+        writer.writerow(['ID', 'Código QR', 'Registrador', 'Proveedor', 'Viaje', 'Cámara', 'Lote Secado',
+                        'Espesor 1', 'Largo 1', 'Plantillas 1', 'BFT 1',
+                        'Espesor 2', 'Largo 2', 'Plantillas 2', 'BFT 2',
+                        'Espesor 3', 'Largo 3', 'Plantillas 3', 'BFT 3',
+                        'Total BFT', 'Etapa Actual', 'Notas', 'Fecha Creación'])
+        for c in Coche.query.all():
+            etapa_nombre = c.etapa_actual.nombre if c.etapa_actual else ''
+            writer.writerow([
+                c.id, c.codigo_qr, c.registrador, c.proveedor, c.numero_viaje, c.camara, c.lote_secado,
+                c.espesor_1, c.largo_1, c.plantillas_1, c.bft_1,
+                c.espesor_2, c.largo_2, c.plantillas_2, c.bft_2,
+                c.espesor_3, c.largo_3, c.plantillas_3, c.bft_3,
+                c.total_bft, etapa_nombre, c.notas,
+                c.created_at.strftime('%d/%m/%Y %H:%M') if c.created_at else ''
+            ])
+        zf.writestr('coches.csv', coches_csv.getvalue())
+
+        # CSV de Lotes
+        lotes_csv = StringIO()
+        writer = csv.writer(lotes_csv)
+        writer.writerow(['ID', 'Código QR', 'Total BFT', 'BFT Usado', 'BFT Disponible', 'Cantidad Coches',
+                        'Estado', 'Turno', 'Creado Por', 'Desperdicio BFT', 'Desperdicio %',
+                        'Fecha Creación', 'Fecha Inicio Proceso', 'Fecha Finalizado', 'Notas', 'Coches (IDs)'])
+        for l in Lote.query.all():
+            coches_ids = ','.join([str(c.id) for c in l.coches])
+            writer.writerow([
+                l.id, l.codigo_qr, l.total_bft, l.bft_usado, l.bft_disponible, l.cantidad_coches,
+                l.estado, l.turno, l.creado_por, l.desperdicio_bft, l.desperdicio_porcentaje,
+                l.created_at.strftime('%d/%m/%Y %H:%M') if l.created_at else '',
+                l.fecha_inicio_proceso.strftime('%d/%m/%Y %H:%M') if l.fecha_inicio_proceso else '',
+                l.fecha_finalizado.strftime('%d/%m/%Y %H:%M') if l.fecha_finalizado else '',
+                l.notas, coches_ids
+            ])
+        zf.writestr('lotes.csv', lotes_csv.getvalue())
+
+        # CSV de Bloques
+        bloques_csv = StringIO()
+        writer = csv.writer(bloques_csv)
+        writer.writerow(['ID', 'Código QR', 'Lote ID', 'Lote Código', 'Fecha', 'Turno', 'Calidad', 'Secuencia',
+                        'Largo (pulg)', 'Peso (kg)', 'Densidad', 'BFT', 'Empatado', 'Estado',
+                        'Peso Encolado', 'Densidad Encolado', 'Fecha Encolado', 'Notas'])
+        for b in Bloque.query.all():
+            lote_codigo = b.lote.codigo_qr if b.lote else ''
+            writer.writerow([
+                b.id, b.codigo_qr, b.lote_id, lote_codigo,
+                b.fecha.strftime('%d/%m/%Y') if b.fecha else '',
+                b.turno, b.calidad, b.secuencia, b.largo, b.peso, b.densidad, b.bft,
+                'Sí' if b.empatado else 'No', b.estado, b.peso_encolado, b.densidad_encolado,
+                b.fecha_encolado.strftime('%d/%m/%Y %H:%M') if b.fecha_encolado else '',
+                b.notas
+            ])
+        zf.writestr('bloques.csv', bloques_csv.getvalue())
+
+        # CSV de Contenedores
+        contenedores_csv = StringIO()
+        writer = csv.writer(contenedores_csv)
+        writer.writerow(['ID', 'Código', 'Cliente', 'Número Contenedor', 'Fecha Carga', 'Fecha Zarpe',
+                        'Tally Sheet', 'Seguro 1', 'Seguro 2', 'Seguro 3', 'Estado',
+                        'Total Bloques', 'Total BFT', 'Total M³', 'Creado Por', 'Notas', 'Bloques (IDs)'])
+        for cont in Contenedor.query.all():
+            bloques_ids = ','.join([str(b.id) for b in cont.bloques])
+            writer.writerow([
+                cont.id, cont.codigo, cont.cliente, cont.numero_contenedor,
+                cont.fecha_carga.strftime('%d/%m/%Y') if cont.fecha_carga else '',
+                cont.fecha_zarpe.strftime('%d/%m/%Y') if cont.fecha_zarpe else '',
+                cont.tally_sheet, cont.seguro_1, cont.seguro_2, cont.seguro_3, cont.estado,
+                cont.total_bloques, cont.total_bft, cont.total_m3, cont.creado_por, cont.notas, bloques_ids
+            ])
+        zf.writestr('contenedores.csv', contenedores_csv.getvalue())
+
+        # CSV de Movimientos
+        movimientos_csv = StringIO()
+        writer = csv.writer(movimientos_csv)
+        writer.writerow(['ID', 'Coche ID', 'Coche Código', 'Etapa Origen', 'Etapa Destino', 'Usuario', 'Fecha', 'Notas'])
+        for m in Movimiento.query.all():
+            coche_codigo = m.coche.codigo_qr if m.coche else ''
+            origen = m.etapa_origen.nombre if m.etapa_origen else 'Nuevo'
+            destino = m.etapa_destino.nombre if m.etapa_destino else ''
+            writer.writerow([
+                m.id, m.coche_id, coche_codigo, origen, destino, m.usuario,
+                m.timestamp.strftime('%d/%m/%Y %H:%M') if m.timestamp else '',
+                m.notas
+            ])
+        zf.writestr('movimientos.csv', movimientos_csv.getvalue())
+
+        # CSV de Proceso Lotes (Madera Plantillada)
+        proceso_csv = StringIO()
+        writer = csv.writer(proceso_csv)
+        writer.writerow(['ID', 'Lote ID', 'Lote Código', 'Largo', 'Ancho', 'Alto', 'BFT Calculado',
+                        'Calidad', 'Procesado Por', 'Fecha', 'Notas'])
+        for p in ProcesoLote.query.all():
+            lote_codigo = p.lote.codigo_qr if p.lote else ''
+            writer.writerow([
+                p.id, p.lote_id, lote_codigo, p.largo, p.ancho, p.alto, p.bft_calculado,
+                p.calidad, p.procesado_por,
+                p.created_at.strftime('%d/%m/%Y %H:%M') if p.created_at else '',
+                p.notas
+            ])
+        zf.writestr('proceso_lotes.csv', proceso_csv.getvalue())
+
+        # CSV Resumen
+        resumen_csv = StringIO()
+        writer = csv.writer(resumen_csv)
+        writer.writerow(['Tabla', 'Total Registros', 'BFT Total'])
+        writer.writerow(['Coches', Coche.query.count(), sum(c.total_bft or 0 for c in Coche.query.all())])
+        writer.writerow(['Lotes', Lote.query.count(), sum(l.total_bft or 0 for l in Lote.query.all())])
+        writer.writerow(['Bloques Presentados', Bloque.query.filter_by(estado='presentado').count(),
+                        sum(b.bft or 0 for b in Bloque.query.filter_by(estado='presentado').all())])
+        writer.writerow(['Bloques Encolados', Bloque.query.filter_by(estado='encolado').count(),
+                        sum(b.bft or 0 for b in Bloque.query.filter_by(estado='encolado').all())])
+        writer.writerow(['Contenedores', Contenedor.query.count(), sum(c.total_bft or 0 for c in Contenedor.query.all())])
+        writer.writerow(['Movimientos', Movimiento.query.count(), '-'])
+        writer.writerow(['Proceso Lotes', ProcesoLote.query.count(), sum(p.bft_calculado or 0 for p in ProcesoLote.query.all())])
+        zf.writestr('_RESUMEN.csv', resumen_csv.getvalue())
+
+    memoria_zip.seek(0)
+
+    fecha_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+    response = send_file(
+        memoria_zip,
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name=f'backup_csv_{fecha_str}.zip'
+    )
+
+    return response
+
+
+@app.route('/api/backup/auto', methods=['POST'])
+def backup_automatico():
+    """
+    Endpoint para backup automático (llamado por Task Scheduler).
+    Guarda archivos en la carpeta de OneDrive configurada.
+    Requiere token de seguridad.
+    """
+    # Token de seguridad para backups automáticos
+    token = request.headers.get('X-Backup-Token') or request.args.get('token')
+    expected_token = os.environ.get('BACKUP_TOKEN', 'skycomposite_backup_2024')
+
+    if token != expected_token:
+        return jsonify({'error': 'Token inválido'}), 403
+
+    try:
+        # Crear carpeta si no existe
+        if not os.path.exists(BACKUP_ONEDRIVE_PATH):
+            os.makedirs(BACKUP_ONEDRIVE_PATH)
+
+        fecha_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+        momento = 'AM' if datetime.now().hour < 12 else 'PM'
+
+        # Generar backup JSON
+        backup_data = generar_backup_data()
+        json_path = os.path.join(BACKUP_ONEDRIVE_PATH, f'backup_{fecha_str}_{momento}.json')
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump(backup_data, f, indent=2, ensure_ascii=False)
+
+        # Generar CSVs
+        csv_folder = os.path.join(BACKUP_ONEDRIVE_PATH, f'csv_{fecha_str}_{momento}')
+        os.makedirs(csv_folder, exist_ok=True)
+        generar_csvs_en_carpeta(csv_folder)
+
+        # Limpiar backups antiguos (mantener últimos 30 días)
+        limpiar_backups_antiguos(BACKUP_ONEDRIVE_PATH, dias=30)
+
+        return jsonify({
+            'success': True,
+            'mensaje': f'Backup guardado en OneDrive',
+            'json_path': json_path,
+            'csv_folder': csv_folder,
+            'estadisticas': backup_data.get('estadisticas', {})
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+def generar_backup_data():
+    """Genera el diccionario de backup completo."""
+    backup_data = {
+        'metadata': {
+            'version': '1.0',
+            'fecha_backup': datetime.now().isoformat(),
+            'descripcion': 'Backup completo de Sky Composite - Inventario QR'
+        },
+        'etapas': [{'id': e.id, 'nombre': e.nombre, 'orden': e.orden, 'color': e.color, 'icono': e.icono} for e in Etapa.query.all()],
+        'coches': [],
+        'movimientos': [],
+        'lotes': [],
+        'lote_coches': [],
+        'bloques': [],
+        'proceso_lotes': [],
+        'contenedores': [],
+        'contenedor_bloques': []
+    }
+
+    for c in Coche.query.all():
+        backup_data['coches'].append({
+            'id': c.id, 'codigo_qr': c.codigo_qr, 'registrador': c.registrador, 'proveedor': c.proveedor,
+            'numero_viaje': c.numero_viaje, 'camara': c.camara, 'lote_secado': c.lote_secado,
+            'espesor_1': c.espesor_1, 'largo_1': c.largo_1, 'plantillas_1': c.plantillas_1, 'bft_1': c.bft_1,
+            'espesor_2': c.espesor_2, 'largo_2': c.largo_2, 'plantillas_2': c.plantillas_2, 'bft_2': c.bft_2,
+            'espesor_3': c.espesor_3, 'largo_3': c.largo_3, 'plantillas_3': c.plantillas_3, 'bft_3': c.bft_3,
+            'total_bft': c.total_bft, 'etapa_actual_id': c.etapa_actual_id, 'notas': c.notas,
+            'created_at': c.created_at.isoformat() if c.created_at else None,
+            'updated_at': c.updated_at.isoformat() if c.updated_at else None
+        })
+
+    for m in Movimiento.query.all():
+        backup_data['movimientos'].append({
+            'id': m.id, 'coche_id': m.coche_id, 'etapa_origen_id': m.etapa_origen_id,
+            'etapa_destino_id': m.etapa_destino_id, 'usuario': m.usuario,
+            'timestamp': m.timestamp.isoformat() if m.timestamp else None, 'notas': m.notas
+        })
+
+    for l in Lote.query.all():
+        backup_data['lotes'].append({
+            'id': l.id, 'codigo_qr': l.codigo_qr, 'total_bft': l.total_bft, 'bft_usado': l.bft_usado,
+            'cantidad_coches': l.cantidad_coches, 'estado': l.estado, 'turno': l.turno,
+            'creado_por': l.creado_por, 'notas': l.notas, 'desperdicio_bft': l.desperdicio_bft,
+            'desperdicio_porcentaje': l.desperdicio_porcentaje,
+            'created_at': l.created_at.isoformat() if l.created_at else None,
+            'fecha_inicio_proceso': l.fecha_inicio_proceso.isoformat() if l.fecha_inicio_proceso else None,
+            'fecha_finalizado': l.fecha_finalizado.isoformat() if l.fecha_finalizado else None
+        })
+        for c in l.coches:
+            backup_data['lote_coches'].append({'lote_id': l.id, 'coche_id': c.id})
+
+    for b in Bloque.query.all():
+        backup_data['bloques'].append({
+            'id': b.id, 'codigo_qr': b.codigo_qr, 'lote_id': b.lote_id,
+            'fecha': b.fecha.isoformat() if b.fecha else None, 'turno': b.turno, 'calidad': b.calidad,
+            'secuencia': b.secuencia, 'largo': b.largo, 'peso': b.peso, 'densidad': b.densidad,
+            'bft': b.bft, 'empatado': b.empatado, 'estado': b.estado, 'peso_encolado': b.peso_encolado,
+            'densidad_encolado': b.densidad_encolado, 'notas': b.notas,
+            'created_at': b.created_at.isoformat() if b.created_at else None,
+            'updated_at': b.updated_at.isoformat() if b.updated_at else None,
+            'fecha_encolado': b.fecha_encolado.isoformat() if b.fecha_encolado else None
+        })
+
+    for p in ProcesoLote.query.all():
+        backup_data['proceso_lotes'].append({
+            'id': p.id, 'lote_id': p.lote_id, 'largo': p.largo, 'ancho': p.ancho, 'alto': p.alto,
+            'bft_calculado': p.bft_calculado, 'calidad': p.calidad, 'procesado_por': p.procesado_por,
+            'created_at': p.created_at.isoformat() if p.created_at else None, 'notas': p.notas
+        })
+
+    for cont in Contenedor.query.all():
+        backup_data['contenedores'].append({
+            'id': cont.id, 'codigo': cont.codigo, 'cliente': cont.cliente,
+            'numero_contenedor': cont.numero_contenedor,
+            'fecha_carga': cont.fecha_carga.isoformat() if cont.fecha_carga else None,
+            'fecha_zarpe': cont.fecha_zarpe.isoformat() if cont.fecha_zarpe else None,
+            'tally_sheet': cont.tally_sheet, 'seguro_1': cont.seguro_1, 'seguro_2': cont.seguro_2,
+            'seguro_3': cont.seguro_3, 'estado': cont.estado, 'total_bloques': cont.total_bloques,
+            'total_bft': cont.total_bft, 'total_m3': cont.total_m3, 'creado_por': cont.creado_por,
+            'notas': cont.notas,
+            'created_at': cont.created_at.isoformat() if cont.created_at else None,
+            'updated_at': cont.updated_at.isoformat() if cont.updated_at else None,
+            'fecha_cierre': cont.fecha_cierre.isoformat() if cont.fecha_cierre else None
+        })
+        for b in cont.bloques:
+            backup_data['contenedor_bloques'].append({'contenedor_id': cont.id, 'bloque_id': b.id})
+
+    backup_data['estadisticas'] = {
+        'total_coches': len(backup_data['coches']),
+        'total_lotes': len(backup_data['lotes']),
+        'total_bloques': len(backup_data['bloques']),
+        'total_contenedores': len(backup_data['contenedores'])
+    }
+
+    return backup_data
+
+
+def generar_csvs_en_carpeta(carpeta):
+    """Genera archivos CSV en la carpeta especificada."""
+    # Coches
+    with open(os.path.join(carpeta, 'coches.csv'), 'w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow(['ID', 'Código QR', 'Registrador', 'Proveedor', 'Viaje', 'Cámara', 'Lote Secado',
+                        'Espesor 1', 'Largo 1', 'Plantillas 1', 'BFT 1', 'Espesor 2', 'Largo 2', 'Plantillas 2', 'BFT 2',
+                        'Espesor 3', 'Largo 3', 'Plantillas 3', 'BFT 3', 'Total BFT', 'Etapa', 'Fecha'])
+        for c in Coche.query.all():
+            writer.writerow([c.id, c.codigo_qr, c.registrador, c.proveedor, c.numero_viaje, c.camara, c.lote_secado,
+                           c.espesor_1, c.largo_1, c.plantillas_1, c.bft_1, c.espesor_2, c.largo_2, c.plantillas_2, c.bft_2,
+                           c.espesor_3, c.largo_3, c.plantillas_3, c.bft_3, c.total_bft,
+                           c.etapa_actual.nombre if c.etapa_actual else '',
+                           c.created_at.strftime('%d/%m/%Y %H:%M') if c.created_at else ''])
+
+    # Lotes
+    with open(os.path.join(carpeta, 'lotes.csv'), 'w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow(['ID', 'Código', 'Total BFT', 'BFT Usado', 'Estado', 'Turno', 'Desperdicio BFT', 'Desperdicio %', 'Fecha'])
+        for l in Lote.query.all():
+            writer.writerow([l.id, l.codigo_qr, l.total_bft, l.bft_usado, l.estado, l.turno,
+                           l.desperdicio_bft, l.desperdicio_porcentaje,
+                           l.created_at.strftime('%d/%m/%Y %H:%M') if l.created_at else ''])
+
+    # Bloques
+    with open(os.path.join(carpeta, 'bloques.csv'), 'w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow(['ID', 'Código', 'Lote', 'Fecha', 'Turno', 'Calidad', 'Largo', 'Peso', 'BFT', 'Estado', 'Peso Encolado'])
+        for b in Bloque.query.all():
+            writer.writerow([b.id, b.codigo_qr, b.lote.codigo_qr if b.lote else '',
+                           b.fecha.strftime('%d/%m/%Y') if b.fecha else '', b.turno, b.calidad,
+                           b.largo, b.peso, b.bft, b.estado, b.peso_encolado])
+
+    # Contenedores
+    with open(os.path.join(carpeta, 'contenedores.csv'), 'w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow(['ID', 'Código', 'Cliente', 'Fecha Carga', 'Estado', 'Total Bloques', 'Total BFT', 'Total M³'])
+        for cont in Contenedor.query.all():
+            writer.writerow([cont.id, cont.codigo, cont.cliente,
+                           cont.fecha_carga.strftime('%d/%m/%Y') if cont.fecha_carga else '',
+                           cont.estado, cont.total_bloques, cont.total_bft, cont.total_m3])
+
+
+def limpiar_backups_antiguos(carpeta, dias=30):
+    """Elimina backups más antiguos que X días."""
+    import glob
+    from datetime import timedelta
+
+    fecha_limite = datetime.now() - timedelta(days=dias)
+
+    for archivo in glob.glob(os.path.join(carpeta, 'backup_*.json')):
+        fecha_archivo = datetime.fromtimestamp(os.path.getmtime(archivo))
+        if fecha_archivo < fecha_limite:
+            os.remove(archivo)
+
+    for carpeta_csv in glob.glob(os.path.join(carpeta, 'csv_*')):
+        if os.path.isdir(carpeta_csv):
+            fecha_carpeta = datetime.fromtimestamp(os.path.getmtime(carpeta_csv))
+            if fecha_carpeta < fecha_limite:
+                import shutil
+                shutil.rmtree(carpeta_csv)
+
+
+@app.route('/api/backup/restaurar', methods=['POST'])
+@login_required
+def restaurar_backup():
+    """
+    Restaura la base de datos desde un archivo JSON de backup.
+    ADVERTENCIA: Esto reemplaza TODOS los datos actuales.
+    """
+    data = request.get_json() or {}
+    password = data.get('password', '')
+
+    # Requiere contraseña de administrador
+    if password != RESET_DB_PASSWORD:
+        return jsonify({'error': 'Contraseña incorrecta'}), 403
+
+    if 'file' not in request.files and 'backup_data' not in data:
+        return jsonify({'error': 'Se requiere archivo de backup o datos JSON'}), 400
+
+    try:
+        if 'backup_data' in data:
+            backup_data = data['backup_data']
+        else:
+            file = request.files['file']
+            backup_data = json.load(file)
+
+        # Validar estructura
+        required_keys = ['etapas', 'coches', 'lotes', 'bloques', 'contenedores']
+        for key in required_keys:
+            if key not in backup_data:
+                return jsonify({'error': f'Falta la tabla {key} en el backup'}), 400
+
+        # Limpiar tablas en orden (por foreign keys)
+        db.session.execute(contenedor_bloques.delete())
+        db.session.execute(lote_coches.delete())
+        ProcesoLote.query.delete()
+        Bloque.query.delete()
+        Movimiento.query.delete()
+        Contenedor.query.delete()
+        Lote.query.delete()
+        Coche.query.delete()
+        Etapa.query.delete()
+        db.session.commit()
+
+        # Restaurar Etapas
+        for e in backup_data['etapas']:
+            etapa = Etapa(id=e['id'], nombre=e['nombre'], orden=e['orden'],
+                         color=e.get('color'), icono=e.get('icono'))
+            db.session.add(etapa)
+        db.session.commit()
+
+        # Restaurar Coches
+        for c in backup_data['coches']:
+            coche = Coche(
+                id=c['id'], codigo_qr=c['codigo_qr'], registrador=c.get('registrador'),
+                proveedor=c.get('proveedor'), numero_viaje=c.get('numero_viaje'),
+                camara=c.get('camara'), lote_secado=c.get('lote_secado'),
+                espesor_1=c.get('espesor_1'), largo_1=c.get('largo_1'), plantillas_1=c.get('plantillas_1'), bft_1=c.get('bft_1'),
+                espesor_2=c.get('espesor_2'), largo_2=c.get('largo_2'), plantillas_2=c.get('plantillas_2'), bft_2=c.get('bft_2'),
+                espesor_3=c.get('espesor_3'), largo_3=c.get('largo_3'), plantillas_3=c.get('plantillas_3'), bft_3=c.get('bft_3'),
+                total_bft=c.get('total_bft'), etapa_actual_id=c['etapa_actual_id'], notas=c.get('notas'),
+                created_at=datetime.fromisoformat(c['created_at']) if c.get('created_at') else None,
+                updated_at=datetime.fromisoformat(c['updated_at']) if c.get('updated_at') else None
+            )
+            db.session.add(coche)
+        db.session.commit()
+
+        # Restaurar Lotes
+        for l in backup_data['lotes']:
+            lote = Lote(
+                id=l['id'], codigo_qr=l['codigo_qr'], total_bft=l.get('total_bft'),
+                bft_usado=l.get('bft_usado'), cantidad_coches=l.get('cantidad_coches'),
+                estado=l.get('estado'), turno=l.get('turno'), creado_por=l.get('creado_por'),
+                notas=l.get('notas'), desperdicio_bft=l.get('desperdicio_bft'),
+                desperdicio_porcentaje=l.get('desperdicio_porcentaje'),
+                created_at=datetime.fromisoformat(l['created_at']) if l.get('created_at') else None,
+                fecha_inicio_proceso=datetime.fromisoformat(l['fecha_inicio_proceso']) if l.get('fecha_inicio_proceso') else None,
+                fecha_finalizado=datetime.fromisoformat(l['fecha_finalizado']) if l.get('fecha_finalizado') else None
+            )
+            db.session.add(lote)
+        db.session.commit()
+
+        # Restaurar relación Lote-Coches
+        for lc in backup_data.get('lote_coches', []):
+            db.session.execute(lote_coches.insert().values(lote_id=lc['lote_id'], coche_id=lc['coche_id']))
+        db.session.commit()
+
+        # Restaurar Movimientos
+        for m in backup_data.get('movimientos', []):
+            mov = Movimiento(
+                id=m['id'], coche_id=m['coche_id'], etapa_origen_id=m.get('etapa_origen_id'),
+                etapa_destino_id=m['etapa_destino_id'], usuario=m.get('usuario'),
+                timestamp=datetime.fromisoformat(m['timestamp']) if m.get('timestamp') else None,
+                notas=m.get('notas')
+            )
+            db.session.add(mov)
+        db.session.commit()
+
+        # Restaurar Bloques
+        for b in backup_data['bloques']:
+            bloque = Bloque(
+                id=b['id'], codigo_qr=b['codigo_qr'], lote_id=b.get('lote_id'),
+                fecha=datetime.fromisoformat(b['fecha']).date() if b.get('fecha') else None,
+                turno=b.get('turno'), calidad=b.get('calidad'), secuencia=b.get('secuencia'),
+                largo=b.get('largo'), peso=b.get('peso'), densidad=b.get('densidad'),
+                bft=b.get('bft'), empatado=b.get('empatado'), estado=b.get('estado'),
+                peso_encolado=b.get('peso_encolado'), densidad_encolado=b.get('densidad_encolado'),
+                notas=b.get('notas'),
+                created_at=datetime.fromisoformat(b['created_at']) if b.get('created_at') else None,
+                updated_at=datetime.fromisoformat(b['updated_at']) if b.get('updated_at') else None,
+                fecha_encolado=datetime.fromisoformat(b['fecha_encolado']) if b.get('fecha_encolado') else None
+            )
+            db.session.add(bloque)
+        db.session.commit()
+
+        # Restaurar Proceso Lotes
+        for p in backup_data.get('proceso_lotes', []):
+            proceso = ProcesoLote(
+                id=p['id'], lote_id=p.get('lote_id'), largo=p.get('largo'),
+                ancho=p.get('ancho'), alto=p.get('alto'), bft_calculado=p.get('bft_calculado'),
+                calidad=p.get('calidad'), procesado_por=p.get('procesado_por'),
+                created_at=datetime.fromisoformat(p['created_at']) if p.get('created_at') else None,
+                notas=p.get('notas')
+            )
+            db.session.add(proceso)
+        db.session.commit()
+
+        # Restaurar Contenedores
+        for cont in backup_data['contenedores']:
+            contenedor = Contenedor(
+                id=cont['id'], codigo=cont['codigo'], cliente=cont.get('cliente'),
+                numero_contenedor=cont.get('numero_contenedor'),
+                fecha_carga=datetime.fromisoformat(cont['fecha_carga']).date() if cont.get('fecha_carga') else None,
+                fecha_zarpe=datetime.fromisoformat(cont['fecha_zarpe']).date() if cont.get('fecha_zarpe') else None,
+                tally_sheet=cont.get('tally_sheet'), seguro_1=cont.get('seguro_1'),
+                seguro_2=cont.get('seguro_2'), seguro_3=cont.get('seguro_3'),
+                estado=cont.get('estado'), total_bloques=cont.get('total_bloques'),
+                total_bft=cont.get('total_bft'), total_m3=cont.get('total_m3'),
+                creado_por=cont.get('creado_por'), notas=cont.get('notas'),
+                created_at=datetime.fromisoformat(cont['created_at']) if cont.get('created_at') else None,
+                updated_at=datetime.fromisoformat(cont['updated_at']) if cont.get('updated_at') else None,
+                fecha_cierre=datetime.fromisoformat(cont['fecha_cierre']) if cont.get('fecha_cierre') else None
+            )
+            db.session.add(contenedor)
+        db.session.commit()
+
+        # Restaurar relación Contenedor-Bloques
+        for cb in backup_data.get('contenedor_bloques', []):
+            db.session.execute(contenedor_bloques.insert().values(contenedor_id=cb['contenedor_id'], bloque_id=cb['bloque_id']))
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'mensaje': 'Base de datos restaurada exitosamente',
+            'estadisticas': {
+                'etapas': len(backup_data['etapas']),
+                'coches': len(backup_data['coches']),
+                'lotes': len(backup_data['lotes']),
+                'bloques': len(backup_data['bloques']),
+                'contenedores': len(backup_data['contenedores'])
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Error al restaurar: {str(e)}'}), 500
+
+
+# ==================== GOOGLE DRIVE BACKUP ====================
+
+# Configuración de Google Drive (via variables de entorno)
+GOOGLE_DRIVE_FOLDER_ID = os.environ.get('GOOGLE_DRIVE_FOLDER_ID', '')
+GOOGLE_SERVICE_ACCOUNT_JSON = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON', '')
+
+
+def get_google_drive_service():
+    """Obtiene el servicio de Google Drive usando cuenta de servicio."""
+    try:
+        from google.oauth2 import service_account
+        from googleapiclient.discovery import build
+
+        if not GOOGLE_SERVICE_ACCOUNT_JSON:
+            return None, "No se ha configurado GOOGLE_SERVICE_ACCOUNT_JSON"
+
+        # Las credenciales pueden venir como JSON string o como path a archivo
+        if GOOGLE_SERVICE_ACCOUNT_JSON.startswith('{'):
+            import json as json_lib
+            credentials_info = json_lib.loads(GOOGLE_SERVICE_ACCOUNT_JSON)
+            credentials = service_account.Credentials.from_service_account_info(
+                credentials_info,
+                scopes=['https://www.googleapis.com/auth/drive.file']
+            )
+        else:
+            credentials = service_account.Credentials.from_service_account_file(
+                GOOGLE_SERVICE_ACCOUNT_JSON,
+                scopes=['https://www.googleapis.com/auth/drive.file']
+            )
+
+        service = build('drive', 'v3', credentials=credentials)
+        return service, None
+    except ImportError:
+        return None, "Librerías de Google no instaladas (google-api-python-client, google-auth)"
+    except Exception as e:
+        return None, str(e)
+
+
+@app.route('/api/backup/drive/status')
+@login_required
+def drive_status():
+    """Verifica el estado de la conexión con Google Drive."""
+    if not GOOGLE_DRIVE_FOLDER_ID:
+        return jsonify({
+            'connected': False,
+            'error': 'GOOGLE_DRIVE_FOLDER_ID no configurado'
+        })
+
+    service, error = get_google_drive_service()
+    if error:
+        return jsonify({
+            'connected': False,
+            'error': error
+        })
+
+    try:
+        # Verificar acceso a la carpeta
+        folder = service.files().get(fileId=GOOGLE_DRIVE_FOLDER_ID).execute()
+        return jsonify({
+            'connected': True,
+            'folder_name': folder.get('name', 'Carpeta de Backups'),
+            'folder_id': GOOGLE_DRIVE_FOLDER_ID
+        })
+    except Exception as e:
+        return jsonify({
+            'connected': False,
+            'error': f'No se puede acceder a la carpeta: {str(e)}'
+        })
+
+
+@app.route('/api/backup/drive/subir', methods=['POST'])
+@login_required
+def subir_backup_drive():
+    """Sube un backup completo a Google Drive."""
+    service, error = get_google_drive_service()
+    if error:
+        return jsonify({'success': False, 'error': error}), 400
+
+    if not GOOGLE_DRIVE_FOLDER_ID:
+        return jsonify({'success': False, 'error': 'GOOGLE_DRIVE_FOLDER_ID no configurado'}), 400
+
+    try:
+        from googleapiclient.http import MediaInMemoryUpload
+
+        fecha_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+        momento = 'AM' if datetime.now().hour < 12 else 'PM'
+
+        # Generar backup JSON
+        backup_data = generar_backup_data()
+        json_content = json.dumps(backup_data, indent=2, ensure_ascii=False)
+
+        # Subir JSON a Drive
+        json_metadata = {
+            'name': f'backup_{fecha_str}_{momento}.json',
+            'parents': [GOOGLE_DRIVE_FOLDER_ID],
+            'mimeType': 'application/json'
+        }
+        json_media = MediaInMemoryUpload(
+            json_content.encode('utf-8'),
+            mimetype='application/json'
+        )
+        json_file = service.files().create(
+            body=json_metadata,
+            media_body=json_media,
+            fields='id, name, webViewLink'
+        ).execute()
+
+        # Generar y subir ZIP con CSVs
+        memoria_zip = BytesIO()
+        with zipfile.ZipFile(memoria_zip, 'w', zipfile.ZIP_DEFLATED) as zf:
+            # CSV de Coches
+            coches_csv = StringIO()
+            writer = csv.writer(coches_csv)
+            writer.writerow(['ID', 'Código QR', 'Registrador', 'Proveedor', 'Cámara', 'Lote Secado',
+                           'Espesor 1', 'Largo 1', 'Plantillas 1', 'BFT 1',
+                           'Espesor 2', 'Largo 2', 'Plantillas 2', 'BFT 2',
+                           'Espesor 3', 'Largo 3', 'Plantillas 3', 'BFT 3',
+                           'Total BFT', 'Etapa', 'Fecha'])
+            for c in Coche.query.all():
+                writer.writerow([c.id, c.codigo_qr, c.registrador, c.proveedor, c.camara, c.lote_secado,
+                               c.espesor_1, c.largo_1, c.plantillas_1, c.bft_1,
+                               c.espesor_2, c.largo_2, c.plantillas_2, c.bft_2,
+                               c.espesor_3, c.largo_3, c.plantillas_3, c.bft_3,
+                               c.total_bft, c.etapa_actual.nombre if c.etapa_actual else '',
+                               c.created_at.strftime('%d/%m/%Y %H:%M') if c.created_at else ''])
+            zf.writestr('coches.csv', coches_csv.getvalue())
+
+            # CSV de Lotes
+            lotes_csv = StringIO()
+            writer = csv.writer(lotes_csv)
+            writer.writerow(['ID', 'Código', 'Total BFT', 'BFT Usado', 'Estado', 'Turno', 'Fecha'])
+            for l in Lote.query.all():
+                writer.writerow([l.id, l.codigo_qr, l.total_bft, l.bft_usado, l.estado, l.turno,
+                               l.created_at.strftime('%d/%m/%Y %H:%M') if l.created_at else ''])
+            zf.writestr('lotes.csv', lotes_csv.getvalue())
+
+            # CSV de Bloques
+            bloques_csv = StringIO()
+            writer = csv.writer(bloques_csv)
+            writer.writerow(['ID', 'Código', 'Lote', 'Fecha', 'Turno', 'Calidad', 'Largo', 'Peso', 'BFT', 'Estado'])
+            for b in Bloque.query.all():
+                writer.writerow([b.id, b.codigo_qr, b.lote.codigo_qr if b.lote else '',
+                               b.fecha.strftime('%d/%m/%Y') if b.fecha else '',
+                               b.turno, b.calidad, b.largo, b.peso, b.bft, b.estado])
+            zf.writestr('bloques.csv', bloques_csv.getvalue())
+
+            # CSV de Contenedores
+            contenedores_csv = StringIO()
+            writer = csv.writer(contenedores_csv)
+            writer.writerow(['ID', 'Código', 'Cliente', 'Fecha Carga', 'Estado', 'Total Bloques', 'Total BFT'])
+            for cont in Contenedor.query.all():
+                writer.writerow([cont.id, cont.codigo, cont.cliente,
+                               cont.fecha_carga.strftime('%d/%m/%Y') if cont.fecha_carga else '',
+                               cont.estado, cont.total_bloques, cont.total_bft])
+            zf.writestr('contenedores.csv', contenedores_csv.getvalue())
+
+        memoria_zip.seek(0)
+
+        # Subir ZIP a Drive
+        zip_metadata = {
+            'name': f'backup_csv_{fecha_str}_{momento}.zip',
+            'parents': [GOOGLE_DRIVE_FOLDER_ID],
+            'mimeType': 'application/zip'
+        }
+        zip_media = MediaInMemoryUpload(
+            memoria_zip.read(),
+            mimetype='application/zip'
+        )
+        zip_file = service.files().create(
+            body=zip_metadata,
+            media_body=zip_media,
+            fields='id, name, webViewLink'
+        ).execute()
+
+        # Limpiar backups antiguos (más de 30 días)
+        limpiar_backups_drive(service, GOOGLE_DRIVE_FOLDER_ID, dias=30)
+
+        return jsonify({
+            'success': True,
+            'mensaje': 'Backup subido a Google Drive',
+            'archivos': {
+                'json': {
+                    'nombre': json_file.get('name'),
+                    'id': json_file.get('id'),
+                    'link': json_file.get('webViewLink')
+                },
+                'csv_zip': {
+                    'nombre': zip_file.get('name'),
+                    'id': zip_file.get('id'),
+                    'link': zip_file.get('webViewLink')
+                }
+            },
+            'estadisticas': backup_data.get('estadisticas', {})
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+def limpiar_backups_drive(service, folder_id, dias=30):
+    """Elimina backups antiguos de Google Drive."""
+    try:
+        from datetime import timedelta
+
+        fecha_limite = datetime.now() - timedelta(days=dias)
+        fecha_limite_str = fecha_limite.isoformat() + 'Z'
+
+        # Buscar archivos de backup antiguos
+        query = f"'{folder_id}' in parents and (name contains 'backup_') and createdTime < '{fecha_limite_str}'"
+        results = service.files().list(
+            q=query,
+            fields='files(id, name, createdTime)'
+        ).execute()
+
+        archivos = results.get('files', [])
+        for archivo in archivos:
+            service.files().delete(fileId=archivo['id']).execute()
+
+        return len(archivos)
+    except Exception as e:
+        print(f"Error limpiando backups antiguos: {e}")
+        return 0
+
+
+@app.route('/api/backup/drive/auto', methods=['POST'])
+def backup_automatico_drive():
+    """
+    Endpoint para backup automático a Google Drive.
+    Llamado por un cron job o scheduler externo.
+    Requiere token de seguridad.
+    """
+    token = request.headers.get('X-Backup-Token') or request.args.get('token')
+    expected_token = os.environ.get('BACKUP_TOKEN', 'skycomposite_backup_2024')
+
+    if token != expected_token:
+        return jsonify({'error': 'Token inválido'}), 403
+
+    # Verificar si Drive está configurado
+    if not GOOGLE_DRIVE_FOLDER_ID or not GOOGLE_SERVICE_ACCOUNT_JSON:
+        return jsonify({
+            'success': False,
+            'error': 'Google Drive no configurado. Configura GOOGLE_DRIVE_FOLDER_ID y GOOGLE_SERVICE_ACCOUNT_JSON'
+        }), 400
+
+    # Reutilizar la lógica de subir_backup_drive pero sin login_required
+    service, error = get_google_drive_service()
+    if error:
+        return jsonify({'success': False, 'error': error}), 400
+
+    try:
+        from googleapiclient.http import MediaInMemoryUpload
+
+        fecha_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+        momento = 'AM' if datetime.now().hour < 12 else 'PM'
+
+        backup_data = generar_backup_data()
+        json_content = json.dumps(backup_data, indent=2, ensure_ascii=False)
+
+        # Subir JSON
+        json_metadata = {
+            'name': f'auto_backup_{fecha_str}_{momento}.json',
+            'parents': [GOOGLE_DRIVE_FOLDER_ID]
+        }
+        json_media = MediaInMemoryUpload(json_content.encode('utf-8'), mimetype='application/json')
+        json_file = service.files().create(body=json_metadata, media_body=json_media, fields='id, name').execute()
+
+        # Limpiar antiguos
+        eliminados = limpiar_backups_drive(service, GOOGLE_DRIVE_FOLDER_ID, dias=30)
+
+        return jsonify({
+            'success': True,
+            'mensaje': f'Backup automático completado',
+            'archivo': json_file.get('name'),
+            'estadisticas': backup_data.get('estadisticas', {}),
+            'backups_eliminados': eliminados
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     # Solo para desarrollo local
     port = int(os.environ.get('PORT', 5000))

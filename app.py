@@ -1,5 +1,6 @@
 import os
 import re
+import time
 from datetime import datetime
 from functools import wraps
 from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, session
@@ -28,21 +29,46 @@ app.config.from_object(get_config())
 # Inicializar base de datos
 db.init_app(app)
 
-with app.app_context():
-    db.create_all()
-    init_etapas()
+# Inicializar DB con reintentos (Railway puede tardar en conectar PostgreSQL)
+def _init_db(max_retries=5, delay=3):
+    for intento in range(max_retries):
+        try:
+            db.create_all()
+            init_etapas()
 
-    # Migración: agregar columna calidad a proceso_lotes si no existe
+            # Migración: agregar columna calidad a proceso_lotes si no existe
+            from sqlalchemy import inspect, text
+            inspector = inspect(db.engine)
+            columns = [col['name'] for col in inspector.get_columns('proceso_lotes')]
+            if 'calidad' not in columns:
+                db.session.execute(text("ALTER TABLE proceso_lotes ADD COLUMN calidad VARCHAR(20) DEFAULT 'R8 Estándar'"))
+                db.session.commit()
+                print("Migración: columna 'calidad' agregada a proceso_lotes")
+
+            print(f"Base de datos inicializada correctamente (intento {intento + 1})")
+            return True
+        except Exception as e:
+            print(f"Error conectando a DB (intento {intento + 1}/{max_retries}): {e}")
+            if intento < max_retries - 1:
+                time.sleep(delay)
+            else:
+                print("ADVERTENCIA: No se pudo conectar a la base de datos despues de todos los intentos")
+                return False
+
+with app.app_context():
+    _init_db()
+
+
+# ==================== HEALTH CHECK ====================
+
+@app.route('/health')
+def health_check():
+    """Endpoint de salud para Railway."""
     try:
-        from sqlalchemy import inspect, text
-        inspector = inspect(db.engine)
-        columns = [col['name'] for col in inspector.get_columns('proceso_lotes')]
-        if 'calidad' not in columns:
-            db.session.execute(text("ALTER TABLE proceso_lotes ADD COLUMN calidad VARCHAR(20) DEFAULT 'R8 Estándar'"))
-            db.session.commit()
-            print("Migración: columna 'calidad' agregada a proceso_lotes")
+        db.session.execute(db.text('SELECT 1'))
+        return jsonify({'status': 'ok', 'database': 'connected'}), 200
     except Exception as e:
-        print(f"Migración calidad: {e}")
+        return jsonify({'status': 'degraded', 'database': str(e)}), 503
 
 
 # ==================== AUTENTICACION ====================

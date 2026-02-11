@@ -17,6 +17,15 @@ class Config:
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+    # Opciones de conexion para mayor resiliencia
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_pre_ping': True,        # Verifica conexion antes de usarla
+        'pool_recycle': 300,           # Recicla conexiones cada 5 min
+        'connect_args': {
+            'connect_timeout': 10,     # Timeout de conexion 10 seg
+        }
+    }
+
 
 class DevelopmentConfig(Config):
     """Configuracion de desarrollo."""

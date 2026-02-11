@@ -13,6 +13,7 @@ from qr_service import (
     generar_imagen_qr
 )
 from config import get_config
+from sqlalchemy import text as sa_text
 import io
 
 # Credenciales de acceso (pueden configurarse via variables de entorno)
@@ -65,10 +66,21 @@ with app.app_context():
 def health_check():
     """Endpoint de salud para Railway."""
     try:
-        db.session.execute(db.text('SELECT 1'))
+        db.session.execute(sa_text('SELECT 1'))
         return jsonify({'status': 'ok', 'database': 'connected'}), 200
     except Exception as e:
         return jsonify({'status': 'degraded', 'database': str(e)}), 503
+
+
+@app.errorhandler(500)
+def internal_error(error):
+    """Manejo de errores 500 - muestra mensaje útil si la DB está caída."""
+    db.session.rollback()
+    return jsonify({
+        'error': 'Error interno del servidor',
+        'detalle': 'Posible problema de conexion con la base de datos. Verifica que PostgreSQL este activo en Railway.',
+        'database_url_set': bool(os.environ.get('DATABASE_URL'))
+    }), 500
 
 
 # ==================== AUTENTICACION ====================

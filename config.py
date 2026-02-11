@@ -18,13 +18,15 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # Opciones de conexion para mayor resiliencia
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_pre_ping': True,        # Verifica conexion antes de usarla
-        'pool_recycle': 300,           # Recicla conexiones cada 5 min
-        'connect_args': {
-            'connect_timeout': 10,     # Timeout de conexion 10 seg
-        }
+    _engine_opts = {
+        'pool_pre_ping': True,
+        'pool_recycle': 300,
     }
+    # connect_timeout solo aplica para PostgreSQL, no SQLite
+    if SQLALCHEMY_DATABASE_URI and 'postgresql' in SQLALCHEMY_DATABASE_URI:
+        _engine_opts['connect_args'] = {'connect_timeout': 10}
+
+    SQLALCHEMY_ENGINE_OPTIONS = _engine_opts
 
 
 class DevelopmentConfig(Config):
